@@ -1,0 +1,298 @@
+/* ==========================================================================
+   Muranga University Student Portal — design tokens & global styles
+   Palette: deep "campus navy" ink, warm sunrise-gold accent (nods to the
+   university's academic-gown gold trim), calm slate surfaces. Deliberately
+   NOT the generic cream/terracotta AI-default — this is an administrative
+   tool used daily, so legibility and calm density win over decoration.
+   ========================================================================== */
+
+:root {
+  --mu-ink-900: #0d1b2a;      /* primary navy - sidebar / headers */
+  --mu-ink-800: #16263b;
+  --mu-ink-700: #22364f;
+  --mu-surface: #f6f7fb;      /* app background */
+  --mu-card: #ffffff;
+  --mu-border: #e2e6ee;
+  --mu-text: #1c2536;
+  --mu-text-muted: #6b7488;
+  --mu-gold: #d4a437;         /* accent: academic gold */
+  --mu-gold-dark: #b8872a;
+  --mu-success: #1e8e5a;
+  --mu-warning: #c9822a;
+  --mu-danger: #c23b3b;
+  --mu-info: #2f6fed;
+
+  --mu-radius-sm: 6px;
+  --mu-radius-md: 10px;
+  --mu-radius-lg: 16px;
+  --mu-shadow-sm: 0 1px 2px rgba(13, 27, 42, 0.06);
+  --mu-shadow-md: 0 6px 20px rgba(13, 27, 42, 0.08);
+
+  --mu-font-display: "Sora", "Segoe UI", sans-serif;
+  --mu-font-body: "Inter", "Segoe UI", sans-serif;
+
+  --mu-sidebar-width: 264px;
+  --mu-navbar-height: 64px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--mu-font-body);
+  background: var(--mu-surface);
+  color: var(--mu-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .mu-display {
+  font-family: var(--mu-font-display);
+  letter-spacing: -0.01em;
+  color: var(--mu-ink-900);
+}
+
+a { color: var(--mu-info); text-decoration: none; }
+
+/* ---------- Layout shell ---------- */
+.mu-app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mu-main {
+  flex: 1;
+  margin-left: var(--mu-sidebar-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left 0.2s ease;
+}
+
+.mu-content {
+  padding: 24px 28px 48px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .mu-main { margin-left: 0; }
+}
+
+/* ---------- Navbar ---------- */
+.mu-navbar {
+  height: var(--mu-navbar-height);
+  background: var(--mu-card);
+  border-bottom: 1px solid var(--mu-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.mu-navbar .mu-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--mu-ink-900);
+}
+
+.mu-navbar .mu-brand .bi { color: var(--mu-gold-dark); font-size: 1.3rem; }
+
+.mu-navbar-actions { display: flex; align-items: center; gap: 14px; }
+
+.mu-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--mu-text-muted);
+  font-size: 1.15rem;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+}
+.mu-icon-btn:hover { background: var(--mu-surface); color: var(--mu-ink-900); }
+
+.mu-badge-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mu-danger);
+  border: 2px solid var(--mu-card);
+}
+
+.mu-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: var(--mu-surface);
+  cursor: pointer;
+}
+
+.mu-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mu-ink-900);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* ---------- Sidebar ---------- */
+.mu-sidebar {
+  width: var(--mu-sidebar-width);
+  background: var(--mu-ink-900);
+  color: #cdd6e5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+
+.mu-sidebar-header {
+  height: var(--mu-navbar-height);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: var(--mu-font-display);
+  font-weight: 700;
+}
+.mu-sidebar-header .bi { color: var(--mu-gold); font-size: 1.4rem; }
+
+.mu-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 10px;
+}
+
+.mu-nav-section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7f8bab;
+  padding: 14px 12px 6px;
+}
+
+.mu-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--mu-radius-sm);
+  color: #cdd6e5;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+.mu-nav-link .bi { font-size: 1.05rem; width: 20px; text-align: center; }
+.mu-nav-link:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.mu-nav-link.active {
+  background: linear-gradient(90deg, rgba(212,164,55,0.18), rgba(212,164,55,0.05));
+  color: #fff;
+  border-left: 3px solid var(--mu-gold);
+  padding-left: 9px;
+}
+
+.mu-sidebar-footer {
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: #7f8bab;
+}
+
+/* ---------- Cards / common widgets ---------- */
+.mu-card {
+  background: var(--mu-card);
+  border: 1px solid var(--mu-border);
+  border-radius: var(--mu-radius-lg);
+  box-shadow: var(--mu-shadow-sm);
+  padding: 20px;
+}
+
+.mu-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mu-stat-card .mu-stat-label { color: var(--mu-text-muted); font-size: 0.82rem; }
+.mu-stat-card .mu-stat-value { font-family: var(--mu-font-display); font-size: 1.7rem; font-weight: 700; }
+
+.mu-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.mu-pill-success { background: rgba(30,142,90,0.12); color: var(--mu-success); }
+.mu-pill-warning { background: rgba(201,130,42,0.12); color: var(--mu-warning); }
+.mu-pill-danger { background: rgba(194,59,59,0.12); color: var(--mu-danger); }
+.mu-pill-info { background: rgba(47,111,237,0.12); color: var(--mu-info); }
+
+.mu-btn {
+  border: none;
+  border-radius: var(--mu-radius-sm);
+  padding: 9px 16px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.mu-btn-primary { background: var(--mu-ink-900); color: #fff; }
+.mu-btn-primary:hover { background: var(--mu-ink-800); }
+.mu-btn-gold { background: var(--mu-gold); color: var(--mu-ink-900); }
+.mu-btn-gold:hover { background: var(--mu-gold-dark); }
+.mu-btn-outline { background: transparent; border: 1px solid var(--mu-border); color: var(--mu-text); }
+
+.mu-table { width: 100%; border-collapse: collapse; }
+.mu-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mu-text-muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mu-border);
+}
+.mu-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--mu-border);
+  font-size: 0.9rem;
+}
+
+/* ---------- Auth pages ---------- */
+.mu-auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top left, var(--mu-ink-700), var(--mu-ink-900));
+}
+.mu-auth-card {
+  background: var(--mu-card);
+  border-radius: var(--mu-radius-lg);
+  padding: 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--mu-shadow-md);
+}

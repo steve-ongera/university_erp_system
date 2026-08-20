@@ -1,0 +1,146 @@
+import axios from "axios";
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+// Attach access token to every request.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("mu_access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Auto-refresh once on 401, then retry the original request.
+let isRefreshing = false;
+let queue = [];
+
+const flushQueue = (error, token = null) => {
+  queue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(token)));
+  queue = [];
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => queue.push({ resolve, reject })).then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+    const refresh = localStorage.getItem("mu_refresh_token");
+    if (!refresh) {
+      isRefreshing = false;
+      authApi.logout();
+      return Promise.reject(error);
+    }
+
+    try {
+      const { data } = await axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh });
+      localStorage.setItem("mu_access_token", data.access);
+      flushQueue(null, data.access);
+      originalRequest.headers.Authorization = `Bearer ${data.access}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      flushQueue(refreshError, null);
+      authApi.logout();
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+);
+
+// ---------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------
+export const authApi = {
+  login: (username, password) => api.post("/auth/login/", { username, password }),
+  verifyOtp: (username, code) => api.post("/auth/verify-otp/", { username, code }),
+  me: () => api.get("/auth/me/"),
+  storeSession: ({ access, refresh, user }) => {
+    localStorage.setItem("mu_access_token", access);
+    localStorage.setItem("mu_refresh_token", refresh);
+    localStorage.setItem("mu_user", JSON.stringify(user));
+  },
+  currentUser: () => {
+    const raw = localStorage.getItem("mu_user");
+    return raw ? JSON.parse(raw) : null;
+  },
+  logout: () => {
+    localStorage.removeItem("mu_access_token");
+    localStorage.removeItem("mu_refresh_token");
+    localStorage.removeItem("mu_user");
+    window.location.href = "/login";
+  },
+};
+
+// ---------------------------------------------------------------------
+// Domain-grouped endpoints (thin wrappers, extend as pages need them)
+// ---------------------------------------------------------------------
+export const studentsApi = {
+  list: (params) => api.get("/students/", { params }),
+  get: (id) => api.get(`/students/${id}/`),
+  admit: (payload) => api.post("/students/admit/", payload),
+  transcript: (id) => api.get(`/students/${id}/transcript/`),
+  feeSummary: (id) => api.get(`/students/${id}/fee-summary/`),
+  myProfile: () => api.get("/me/profile/"),
+  myTranscript: () => api.get("/me/transcript/"),
+  myFeeSummary: () => api.get("/me/fee-summary/"),
+  mySupplementary: () => api.get("/me/supplementary/"),
+};
+
+export const unitsApi = {
+  autoRegister: (semester) => api.post("/unit-registrations/auto-register/", { semester }),
+  myRegistrations: () => api.get("/unit-registrations/"),
+  lecturerAllocations: () => api.get("/lecturer-allocations/"),
+  roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
+};
+
+export const catsApi = {
+  list: (params) => api.get("/cats/", { params }),
+  create: (payload) => api.post("/cats/", payload),
+  submit: (payload) => api.post("/cat-submissions/", payload),
+  mySubmissions: () => api.get("/cat-submissions/"),
+};
+
+export const gradesApi = {
+  enter: (payload) => api.post("/grades/enter/", payload),
+  myGrades: () => api.get("/grades/"),
+};
+
+export const feesApi = {
+  myFeeSummary: () => api.get("/me/fee-summary/"),
+  invoices: () => api.get("/invoices/"),
+  payments: () => api.get("/fee-payments/"),
+};
+
+export const hostelApi = {
+  beds: (params) => api.get("/beds/", { params }),
+  book: (payload) => api.post("/hostel-bookings/", payload),
+  myBookings: () => api.get("/hostel-bookings/"),
+};
+
+export const clearanceApi = {
+  request: (clearanceType) => api.post("/clearances/", { clearance_type: clearanceType }),
+  mine: () => api.get("/clearances/"),
+};
+
+export const notificationsApi = {
+  list: () => api.get("/notifications/"),
+  markRead: (id) => api.post(`/notifications/${id}/mark-read/`),
+};
+
+export default api;

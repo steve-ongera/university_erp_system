@@ -1,0 +1,633 @@
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from . import models as m
+from . import serializers as s
+from . import services
+
+
+# ======================================================================
+# PERMISSIONS
+# ======================================================================
+
+class IsRole(permissions.BasePermission):
+    """Usage: permission_classes = [IsRole.for_roles('admin', 'registrar')]"""
+    allowed_roles = ()
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated
+                     and request.user.user_type in self.allowed_roles)
+
+    @classmethod
+    def for_roles(cls, *roles):
+        return type("IsRoleDynamic", (cls,), {"allowed_roles": roles})
+
+
+class IsStaffRole(permissions.BasePermission):
+    STAFF_ROLES = {"admin", "registrar", "dean", "cod", "finance", "hostel_warden", "exam_office", "lecturer"}
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated
+                     and request.user.user_type in self.STAFF_ROLES)
+
+
+# ======================================================================
+# AUTH VIEWS
+# ======================================================================
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = s.LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ip = request.META.get("REMOTE_ADDR", "")
+
+        try:
+            user = services.AuthService.authenticate(
+                serializer.validated_data["username"], serializer.validated_data["password"], ip
+            )
+        except services.AuthError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if services.AuthService.bypass_required():
+            # DEBUG=True -> skip OTP, issue tokens immediately.
+            return Response(self._tokens_payload(user))
+
+        services.AuthService.issue_otp(user, ip)
+        return Response({"detail": "OTP sent.", "otp_required": True, "username": user.username})
+
+    @staticmethod
+    def _tokens_payload(user):
+        refresh = RefreshToken.for_user(user)
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": s.UserSerializer(user).data,
+        }
+
+
+class VerifyOtpView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = s.VerifyOtpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = m.User.objects.filter(username=serializer.validated_data["username"]).first()
+        if not user:
+            return Response({"detail": "Unknown user."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not services.AuthService.verify_otp(user, serializer.validated_data["code"]):
+            return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(LoginView._tokens_payload(user))
+
+
+class MeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(s.UserSerializer(request.user).data)
+
+
+# ======================================================================
+# ACADEMIC STRUCTURE
+# ======================================================================
+
+class FacultyViewSet(viewsets.ModelViewSet):
+    queryset = m.Faculty.objects.all()
+    serializer_class = s.FacultySerializer
+    permission_classes = [IsStaffRole]
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = m.Department.objects.all()
+    serializer_class = s.DepartmentSerializer
+    permission_classes = [IsStaffRole]
+
+
+class GradingSchemeViewSet(viewsets.ModelViewSet):
+    queryset = m.GradingScheme.objects.all()
+    serializer_class = s.GradingSchemeSerializer
+    permission_classes = [IsRole.for_roles("admin", "registrar", "exam_office")]
+
+
+class ProgrammeViewSet(viewsets.ModelViewSet):
+    queryset = m.Programme.objects.all()
+    serializer_class = s.ProgrammeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = m.Course.objects.all()
+    serializer_class = s.CourseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class CurriculumVersionViewSet(viewsets.ModelViewSet):
+    queryset = m.CurriculumVersion.objects.all()
+    serializer_class = s.CurriculumVersionSerializer
+    permission_classes = [IsStaffRole]
+
+
+# ======================================================================
+# CALENDAR
+# ======================================================================
+
+class AcademicYearViewSet(viewsets.ModelViewSet):
+    queryset = m.AcademicYear.objects.all()
+    serializer_class = s.AcademicYearSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class SemesterViewSet(viewsets.ModelViewSet):
+    queryset = m.Semester.objects.all()
+    serializer_class = s.SemesterSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class IntakeViewSet(viewsets.ModelViewSet):
+    queryset = m.Intake.objects.all()
+    serializer_class = s.IntakeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+# ======================================================================
+# PEOPLE / ADMISSIONS
+# ======================================================================
+
+class StudentViewSet(viewsets.ModelViewSet):
+    queryset = m.Student.objects.select_related("user", "programme")
+    serializer_class = s.StudentSerializer
+    permission_classes = [IsStaffRole]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        programme = self.request.query_params.get("programme")
+        year = self.request.query_params.get("year")
+        status_filter = self.request.query_params.get("status")
+        if programme:
+            qs = qs.filter(programme_id=programme)
+        if year:
+            qs = qs.filter(current_year=year)
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+    @action(detail=False, methods=["post"], url_path="admit")
+    def admit(self, request):
+        serializer = s.AdmitStudentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        student = serializer.save()
+        return Response(s.StudentSerializer(student).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="transcript")
+    def transcript(self, request, pk=None):
+        student = self.get_object()
+        entries = student.transcript_entries.all()
+        return Response(s.TranscriptEntrySerializer(entries, many=True).data)
+
+    @action(detail=True, methods=["get"], url_path="fee-summary")
+    def fee_summary(self, request, pk=None):
+        student = self.get_object()
+        summary = services.FeeService.student_balance_summary(student)
+        return Response({
+            "total_outstanding": summary["total_outstanding"],
+            "wallet_credit": summary["wallet_credit"],
+            "open_invoices": s.InvoiceSerializer(summary["open_invoices"], many=True).data,
+        })
+
+
+class MyProfileStudentView(APIView):
+    """Student self-service: view own profile without exposing the admin StudentViewSet."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = getattr(request.user, "student_profile", None)
+        if not profile:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+        return Response(s.StudentSerializer(profile).data)
+
+
+class LecturerViewSet(viewsets.ModelViewSet):
+    queryset = m.Lecturer.objects.select_related("user", "department")
+    serializer_class = s.LecturerSerializer
+    permission_classes = [IsStaffRole]
+
+
+class StaffViewSet(viewsets.ModelViewSet):
+    queryset = m.Staff.objects.select_related("user")
+    serializer_class = s.StaffSerializer
+    permission_classes = [IsRole.for_roles("admin", "registrar")]
+
+
+class StudentDefermentViewSet(viewsets.ModelViewSet):
+    queryset = m.StudentDeferment.objects.all()
+    serializer_class = s.StudentDefermentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.StudentDeferment.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        student = self.request.user.student_profile
+        serializer.save(student=student)
+
+    @action(detail=True, methods=["post"], url_path="approve",
+            permission_classes=[IsRole.for_roles("admin", "registrar")])
+    def approve(self, request, pk=None):
+        deferment = self.get_object()
+        services.DefermentService.approve(deferment, request.user)
+        return Response(s.StudentDefermentSerializer(deferment).data)
+
+    @action(detail=True, methods=["post"], url_path="resume",
+            permission_classes=[IsRole.for_roles("admin", "registrar")])
+    def resume(self, request, pk=None):
+        deferment = self.get_object()
+        student = services.DefermentService.resume(deferment)
+        return Response(s.StudentSerializer(student).data)
+
+
+# ======================================================================
+# UNIT REGISTRATION / ALLOCATION
+# ======================================================================
+
+class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
+    queryset = m.LecturerUnitAllocation.objects.select_related("lecturer", "course")
+    serializer_class = s.LecturerUnitAllocationSerializer
+    permission_classes = [IsStaffRole]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "lecturer":
+            return qs.filter(lecturer__user=self.request.user)
+        return qs
+
+    @action(detail=True, methods=["get"], url_path="roster")
+    def roster(self, request, pk=None):
+        allocation = self.get_object()
+        return Response(s.EnrollmentSerializer(allocation.roster(), many=True).data)
+
+
+class UnitRegistrationViewSet(viewsets.ModelViewSet):
+    queryset = m.UnitRegistration.objects.select_related("course", "student")
+    serializer_class = s.UnitRegistrationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.UnitRegistration.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    @action(detail=False, methods=["post"], url_path="auto-register")
+    def auto_register(self, request):
+        """Register the logged-in student for their current semester's curriculum units + outstanding supps."""
+        student = request.user.student_profile
+        semester_id = request.data.get("semester")
+        semester = m.Semester.objects.get(pk=semester_id)
+        registrations = services.UnitRegistrationService.register_semester_units(student, semester)
+        for reg in registrations:
+            services.UnitRegistrationService.enroll_with_lecturer(reg)
+        return Response(s.UnitRegistrationSerializer(registrations, many=True).data)
+
+
+class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.Enrollment.objects.select_related("student", "course")
+    serializer_class = s.EnrollmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+# ======================================================================
+# CATS / GRADES
+# ======================================================================
+
+class CatSubmissionViewSet(viewsets.ModelViewSet):
+    queryset = m.CatSubmission.objects.select_related("lecturer_allocation")
+    serializer_class = s.CatSubmissionSerializer
+    permission_classes = [IsStaffRole]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "lecturer":
+            return qs.filter(lecturer_allocation__lecturer__user=self.request.user)
+        return qs
+
+
+class CatAnswerSubmissionViewSet(viewsets.ModelViewSet):
+    queryset = m.CatAnswerSubmission.objects.all()
+    serializer_class = s.CatAnswerSubmissionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.CatAnswerSubmission.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        cat = serializer.validated_data["cat"]
+        from django.utils import timezone
+        serializer.save(student=self.request.user.student_profile,
+                         is_late=timezone.now() > cat.closes_at)
+
+
+class GradeViewSet(viewsets.ModelViewSet):
+    queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")
+    serializer_class = s.GradeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.Grade.objects.filter(enrollment__student__user=user, published_at__isnull=False)
+        if user.user_type == "lecturer":
+            return m.Grade.objects.filter(enrollment__lecturer_allocation__lecturer__user=user)
+        return super().get_queryset()
+
+    @action(detail=False, methods=["post"], url_path="enter",
+            permission_classes=[IsRole.for_roles("lecturer", "admin", "exam_office")])
+    def enter_grade(self, request):
+        """Lecturer enters raw CAT + exam marks; server computes letter/points/pass via GradingService."""
+        serializer = s.GradeEntrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        grade, _ = m.Grade.objects.get_or_create(enrollment=data["enrollment"])
+        grade.cat_marks = data["cat_marks"]
+        grade.final_exam_marks = data["final_exam_marks"]
+        grade.exam_date = data.get("exam_date")
+        grade.entered_by = request.user
+        grade.is_supplementary_result = data["enrollment"].registration.registration_type == \
+            m.UnitRegistration.RegType.SUPPLEMENTARY
+
+        try:
+            services.GradingService.compute_and_save(grade)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(s.GradeSerializer(grade).data, status=status.HTTP_201_CREATED)
+
+
+class MyTranscriptView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+        entries = student.transcript_entries.all()
+        return Response(s.TranscriptEntrySerializer(entries, many=True).data)
+
+
+# ======================================================================
+# SUPPLEMENTARY
+# ======================================================================
+
+class SupplementaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = request.user.student_profile
+        outstanding = services.SupplementaryService.outstanding_units(student)
+        return Response(s.CourseSerializer(outstanding, many=True).data)
+
+    def post(self, request):
+        """Register + auto-invoice a supplementary unit."""
+        student = request.user.student_profile
+        course = m.Course.objects.get(pk=request.data["course"])
+        semester = m.Semester.objects.get(pk=request.data["semester"])
+        registration = services.SupplementaryService.register_supplementary(student, course, semester)
+        return Response(s.UnitRegistrationSerializer(registration).data, status=status.HTTP_201_CREATED)
+
+
+# ======================================================================
+# FEES
+# ======================================================================
+
+class FeeStructureViewSet(viewsets.ModelViewSet):
+    queryset = m.FeeStructure.objects.all()
+    serializer_class = s.FeeStructureSerializer
+    permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+
+
+class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.Invoice.objects.all()
+    serializer_class = s.InvoiceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.Invoice.objects.filter(student__user=user)
+        return super().get_queryset()
+
+
+class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.FeePayment.objects.all()
+    serializer_class = s.FeePaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.FeePayment.objects.filter(student__user=user)
+        return super().get_queryset()
+
+
+class BankPaymentWebhookView(APIView):
+    """
+    Bank/ERP integration endpoint. Secure this with a shared-secret
+    header or mTLS at the gateway/nginx level in production — kept
+    permission-open here only so the *bank's* server (not a portal
+    user) can call it.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = s.BankNotificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            payment = services.FeeService.process_bank_notification(**serializer.validated_data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(s.FeePaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+class MyFeeSummaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+        summary = services.FeeService.student_balance_summary(student)
+        return Response({
+            "total_outstanding": summary["total_outstanding"],
+            "wallet_credit": summary["wallet_credit"],
+            "open_invoices": s.InvoiceSerializer(summary["open_invoices"], many=True).data,
+        })
+
+
+class HelbBursaryAwardViewSet(viewsets.ModelViewSet):
+    queryset = m.HelbBursaryAward.objects.all()
+    serializer_class = s.HelbBursaryAwardSerializer
+    permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+
+
+# ======================================================================
+# HOSTEL
+# ======================================================================
+
+class HostelViewSet(viewsets.ModelViewSet):
+    queryset = m.Hostel.objects.all()
+    serializer_class = s.HostelSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class RoomViewSet(viewsets.ModelViewSet):
+    queryset = m.Room.objects.all()
+    serializer_class = s.RoomSerializer
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+
+
+class BedViewSet(viewsets.ModelViewSet):
+    queryset = m.Bed.objects.filter(is_available=True)
+    serializer_class = s.BedSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class HostelBookingViewSet(viewsets.ModelViewSet):
+    queryset = m.HostelBooking.objects.select_related("bed", "student")
+    serializer_class = s.HostelBookingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.HostelBooking.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def create(self, request, *args, **kwargs):
+        student = request.user.student_profile
+        bed = m.Bed.objects.get(pk=request.data["bed"])
+        semester = m.Semester.objects.get(pk=request.data["semester"])
+        try:
+            booking = services.HostelService.book_bed(student, bed, semester)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(s.HostelBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+
+# ======================================================================
+# REPORTING / CLEARANCE
+# ======================================================================
+
+class StudentReportingViewSet(viewsets.ModelViewSet):
+    queryset = m.StudentReporting.objects.all()
+    serializer_class = s.StudentReportingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.StudentReporting.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        serializer.save(student=self.request.user.student_profile)
+
+
+class ClearanceRequestViewSet(viewsets.ModelViewSet):
+    queryset = m.ClearanceRequest.objects.all()
+    serializer_class = s.ClearanceRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.ClearanceRequest.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def create(self, request, *args, **kwargs):
+        student = request.user.student_profile
+        try:
+            clearance = services.ClearanceService.request_clearance(student, request.data["clearance_type"])
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(s.ClearanceRequestSerializer(clearance).data, status=status.HTTP_201_CREATED)
+
+
+# ======================================================================
+# EXAMS / TIMETABLE / ATTENDANCE
+# ======================================================================
+
+class ExaminationViewSet(viewsets.ModelViewSet):
+    queryset = m.Examination.objects.all()
+    serializer_class = s.ExaminationSerializer
+    permission_classes = [IsStaffRole]
+
+
+class TimetableViewSet(viewsets.ModelViewSet):
+    queryset = m.Timetable.objects.select_related("course", "lecturer")
+    serializer_class = s.TimetableSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class AttendanceSessionViewSet(viewsets.ModelViewSet):
+    queryset = m.AttendanceSession.objects.all()
+    serializer_class = s.AttendanceSessionSerializer
+    permission_classes = [IsRole.for_roles("lecturer", "admin")]
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    queryset = m.Attendance.objects.all()
+    serializer_class = s.AttendanceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.Attendance.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        serializer.save(student=self.request.user.student_profile)
+
+
+# ======================================================================
+# NOTIFICATIONS
+# ======================================================================
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = s.NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return m.Notification.objects.filter(recipient=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="mark-read")
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response(s.NotificationSerializer(notification).data)
+
+
+# ======================================================================
+# ADMIN OPERATIONS (promotion run, etc.)
+# ======================================================================
+
+class RunPromotionView(APIView):
+    """Kicks off end-of-semester promotion for every active student. Also exposed as a management command."""
+    permission_classes = [IsRole.for_roles("admin", "registrar")]
+
+    def post(self, request):
+        results = services.PromotionService.promote_all_active()
+        return Response({"promoted_or_updated": len(results)})

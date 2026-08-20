@@ -1,0 +1,140 @@
+import { NavLink } from "react-router-dom";
+import { useAuth, ROLES } from "../context/AuthContext";
+
+/**
+ * One nav tree per role. Keys are route paths (see App.jsx), so adding a
+ * page is: add the route in App.jsx, then add its entry here for every
+ * role that should see it. Icons are Bootstrap Icons class names.
+ */
+const NAV_BY_ROLE = {
+  [ROLES.STUDENT]: [
+    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Academics",
+      links: [
+        { to: "/units", label: "My Units", icon: "bi-journal-bookmark" },
+        { to: "/cats", label: "CATs", icon: "bi-pencil-square" },
+        { to: "/grades", label: "Results & Transcript", icon: "bi-award" },
+        { to: "/supplementary", label: "Supplementary", icon: "bi-arrow-repeat" },
+        { to: "/timetable", label: "Timetable", icon: "bi-calendar3" },
+      ],
+    },
+    {
+      section: "Campus Life",
+      links: [
+        { to: "/fees", label: "Fees & Payments", icon: "bi-cash-coin" },
+        { to: "/hostel", label: "Hostel Booking", icon: "bi-building" },
+        { to: "/reporting", label: "Reporting", icon: "bi-check2-square" },
+        { to: "/clearance", label: "Clearance", icon: "bi-file-earmark-check" },
+        { to: "/deferment", label: "Deferment", icon: "bi-pause-circle" },
+      ],
+    },
+  ],
+  [ROLES.LECTURER]: [
+    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Teaching",
+      links: [
+        { to: "/my-units", label: "My Allocated Units", icon: "bi-journal-bookmark" },
+        { to: "/cats", label: "CATs & Assignments", icon: "bi-pencil-square" },
+        { to: "/grading", label: "Enter Marks", icon: "bi-check2-circle" },
+        { to: "/attendance", label: "Attendance (QR)", icon: "bi-qr-code" },
+      ],
+    },
+  ],
+  [ROLES.HOSTEL_WARDEN]: [
+    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Hostel",
+      links: [
+        { to: "/hostel-management", label: "Hostels & Rooms", icon: "bi-building" },
+        { to: "/hostel-bookings", label: "Bookings", icon: "bi-door-open" },
+      ],
+    },
+  ],
+  [ROLES.FINANCE]: [
+    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Finance",
+      links: [
+        { to: "/fee-structures", label: "Fee Structures", icon: "bi-receipt" },
+        { to: "/payments", label: "Payments & Reconciliation", icon: "bi-bank" },
+        { to: "/awards", label: "HELB & Bursaries", icon: "bi-piggy-bank" },
+      ],
+    },
+  ],
+  DEFAULT_ADMIN: [
+    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Academic Structure",
+      links: [
+        { to: "/faculties", label: "Faculties & Depts", icon: "bi-diagram-3" },
+        { to: "/programmes", label: "Programmes", icon: "bi-mortarboard" },
+        { to: "/courses", label: "Courses & Curriculum", icon: "bi-journal-code" },
+        { to: "/calendar", label: "Academic Years / Intakes", icon: "bi-calendar3" },
+      ],
+    },
+    {
+      section: "People",
+      links: [
+        { to: "/students", label: "Students", icon: "bi-people" },
+        { to: "/lecturers", label: "Lecturers & Staff", icon: "bi-person-badge" },
+        { to: "/deferments", label: "Deferments", icon: "bi-pause-circle" },
+      ],
+    },
+    {
+      section: "Operations",
+      links: [
+        { to: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle" },
+        { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
+        { to: "/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
+        { to: "/reports", label: "Reports", icon: "bi-bar-chart" },
+      ],
+    },
+  ],
+};
+
+// Roles that reuse the generic admin-style menu (each still sees only what
+// their backend permissions allow when they hit the API).
+const ADMIN_LIKE = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.EXAM_OFFICE, ROLES.STAFF];
+
+export default function Sidebar({ mobileOpen, onClose }) {
+  const { user } = useAuth();
+  if (!user) return null;
+
+  const sections = ADMIN_LIKE.includes(user.user_type)
+    ? NAV_BY_ROLE.DEFAULT_ADMIN
+    : NAV_BY_ROLE[user.user_type] || [];
+
+  return (
+    <aside className={`mu-sidebar ${mobileOpen ? "mu-sidebar-open" : ""}`}>
+      <div className="mu-sidebar-header">
+        <i className="bi bi-mortarboard-fill" />
+        <span>Muranga Portal</span>
+      </div>
+
+      <nav className="mu-sidebar-nav">
+        {sections.map((section) => (
+          <div key={section.section}>
+            <div className="mu-nav-section-label">{section.section}</div>
+            {section.links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                onClick={onClose}
+                className={({ isActive }) => `mu-nav-link${isActive ? " active" : ""}`}
+              >
+                <i className={`bi ${link.icon}`} />
+                <span>{link.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      <div className="mu-sidebar-footer">
+        Signed in as <strong>{user.username}</strong>
+      </div>
+    </aside>
+  );
+}
