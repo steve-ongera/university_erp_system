@@ -106,35 +106,61 @@ export default function Sidebar({ mobileOpen, onClose }) {
     ? NAV_BY_ROLE.DEFAULT_ADMIN
     : NAV_BY_ROLE[user.user_type] || [];
 
+  // Get user initials for avatar
+  const initials = user
+    ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || user.username[0].toUpperCase()
+    : "?";
+
+  // Format role for display
+  const displayRole = user.user_type?.replace(/_/g, " ") || "";
+
   return (
-    <aside className={`mu-sidebar ${mobileOpen ? "mu-sidebar-open" : ""}`}>
-      <div className="mu-sidebar-header">
-        <i className="bi bi-mortarboard-fill" />
-        <span>Muranga Portal</span>
-      </div>
-
-      <nav className="mu-sidebar-nav">
-        {sections.map((section) => (
-          <div key={section.section}>
-            <div className="mu-nav-section-label">{section.section}</div>
-            {section.links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={onClose}
-                className={({ isActive }) => `mu-nav-link${isActive ? " active" : ""}`}
-              >
-                <i className={`bi ${link.icon}`} />
-                <span>{link.label}</span>
-              </NavLink>
-            ))}
+    <>
+      <aside className={`mu-sidebar ${mobileOpen ? "mu-sidebar-open" : ""}`}>
+        {/* Sidebar Header */}
+        <div className="mu-sidebar-header">
+          <div className="mu-logo-icon">
+            <i className="bi bi-mortarboard-fill" />
           </div>
-        ))}
-      </nav>
+          <div>
+            <div className="mu-brand-text">Muranga Portal</div>
+            <div className="mu-brand-sub">University ERP</div>
+          </div>
+        </div>
 
-      <div className="mu-sidebar-footer">
-        Signed in as <strong>{user.username}</strong>
-      </div>
-    </aside>
+        {/* Navigation */}
+        <nav className="mu-sidebar-nav">
+          {sections.map((section) => (
+            <div key={section.section}>
+              <div className="mu-nav-section-label">{section.section}</div>
+              {section.links.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={onClose}
+                  className={({ isActive }) => `mu-nav-link${isActive ? " active" : ""}`}
+                >
+                  <i className={`bi ${link.icon}`} />
+                  <span>{link.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="mu-sidebar-footer">
+          <div className="mu-footer-copyright">
+            <i className="bi bi-c-circle" />
+            <span>2026 InnovationHub Software Ltd</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Overlay for mobile */}
+      {mobileOpen && (
+        <div className="mu-sidebar-overlay active" onClick={onClose} />
+      )}
+    </>
   );
 }
