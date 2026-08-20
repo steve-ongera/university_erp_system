@@ -66,8 +66,10 @@ export default function Navbar({ onToggleSidebar }) {
           <i className="bi bi-mortarboard-fill" />
           <span>Muranga Portal</span>
         </div>
+      </div>
 
-        {/* Search Bar */}
+      {/* Center Section - Search (hidden on small devices) */}
+      <div className="mu-navbar-center">
         <div className="mu-search-bar">
           <i className="bi bi-search" />
           <input 

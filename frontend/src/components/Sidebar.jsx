@@ -8,7 +8,7 @@ import { useAuth, ROLES } from "../context/AuthContext";
  */
 const NAV_BY_ROLE = {
   [ROLES.STUDENT]: [
-    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    { section: "Overview", links: [{ to: "/student/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
       section: "Academics",
       links: [
@@ -31,7 +31,7 @@ const NAV_BY_ROLE = {
     },
   ],
   [ROLES.LECTURER]: [
-    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    { section: "Overview", links: [{ to: "/lecturer/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
       section: "Teaching",
       links: [
@@ -43,7 +43,7 @@ const NAV_BY_ROLE = {
     },
   ],
   [ROLES.HOSTEL_WARDEN]: [
-    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    { section: "Overview", links: [{ to: "/hostel/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
       section: "Hostel",
       links: [
@@ -53,7 +53,7 @@ const NAV_BY_ROLE = {
     },
   ],
   [ROLES.FINANCE]: [
-    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    { section: "Overview", links: [{ to: "/finance/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
       section: "Finance",
       links: [
@@ -64,7 +64,7 @@ const NAV_BY_ROLE = {
     },
   ],
   DEFAULT_ADMIN: [
-    { section: "Overview", links: [{ to: "/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    { section: "Overview", links: [{ to: "/admin/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
       section: "Academic Structure",
       links: [
@@ -114,6 +114,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
   // Format role for display
   const displayRole = user.user_type?.replace(/_/g, " ") || "";
 
+  // Full name for display
+  const fullName = user ? `${user.first_name} ${user.last_name}` : user?.username || "User";
+
   return (
     <>
       <aside className={`mu-sidebar ${mobileOpen ? "mu-sidebar-open" : ""}`}>
@@ -150,6 +153,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
         {/* Sidebar Footer */}
         <div className="mu-sidebar-footer">
+          {/* Copyright Section */}
           <div className="mu-footer-copyright">
             <i className="bi bi-c-circle" />
             <span>2026 InnovationHub Software Ltd</span>

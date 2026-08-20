@@ -271,13 +271,13 @@ hr {
 }
 
 /* ==========================================================================
-   5. SIDEBAR
+   5. SIDEBAR (UPDATED)
    ========================================================================== */
 
 .mu-sidebar {
   width: var(--mu-sidebar-width);
-  background: var(--mu-white);
-  border-right: 1px solid var(--mu-border);
+  background: var(--mu-primary-900);
+  color: #cdd6e5;
   position: fixed;
   top: 0;
   left: 0;
@@ -296,9 +296,8 @@ hr {
   align-items: center;
   gap: var(--mu-spacing-3);
   padding: 0 var(--mu-spacing-5);
-  border-bottom: 1px solid var(--mu-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  background: var(--mu-primary-900);
 }
 
 .mu-sidebar-header .mu-logo-icon {
@@ -324,7 +323,7 @@ hr {
 }
 
 .mu-sidebar-header .mu-brand-sub {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   font-size: var(--mu-font-size-xs);
   font-weight: var(--mu-font-weight-medium);
 }
@@ -341,7 +340,7 @@ hr {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: var(--mu-font-weight-semibold);
-  color: var(--mu-gray-400);
+  color: rgba(255, 255, 255, 0.3);
   padding: var(--mu-spacing-4) var(--mu-spacing-3) var(--mu-spacing-2);
 }
 
@@ -351,7 +350,7 @@ hr {
   gap: var(--mu-spacing-3);
   padding: var(--mu-spacing-2) var(--mu-spacing-3);
   border-radius: var(--mu-radius-sm);
-  color: var(--mu-gray-600);
+  color: #cdd6e5;
   font-size: var(--mu-font-size-sm);
   font-weight: var(--mu-font-weight-medium);
   transition: all var(--mu-transition-fast);
@@ -364,26 +363,26 @@ hr {
   width: 20px;
   text-align: center;
   flex-shrink: 0;
-  color: var(--mu-gray-400);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .mu-nav-link:hover {
-  background: var(--mu-primary-50);
-  color: var(--mu-primary-700);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--mu-white);
 }
 
 .mu-nav-link:hover .bi {
-  color: var(--mu-primary-500);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .mu-nav-link.active {
-  background: var(--mu-primary-50);
-  color: var(--mu-primary-700);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--mu-white);
   font-weight: var(--mu-font-weight-semibold);
 }
 
 .mu-nav-link.active .bi {
-  color: var(--mu-primary-500);
+  color: var(--mu-gold);
 }
 
 .mu-nav-link.active::before {
@@ -393,45 +392,37 @@ hr {
   top: 4px;
   bottom: 4px;
   width: 3px;
-  background: var(--mu-primary-500);
+  background: var(--mu-gold);
   border-radius: 0 var(--mu-radius-sm) var(--mu-radius-sm) 0;
 }
 
-.mu-nav-link .mu-badge {
-  margin-left: auto;
-  background: var(--mu-primary-500);
-  color: var(--mu-white);
-  font-size: var(--mu-font-size-xs);
-  padding: 1px var(--mu-spacing-2);
-  border-radius: var(--mu-radius-full);
-  min-width: 20px;
-  text-align: center;
-}
+/* ==========================================================================
+   5a. SIDEBAR FOOTER (UPDATED)
+   ========================================================================== */
 
-/* Sidebar Footer */
 .mu-sidebar-footer {
-  padding: var(--mu-spacing-3) var(--mu-spacing-5);
-  border-top: 1px solid var(--mu-border);
+  padding: var(--mu-spacing-3) var(--mu-spacing-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--mu-spacing-2);
 }
 
-.mu-sidebar-footer .mu-user-info {
+/* User Info in Footer */
+.mu-footer-user {
   display: flex;
   align-items: center;
-  gap: var(--mu-spacing-2);
-  min-width: 0;
+  gap: var(--mu-spacing-3);
+  padding: var(--mu-spacing-1) var(--mu-spacing-1) var(--mu-spacing-1) var(--mu-spacing-1);
 }
 
-.mu-sidebar-footer .mu-avatar-sm {
-  width: 28px;
-  height: 28px;
+.mu-footer-user .mu-avatar-sm {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--mu-primary-500);
-  color: var(--mu-white);
+  background: var(--mu-gold);
+  color: var(--mu-primary-900);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -440,22 +431,105 @@ hr {
   flex-shrink: 0;
 }
 
-.mu-sidebar-footer .mu-user-name {
+.mu-footer-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mu-footer-user-name {
   font-size: var(--mu-font-size-sm);
-  font-weight: var(--mu-font-weight-medium);
-  color: var(--mu-gray-700);
+  font-weight: var(--mu-font-weight-semibold);
+  color: var(--mu-white);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mu-sidebar-footer .mu-user-role {
+.mu-footer-user-role {
   font-size: var(--mu-font-size-xs);
-  color: var(--mu-gray-400);
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: capitalize;
+}
+
+/* Divider with Dot */
+.mu-footer-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--mu-spacing-2);
+  padding: 0 var(--mu-spacing-1);
+}
+
+.mu-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mu-divider-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 0.4rem;
+}
+
+.mu-divider-dot .bi {
+  font-size: 0.5rem;
+}
+
+/* Copyright Section */
+.mu-footer-copyright {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mu-spacing-1);
+  font-size: var(--mu-font-size-xs);
+  color: rgba(255, 255, 255, 0.25);
+  padding: var(--mu-spacing-1) 0;
+}
+
+.mu-footer-copyright .bi {
+  font-size: var(--mu-font-size-xs);
 }
 
 /* ==========================================================================
-   6. NAVBAR
+   5b. MOBILE OVERLAY
+   ========================================================================== */
+
+.mu-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 90;
+  display: none;
+  backdrop-filter: blur(2px);
+}
+
+.mu-sidebar-overlay.active {
+  display: block;
+}
+
+/* ==========================================================================
+   5c. MOBILE RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .mu-sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .mu-sidebar.mu-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .mu-sidebar-overlay.active {
+    display: block;
+  }
+}
+
+/* ==========================================================================
+   6. NAVBAR (UPDATED - CENTRALIZED SEARCH)
    ========================================================================== */
 
 .mu-navbar {
@@ -476,6 +550,7 @@ hr {
   display: flex;
   align-items: center;
   gap: var(--mu-spacing-4);
+  flex-shrink: 0;
 }
 
 .mu-navbar-toggle {
@@ -508,11 +583,20 @@ hr {
   font-size: 1.3rem;
 }
 
-/* ----- Search ----- */
+/* ----- Center Section - Search ----- */
+.mu-navbar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--mu-spacing-4);
+}
+
+/* ----- Search Bar ----- */
 .mu-search-bar {
   position: relative;
-  flex: 1;
-  max-width: 420px;
+  width: 100%;
+  max-width: 480px;
 }
 
 .mu-search-bar .bi-search {
@@ -522,6 +606,7 @@ hr {
   transform: translateY(-50%);
   color: var(--mu-gray-400);
   font-size: var(--mu-font-size-base);
+  z-index: 1;
 }
 
 .mu-search-bar input {
@@ -546,7 +631,7 @@ hr {
   box-shadow: 0 0 0 3px rgba(59, 108, 224, 0.1);
 }
 
-.mu-search-bar input:focus+.bi-search {
+.mu-search-bar input:focus ~ .bi-search {
   color: var(--mu-primary-500);
 }
 
@@ -555,6 +640,7 @@ hr {
   display: flex;
   align-items: center;
   gap: var(--mu-spacing-2);
+  flex-shrink: 0;
 }
 
 .mu-navbar-action-btn {
@@ -871,12 +957,14 @@ hr {
     display: flex;
   }
 
-  .mu-search-bar {
-    max-width: 200px;
+  /* HIDE SEARCH ON TABLETS AND BELOW */
+  .mu-navbar-center {
+    display: none !important;
   }
 
   .mu-sidebar {
     transform: translateX(-100%);
+    width: 280px;
   }
 
   .mu-sidebar.mu-sidebar-open {
@@ -886,9 +974,10 @@ hr {
   .mu-sidebar-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     z-index: 90;
     display: none;
+    backdrop-filter: blur(2px);
   }
 
   .mu-sidebar-overlay.active {
@@ -923,15 +1012,6 @@ hr {
     display: none;
   }
 
-  .mu-search-bar {
-    max-width: 120px;
-  }
-
-  .mu-search-bar input {
-    padding: var(--mu-spacing-1) var(--mu-spacing-2) var(--mu-spacing-1) var(--mu-spacing-7);
-    font-size: var(--mu-font-size-xs);
-  }
-
   .mu-user-chip .mu-user-text {
     display: none;
   }
@@ -953,6 +1033,14 @@ hr {
     font-size: var(--mu-font-size-xl);
   }
 }
+
+/* Show search on desktop */
+@media (min-width: 993px) {
+  .mu-navbar-center {
+    display: flex !important;
+  }
+}
+
 
 /* ==========================================================================
    8. CARDS & SURFACES
@@ -2269,4 +2357,66 @@ hr {
 .mu-sidebar .mu-sidebar-footer .mu-avatar-sm {
   background: var(--mu-gold);
   color: var(--mu-ink-900);
+}
+
+/* ==========================================================================
+   21. UNDER DEVELOPMENT PAGE
+   ========================================================================== */
+
+.mu-under-development {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mu-spacing-12) var(--mu-spacing-6);
+  text-align: center;
+  min-height: 60vh;
+}
+
+.mu-under-dev-icon {
+  width: 100px;
+  height: 100px;
+  background: var(--mu-primary-50);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--mu-spacing-6);
+  border: 2px dashed var(--mu-primary-200);
+}
+
+.mu-under-dev-icon .bi {
+  font-size: 3rem;
+  color: var(--mu-primary-500);
+}
+
+.mu-under-development h2 {
+  font-size: var(--mu-font-size-2xl);
+  color: var(--mu-gray-900);
+  margin-bottom: var(--mu-spacing-3);
+}
+
+.mu-under-development p {
+  max-width: 500px;
+  color: var(--mu-gray-500);
+  font-size: var(--mu-font-size-base);
+  margin-bottom: var(--mu-spacing-6);
+  line-height: 1.6;
+}
+
+.mu-under-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mu-spacing-2);
+  padding: var(--mu-spacing-2) var(--mu-spacing-4);
+  background: var(--mu-warning-light);
+  color: var(--mu-warning);
+  border-radius: var(--mu-radius-full);
+  font-size: var(--mu-font-size-sm);
+  font-weight: var(--mu-font-weight-medium);
+  margin-bottom: var(--mu-spacing-6);
+}
+
+.mu-under-dev-badge .bi {
+  font-size: 1rem;
 }
