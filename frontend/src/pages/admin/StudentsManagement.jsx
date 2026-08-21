@@ -1,7 +1,9 @@
 // src/pages/admin/StudentsManagement.jsx
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import { adminApi, studentsApi, gradesApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import Modal from "../../components/Modal";
 
 // ----------------------------------------------------------------------
 // Constants
@@ -96,53 +98,23 @@ function printReport({ title, subtitle, columns, rows }) {
 }
 
 // ----------------------------------------------------------------------
-// Generic Modal shell
+// Generic Modal shell (using the shared component)
 // ----------------------------------------------------------------------
-function Modal({ title, onClose, children, width = 560 }) {
-  useEffect(() => {
-    const onEsc = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onEsc);
-    return () => document.removeEventListener("keydown", onEsc);
-  }, [onClose]);
-
+function CustomModal({ title, onClose, children, width = 560 }) {
   return (
-    <div
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)",
-        display: "flex", alignItems: "flex-start", justifyContent: "center",
-        padding: "40px 16px", overflowY: "auto", zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff", borderRadius: 10, width: "100%", maxWidth: width,
-          boxShadow: "0 20px 50px rgba(0,0,0,0.25)", maxHeight: "calc(100vh - 80px)",
-          display: "flex", flexDirection: "column",
-        }}
-      >
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 20px", borderBottom: "1px solid #eee",
-        }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>{title}</h3>
-          <button onClick={onClose} className="mu-btn mu-btn-sm mu-btn-outline-primary" type="button">
-            <i className="bi bi-x-lg" />
-          </button>
-        </div>
-        <div style={{ padding: 20, overflowY: "auto" }}>{children}</div>
-      </div>
-    </div>
+    <Modal isOpen={true} onClose={onClose} title={title} size={width === 560 ? "md" : width === 720 ? "lg" : "xl"} showFooter={false}>
+      {children}
+    </Modal>
   );
 }
 
 function ConfirmModal({ title, message, confirmLabel = "Delete", onConfirm, onClose, danger = true }) {
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title={title} onClose={onClose} width={420}>
+    <Modal isOpen={true} onClose={onClose} title={title} size="sm">
       <p style={{ marginTop: 0 }}>{message}</p>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-        <button className="mu-btn mu-btn-outline-primary" onClick={onClose} type="button">Cancel</button>
+      <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+        <button className="mu-btn mu-btn-secondary" onClick={onClose} type="button">Cancel</button>
         <button
           className={`mu-btn ${danger ? "mu-btn-danger" : "mu-btn-primary"}`}
           disabled={busy}
@@ -156,7 +128,12 @@ function ConfirmModal({ title, message, confirmLabel = "Delete", onConfirm, onCl
             }
           }}
         >
-          {busy ? "Working..." : confirmLabel}
+          {busy ? (
+            <>
+              <i className="bi bi-arrow-repeat mu-animate-spin" />
+              Working...
+            </>
+          ) : confirmLabel}
         </button>
       </div>
     </Modal>
@@ -164,7 +141,7 @@ function ConfirmModal({ title, message, confirmLabel = "Delete", onConfirm, onCl
 }
 
 // ----------------------------------------------------------------------
-// Add / Edit Student modal (creates the User account too, on add)
+// Add / Edit Student modal
 // ----------------------------------------------------------------------
 function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved }) {
   const isEdit = mode === "edit";
@@ -192,7 +169,6 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // When adding, fetch curriculum versions for the chosen programme.
   useEffect(() => {
     if (isEdit || !form.programme) return;
     adminApi
@@ -247,104 +223,118 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
   };
 
   return (
-    <Modal title={isEdit ? "Edit Student" : "Admit New Student"} onClose={onClose} width={620}>
+    <Modal isOpen={true} onClose={onClose} title={isEdit ? "Edit Student" : "Admit New Student"} size="lg">
       <form onSubmit={handleSubmit}>
-        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}><i className="bi bi-exclamation-triangle" /> {error}</div>}
 
         {!isEdit && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="First Name">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>First Name</label>
                 <input className="mu-input" required value={form.first_name} onChange={handleChange("first_name")} />
-              </Field>
-              <Field label="Last Name">
+              </div>
+              <div className="mu-form-group">
+                <label>Last Name</label>
                 <input className="mu-input" required value={form.last_name} onChange={handleChange("last_name")} />
-              </Field>
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <Field label="Gender">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Gender</label>
                 <select className="mu-input" value={form.gender} onChange={handleChange("gender")}>
                   {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
-              </Field>
-              <Field label="Sponsor Type">
+              </div>
+              <div className="mu-form-group">
+                <label>Sponsor Type</label>
                 <select className="mu-input" value={form.sponsor_type} onChange={handleChange("sponsor_type")}>
                   {SPONSOR_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </Field>
+              </div>
             </div>
-            <div style={{ marginTop: 12 }}>
-              <Field label="Programme">
-                <select className="mu-input" required value={form.programme} onChange={handleChange("programme")}>
-                  <option value="">Select programme...</option>
-                  {programmes.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
-                </select>
-              </Field>
+            <div className="mu-form-group">
+              <label>Programme</label>
+              <select className="mu-input" required value={form.programme} onChange={handleChange("programme")}>
+                <option value="">Select programme...</option>
+                {programmes.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+              </select>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <Field label="Intake">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Intake</label>
                 <select className="mu-input" required value={form.intake} onChange={handleChange("intake")}>
                   <option value="">Select intake...</option>
                   {intakes.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
-              </Field>
-              <Field label="Curriculum Version">
+              </div>
+              <div className="mu-form-group">
+                <label>Curriculum Version</label>
                 <select className="mu-input" required value={form.curriculum_version} onChange={handleChange("curriculum_version")} disabled={!form.programme}>
                   <option value="">{form.programme ? "Select..." : "Pick a programme first"}</option>
                   {curriculumVersions.map((v) => <option key={v.id} value={v.id}>{v.effective_academic_year_detail?.year || `Version #${v.id}`}</option>)}
                 </select>
-              </Field>
+              </div>
             </div>
-            <p style={{ fontSize: 12, color: "#888", marginTop: 10 }}>
-              A login account is created automatically (username = registration number,
-              temporary password = registration number without slashes; the student
-              must change it on first login).
-            </p>
+            <div className="mu-alert mu-alert-info" style={{ marginTop: 12 }}>
+              <i className="bi bi-info-circle" />
+              A login account is created automatically (username = registration number, temporary password = registration number without slashes; the student must change it on first login).
+            </div>
           </>
         )}
 
         {isEdit && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Current Year">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Current Year</label>
                 <input type="number" min={1} max={8} className="mu-input" value={form.current_year} onChange={handleChange("current_year")} />
-              </Field>
-              <Field label="Current Semester">
+              </div>
+              <div className="mu-form-group">
+                <label>Current Semester</label>
                 <input type="number" min={1} max={3} className="mu-input" value={form.current_semester} onChange={handleChange("current_semester")} />
-              </Field>
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <Field label="Status">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Status</label>
                 <select className="mu-input" value={form.status} onChange={handleChange("status")}>
                   {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </Field>
-              <Field label="Sponsor Type">
+              </div>
+              <div className="mu-form-group">
+                <label>Sponsor Type</label>
                 <select className="mu-input" value={form.sponsor_type} onChange={handleChange("sponsor_type")}>
                   {SPONSOR_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </Field>
+              </div>
             </div>
-            <div style={{ marginTop: 12 }}>
-              <Field label="Guardian Name">
-                <input className="mu-input" value={form.guardian_name} onChange={handleChange("guardian_name")} />
-              </Field>
+            <div className="mu-form-group">
+              <label>Guardian Name</label>
+              <input className="mu-input" value={form.guardian_name} onChange={handleChange("guardian_name")} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <Field label="Guardian Phone">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Guardian Phone</label>
                 <input className="mu-input" value={form.guardian_phone} onChange={handleChange("guardian_phone")} />
-              </Field>
-              <Field label="Emergency Contact">
+              </div>
+              <div className="mu-form-group">
+                <label>Emergency Contact</label>
                 <input className="mu-input" value={form.emergency_contact} onChange={handleChange("emergency_contact")} />
-              </Field>
+              </div>
             </div>
           </>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
-          <button type="button" className="mu-btn mu-btn-outline-primary" onClick={onClose}>Cancel</button>
+        <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+          <button type="button" className="mu-btn mu-btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="mu-btn mu-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : isEdit ? "Save Changes" : "Admit Student"}
+            {saving ? (
+              <>
+                <i className="bi bi-arrow-repeat mu-animate-spin" />
+                Saving...
+              </>
+            ) : isEdit ? "Save Changes" : "Admit Student"}
           </button>
         </div>
       </form>
@@ -352,17 +342,8 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
   );
 }
 
-function Field({ label, children }) {
-  return (
-    <label style={{ display: "block", fontSize: 13 }}>
-      <span style={{ display: "block", marginBottom: 4, color: "#444", fontWeight: 500 }}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
 // ----------------------------------------------------------------------
-// Grade edit modal — used from inside a year's results table
+// Grade edit modal
 // ----------------------------------------------------------------------
 function GradeEditModal({ entry, student, onClose, onSaved }) {
   const [catMarks, setCatMarks] = useState(entry?.suggestedCat ?? "");
@@ -375,9 +356,6 @@ function GradeEditModal({ entry, student, onClose, onSaved }) {
     setError("");
     setSaving(true);
     try {
-      // Find the live Enrollment for this student/course/semester so we
-      // can post to /grades/enter/. Requires EnrollmentViewSet to accept
-      // ?student=&course=&semester= (see filterset_fields note).
       const { data: enrollments } = await studentsApi.enrollments({
         student: student.id,
         course: entry.course_detail.id,
@@ -403,30 +381,37 @@ function GradeEditModal({ entry, student, onClose, onSaved }) {
   };
 
   return (
-    <Modal title={`Update Marks — ${entry.course_detail?.code}`} onClose={onClose} width={420}>
+    <Modal isOpen={true} onClose={onClose} title={`Update Marks — ${entry.course_detail?.code}`} size="md">
       <form onSubmit={handleSave}>
-        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
-        <p style={{ marginTop: 0, fontSize: 13, color: "#555" }}>
+        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}><i className="bi bi-exclamation-triangle" /> {error}</div>}
+        <p style={{ marginTop: 0, fontSize: 13, color: "var(--mu-gray-500)" }}>
           {entry.course_detail?.name} &middot; Y{entry.programme_year} S{entry.semester_number}
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="CAT Marks (/30)">
+        <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+          <div className="mu-form-group">
+            <label>CAT Marks (/30)</label>
             <input type="number" step="0.01" min={0} max={100} required className="mu-input"
                    value={catMarks} onChange={(e) => setCatMarks(e.target.value)} />
-          </Field>
-          <Field label="Final Exam Marks (/70)">
+          </div>
+          <div className="mu-form-group">
+            <label>Final Exam Marks (/70)</label>
             <input type="number" step="0.01" min={0} max={100} required className="mu-input"
                    value={examMarks} onChange={(e) => setExamMarks(e.target.value)} />
-          </Field>
+          </div>
         </div>
-        <p style={{ fontSize: 12, color: "#888", marginTop: 10 }}>
-          Total, letter grade and grade points are computed server-side (40/60 weighting)
-          against the department's grading scheme.
-        </p>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-          <button type="button" className="mu-btn mu-btn-outline-primary" onClick={onClose}>Cancel</button>
+        <div className="mu-alert mu-alert-info" style={{ marginTop: 12 }}>
+          <i className="bi bi-info-circle" />
+          Total, letter grade and grade points are computed server-side (40/60 weighting) against the department's grading scheme.
+        </div>
+        <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+          <button type="button" className="mu-btn mu-btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="mu-btn mu-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : "Save Marks"}
+            {saving ? (
+              <>
+                <i className="bi bi-arrow-repeat mu-animate-spin" />
+                Saving...
+              </>
+            ) : "Save Marks"}
           </button>
         </div>
       </form>
@@ -435,7 +420,7 @@ function GradeEditModal({ entry, student, onClose, onSaved }) {
 }
 
 // ----------------------------------------------------------------------
-// Student Detail modal — overview + per-year results tabs + fees
+// Student Detail modal
 // ----------------------------------------------------------------------
 function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
   const [transcript, setTranscript] = useState([]);
@@ -511,12 +496,12 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
   };
 
   return (
-    <Modal title="Student Details" onClose={onClose} width={860}>
+    <Modal isOpen={true} onClose={onClose} title="Student Details" size="xl">
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: "0 0 4px" }}>{fullName(student.user_detail)}</h2>
-          <div style={{ color: "#666", fontSize: 13 }}>
+          <div style={{ color: "var(--mu-gray-500)", fontSize: 13 }}>
             {student.registration_number} &middot; {student.programme_detail?.name}
           </div>
           <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -531,17 +516,23 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #eee", marginTop: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--mu-border)", marginBottom: 16, flexWrap: "wrap" }}>
         {["overview", ...yearTabs.map((y) => `year${y}`), "fees"].map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className="mu-btn mu-btn-sm"
             style={{
-              border: "none", borderBottom: activeTab === tab ? "2px solid #3b6ce0" : "2px solid transparent",
-              borderRadius: 0, background: "transparent",
-              color: activeTab === tab ? "#3b6ce0" : "#666", fontWeight: activeTab === tab ? 600 : 400,
+              border: "none",
+              borderBottom: activeTab === tab ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+              borderRadius: 0,
+              background: "transparent",
+              padding: "8px 16px",
+              cursor: "pointer",
+              color: activeTab === tab ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+              fontWeight: activeTab === tab ? 600 : 400,
+              fontSize: "var(--mu-font-size-sm)",
+              transition: "all var(--mu-transition-fast)",
             }}
           >
             {tab === "overview" ? "Overview" : tab === "fees" ? "Fees" : `Year ${tab.replace("year", "")}`}
@@ -552,15 +543,15 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
       {loading ? (
         <div style={{ padding: 40, textAlign: "center" }}><LoadingSpinner text="Loading student record..." /></div>
       ) : (
-        <div style={{ marginTop: 16 }}>
+        <div>
           {activeTab === "overview" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 13 }}>
-              <InfoRow label="Sponsor Type" value={student.sponsor_type} />
-              <InfoRow label="Admission Date" value={student.admission_date} />
-              <InfoRow label="Guardian" value={student.guardian_name || "—"} />
-              <InfoRow label="Guardian Phone" value={student.guardian_phone || "—"} />
-              <InfoRow label="Emergency Contact" value={student.emergency_contact || "—"} />
-              <InfoRow label="Total Credit Hours" value={student.total_credit_hours_earned} />
+            <div className="mu-dashboard-grid-2" style={{ gap: 16 }}>
+              <div className="mu-form-group"><label>Sponsor Type</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.sponsor_type || "—"}</div></div>
+              <div className="mu-form-group"><label>Admission Date</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.admission_date || "—"}</div></div>
+              <div className="mu-form-group"><label>Guardian</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.guardian_name || "—"}</div></div>
+              <div className="mu-form-group"><label>Guardian Phone</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.guardian_phone || "—"}</div></div>
+              <div className="mu-form-group"><label>Emergency Contact</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.emergency_contact || "—"}</div></div>
+              <div className="mu-form-group"><label>Total Credit Hours</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.total_credit_hours_earned || 0}</div></div>
             </div>
           )}
 
@@ -568,8 +559,8 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
             (year) =>
               activeTab === `year${year}` && (
                 <div key={year}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-                    <select className="mu-input" style={{ width: 160 }} value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                    <select className="mu-input" style={{ width: 180 }} value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
                       <option value="all">All Semesters</option>
                       <option value="1">Semester 1</option>
                       <option value="2">Semester 2</option>
@@ -590,12 +581,12 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
                       <thead>
                         <tr>
                           <th>Code</th><th>Course</th><th>Sem</th><th>Credits</th>
-                          <th>Grade</th><th>Points</th><th>Type</th><th></th>
+                          <th>Grade</th><th>Points</th><th>Type</th><th style={{ textAlign: "center" }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {entriesForYear(year).length === 0 && (
-                          <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "#999" }}>No results recorded yet.</td></tr>
+                          <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--mu-gray-400)" }}>No results recorded yet.</td></tr>
                         )}
                         {entriesForYear(year).map((entry) => (
                           <tr key={entry.id}>
@@ -603,10 +594,10 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
                             <td>{entry.course_detail?.name}</td>
                             <td>S{entry.semester_number}</td>
                             <td>{entry.credit_hours}</td>
-                            <td><strong>{entry.letter_grade}</strong></td>
+                            <td><span className="mu-badge mu-badge-primary">{entry.letter_grade}</span></td>
                             <td>{entry.grade_points}</td>
                             <td>{entry.is_supplementary ? "Supplementary" : "Normal"}</td>
-                            <td>
+                            <td style={{ textAlign: "center" }}>
                               <button className="mu-btn mu-btn-sm mu-btn-outline-primary"
                                       onClick={() => setEditingEntry({ ...entry, semester_id: null })}>
                                 <i className="bi bi-pencil" />
@@ -625,16 +616,26 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
             <div>
               {feeSummary ? (
                 <>
-                  <div style={{ display: "flex", gap: 24, marginBottom: 16 }}>
-                    <InfoRow label="Total Outstanding" value={`Ksh ${feeSummary.total_outstanding}`} />
-                    <InfoRow label="Wallet Credit" value={`Ksh ${feeSummary.wallet_credit}`} />
+                  <div className="mu-dashboard-grid-2" style={{ gap: 16, marginBottom: 16 }}>
+                    <div className="mu-stat-card">
+                      <div className="mu-stat-label">Total Outstanding</div>
+                      <div className="mu-stat-value" style={{ color: feeSummary.total_outstanding > 0 ? "var(--mu-danger)" : "var(--mu-success)" }}>
+                        Ksh {feeSummary.total_outstanding}
+                      </div>
+                    </div>
+                    <div className="mu-stat-card">
+                      <div className="mu-stat-label">Wallet Credit</div>
+                      <div className="mu-stat-value" style={{ color: feeSummary.wallet_credit > 0 ? "var(--mu-success)" : "var(--mu-gray-500)" }}>
+                        Ksh {feeSummary.wallet_credit}
+                      </div>
+                    </div>
                   </div>
                   <div className="mu-table-wrapper">
                     <table className="mu-table">
                       <thead><tr><th>Type</th><th>Semester</th><th>Amount Due</th><th>Balance</th></tr></thead>
                       <tbody>
                         {(feeSummary.open_invoices || []).length === 0 && (
-                          <tr><td colSpan={4} style={{ textAlign: "center", padding: 20, color: "#999" }}>No open invoices.</td></tr>
+                          <tr><td colSpan={4} style={{ textAlign: "center", padding: 20, color: "var(--mu-gray-400)" }}>No open invoices.</td></tr>
                         )}
                         {(feeSummary.open_invoices || []).map((inv) => (
                           <tr key={inv.id}>
@@ -649,7 +650,7 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
                   </div>
                 </>
               ) : (
-                <p style={{ color: "#999" }}>Fee summary unavailable.</p>
+                <p style={{ color: "var(--mu-gray-400)" }}>Fee summary unavailable.</p>
               )}
             </div>
           )}
@@ -665,15 +666,6 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
         />
       )}
     </Modal>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, textTransform: "uppercase", color: "#999", letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 14 }}>{value ?? "—"}</div>
-    </div>
   );
 }
 
@@ -693,17 +685,16 @@ export default function StudentsManagement() {
   const [programmeFilter, setProgrammeFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [viewMode, setViewMode] = useState("table"); // "table" | "cards" ("tab form")
+  const [viewMode, setViewMode] = useState("table");
 
   const [programmes, setProgrammes] = useState([]);
   const [intakes, setIntakes] = useState([]);
   const [semesters, setSemesters] = useState([]);
 
   const [detailStudent, setDetailStudent] = useState(null);
-  const [formModal, setFormModal] = useState(null); // { mode: "add" | "edit", student? }
+  const [formModal, setFormModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // Static lookups (programmes/intakes/semesters) for filters + add form.
   useEffect(() => {
     Promise.all([adminApi.programmes(), adminApi.intakes(), adminApi.semesters()])
       .then(([pRes, iRes, sRes]) => {
@@ -725,7 +716,6 @@ export default function StudentsManagement() {
       if (statusFilter) params.status = statusFilter;
 
       const { data } = await adminApi.students(params);
-      // Handles both paginated ({count, results}) and plain-array responses.
       if (Array.isArray(data)) {
         setStudents(data);
         setCount(data.length);
@@ -790,11 +780,16 @@ export default function StudentsManagement() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Page Header */}
       <div className="mu-page-header">
         <div>
-          <h1><i className="bi bi-people" /> Students Management</h1>
-          <div className="mu-breadcrumb">Home <span className="separator">/</span> Admin <span className="separator">/</span> Students</div>
+          <h1>
+            <i className="bi bi-people" />
+            Students Management
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Admin <span className="separator">/</span> Students
+          </div>
         </div>
         <div className="mu-page-header-actions">
           <button className="mu-btn mu-btn-outline-primary" onClick={handleDownloadAll}>
@@ -806,70 +801,86 @@ export default function StudentsManagement() {
         </div>
       </div>
 
-      {toast && <div className="mu-alert mu-alert-success"><i className="bi bi-check-circle" /> {toast}</div>}
-      {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
+      {toast && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {toast}
+        </div>
+      )}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mu-card" style={{ marginBottom: 16 }}>
-        <div className="mu-card-body" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 220px" }}>
-            <Field label="Search">
-              <input
-                className="mu-input"
-                placeholder="Reg no, first or last name..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </Field>
-          </div>
-          <div style={{ width: 200 }}>
-            <Field label="Programme">
-              <select className="mu-input" value={programmeFilter} onChange={(e) => setProgrammeFilter(e.target.value)}>
-                <option value="">All Programmes</option>
-                {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div style={{ width: 140 }}>
-            <Field label="Year">
-              <select className="mu-input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
-                <option value="">All Years</option>
-                {[1, 2, 3, 4, 5, 6].map((y) => <option key={y} value={y}>Year {y}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div style={{ width: 160 }}>
-            <Field label="Status">
-              <select className="mu-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">All Statuses</option>
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div>
-            <button
-              type="button"
-              className="mu-btn mu-btn-outline-primary"
-              onClick={() => { setSearch(""); setProgrammeFilter(""); setYearFilter(""); setStatusFilter(""); }}
-            >
-              Reset
-            </button>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-            <button
-              className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
-              onClick={() => setViewMode("table")}
-              type="button"
-            >
-              <i className="bi bi-table" /> Table
-            </button>
-            <button
-              className={`mu-btn mu-btn-sm ${viewMode === "cards" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
-              onClick={() => setViewMode("cards")}
-              type="button"
-            >
-              <i className="bi bi-grid-3x3-gap" /> Cards
-            </button>
+        <div className="mu-card-body">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+            <div style={{ flex: "1 1 220px" }}>
+              <div className="mu-form-group" style={{ marginBottom: 0 }}>
+                <label>Search</label>
+                <input
+                  className="mu-input"
+                  placeholder="Reg no, first or last name..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+            <div style={{ width: 200 }}>
+              <div className="mu-form-group" style={{ marginBottom: 0 }}>
+                <label>Programme</label>
+                <select className="mu-input" value={programmeFilter} onChange={(e) => setProgrammeFilter(e.target.value)}>
+                  <option value="">All Programmes</option>
+                  {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ width: 140 }}>
+              <div className="mu-form-group" style={{ marginBottom: 0 }}>
+                <label>Year</label>
+                <select className="mu-input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+                  <option value="">All Years</option>
+                  {[1, 2, 3, 4, 5, 6].map((y) => <option key={y} value={y}>Year {y}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ width: 160 }}>
+              <div className="mu-form-group" style={{ marginBottom: 0 }}>
+                <label>Status</label>
+                <select className="mu-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="">All Statuses</option>
+                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <button
+                type="button"
+                className="mu-btn mu-btn-secondary"
+                onClick={() => { setSearch(""); setProgrammeFilter(""); setYearFilter(""); setStatusFilter(""); }}
+              >
+                Reset
+              </button>
+            </div>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+              <button
+                className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                onClick={() => setViewMode("table")}
+                type="button"
+              >
+                <i className="bi bi-table" /> Table
+              </button>
+              <button
+                className={`mu-btn mu-btn-sm ${viewMode === "cards" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                onClick={() => setViewMode("cards")}
+                type="button"
+              >
+                <i className="bi bi-grid-3x3-gap" /> Cards
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -894,8 +905,14 @@ export default function StudentsManagement() {
               <table className="mu-table mu-table-hover">
                 <thead>
                   <tr>
-                    <th>Registration</th><th>Name</th><th>Programme</th>
-                    <th>Year/Sem</th><th>Status</th><th>GPA</th><th>Admission</th><th>Actions</th>
+                    <th>Registration</th>
+                    <th>Name</th>
+                    <th>Programme</th>
+                    <th>Year/Sem</th>
+                    <th>Status</th>
+                    <th>GPA</th>
+                    <th>Admission</th>
+                    <th style={{ textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -905,11 +922,15 @@ export default function StudentsManagement() {
                       <td>{fullName(student.user_detail)}</td>
                       <td>{student.programme_detail?.code || "N/A"}</td>
                       <td>Y{student.current_year} S{student.current_semester}</td>
-                      <td><span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>{student.status}</span></td>
+                      <td>
+                        <span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>
+                          {student.status}
+                        </span>
+                      </td>
                       <td>{student.cumulative_gpa ?? "—"}</td>
                       <td>{student.admission_date ? new Date(student.admission_date).toLocaleDateString() : "N/A"}</td>
-                      <td>
-                        <div style={{ display: "flex", gap: 4 }}>
+                      <td style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                           <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setDetailStudent(student)} title="View">
                             <i className="bi bi-eye" />
                           </button>
@@ -927,21 +948,31 @@ export default function StudentsManagement() {
               </table>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {students.map((student) => (
                 <div key={student.id} className="mu-card" style={{ margin: 0 }}>
                   <div className="mu-card-body">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <strong>{student.registration_number}</strong>
-                      <span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>{student.status}</span>
+                      <span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>
+                        {student.status}
+                      </span>
                     </div>
-                    <div style={{ marginTop: 6 }}>{fullName(student.user_detail)}</div>
-                    <div style={{ fontSize: 13, color: "#777" }}>{student.programme_detail?.name}</div>
-                    <div style={{ fontSize: 13, marginTop: 6 }}>Y{student.current_year} S{student.current_semester} · GPA {student.cumulative_gpa ?? "—"}</div>
+                    <div style={{ marginTop: 6, fontWeight: 500 }}>{fullName(student.user_detail)}</div>
+                    <div style={{ fontSize: 13, color: "var(--mu-gray-500)" }}>{student.programme_detail?.name}</div>
+                    <div style={{ fontSize: 13, marginTop: 6 }}>
+                      Y{student.current_year} S{student.current_semester} · GPA {student.cumulative_gpa ?? "—"}
+                    </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setDetailStudent(student)}>View</button>
-                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setFormModal({ mode: "edit", student })}>Edit</button>
-                      <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setDeleteTarget(student)}>Delete</button>
+                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setDetailStudent(student)}>
+                        <i className="bi bi-eye" /> View
+                      </button>
+                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setFormModal({ mode: "edit", student })}>
+                        <i className="bi bi-pencil" /> Edit
+                      </button>
+                      <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setDeleteTarget(student)}>
+                        <i className="bi bi-trash" /> Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -952,8 +983,8 @@ export default function StudentsManagement() {
 
         {/* Pagination */}
         {!loading && students.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid #eee" }}>
-            <span style={{ fontSize: 13, color: "#777" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid var(--mu-border)" }}>
+            <span style={{ fontSize: 13, color: "var(--mu-gray-500)" }}>
               Page {page} of {totalPages} &middot; {count} students
             </span>
             <div style={{ display: "flex", gap: 6 }}>
