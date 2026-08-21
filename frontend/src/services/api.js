@@ -223,6 +223,22 @@ export const adminApi = {
   
   // Reports
   reports: () => api.get("/reports/"),
+
+  // Academic Years
+  createAcademicYear: (payload) => api.post("/academic-years/", payload),
+  updateAcademicYear: (id, payload) => api.patch(`/academic-years/${id}/`, payload),
+  deleteAcademicYear: (id) => api.delete(`/academic-years/${id}/`),
+
+  // Semesters
+  createSemester: (payload) => api.post("/semesters/", payload),
+  updateSemester: (id, payload) => api.patch(`/semesters/${id}/`, payload),
+  deleteSemester: (id) => api.delete(`/semesters/${id}/`),
+
+  // Intakes
+  createIntake: (payload) => api.post("/intakes/", payload),
+  updateIntake: (id, payload) => api.patch(`/intakes/${id}/`, payload),
+  deleteIntake: (id) => api.delete(`/intakes/${id}/`),
+  
 };
 
 // ---------------------------------------------------------------------
