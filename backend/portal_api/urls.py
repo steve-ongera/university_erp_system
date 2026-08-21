@@ -72,6 +72,7 @@ urlpatterns = [
     path("me/transcript/", v.MyTranscriptView.as_view(), name="my-transcript"),
     path("me/fee-summary/", v.MyFeeSummaryView.as_view(), name="my-fee-summary"),
     path("me/supplementary/", v.SupplementaryView.as_view(), name="my-supplementary"),
+    path("me/dashboard/", v.MyDashboardView.as_view(), name="my-dashboard"),
 
     # Integrations / admin ops
     path("integrations/bank-payment/", v.BankPaymentWebhookView.as_view(), name="bank-payment-webhook"),

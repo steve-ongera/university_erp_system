@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils import timezone
 
 from . import models as m
 from . import serializers as s
@@ -631,3 +632,93 @@ class RunPromotionView(APIView):
     def post(self, request):
         results = services.PromotionService.promote_all_active()
         return Response({"promoted_or_updated": len(results)})
+
+
+class MyDashboardView(APIView):
+    """Student dashboard with real-time statistics and data."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get current semester
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        
+        # Get enrollments for current semester
+        enrollments = m.Enrollment.objects.filter(
+            student=student, 
+            semester=current_semester,
+            is_active=True
+        ) if current_semester else []
+
+        # Get grades
+        grades = m.Grade.objects.filter(
+            enrollment__student=student,
+            published_at__isnull=False
+        ).select_related("enrollment__course")
+
+        # Calculate stats
+        total_units = m.UnitRegistration.objects.filter(
+            student=student,
+            semester=current_semester,
+            is_active=True
+        ).count() if current_semester else 0
+
+        # Get fee summary
+        fee_summary = services.FeeService.student_balance_summary(student)
+
+        # Get notifications
+        notifications = m.Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).count()
+
+        # Get upcoming exams
+        upcoming_exams = m.Examination.objects.filter(
+            semester=current_semester,
+            exam_date__gte=timezone.now().date()
+        ).order_by("exam_date")[:5] if current_semester else []
+
+        # Get recent grades (last 5)
+        recent_grades = grades.order_by("-published_at")[:5]
+
+        # Check if reporting is done
+        has_reported = m.StudentReporting.objects.filter(
+            student=student,
+            semester=current_semester,
+            status=m.StudentReporting.Status.APPROVED
+        ).exists() if current_semester else False
+
+        # Check hostel booking
+        has_hostel = m.HostelBooking.objects.filter(
+            student=student,
+            academic_year=current_semester.academic_year if current_semester else None,
+            status__in=[m.HostelBooking.Status.APPROVED, m.HostelBooking.Status.CHECKED_IN]
+        ).exists() if current_semester else False
+
+        # Check clearance eligibility
+        is_eligible_for_clearance = services.ClearanceService.is_eligible(student)
+
+        data = {
+            "student": s.StudentSerializer(student).data,
+            "current_semester": s.SemesterSerializer(current_semester).data if current_semester else None,
+            "stats": {
+                "total_units": total_units,
+                "completed_units": grades.filter(is_pass=True).count(),
+                "current_gpa": float(student.cumulative_gpa) if student.cumulative_gpa else None,
+                "notifications": notifications,
+                "fee_balance": float(fee_summary["total_outstanding"]),
+                "wallet_credit": float(fee_summary["wallet_credit"]),
+            },
+            "recent_grades": s.GradeSerializer(recent_grades, many=True).data,
+            "upcoming_exams": s.ExaminationSerializer(upcoming_exams, many=True).data,
+            "quick_actions": {
+                "has_reported": has_reported,
+                "has_hostel": has_hostel,
+                "is_eligible_for_clearance": is_eligible_for_clearance,
+                "has_outstanding_fees": fee_summary["total_outstanding"] > 0,
+            }
+        }
+        return Response(data)
