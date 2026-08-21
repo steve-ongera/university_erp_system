@@ -238,7 +238,34 @@ export const adminApi = {
   createIntake: (payload) => api.post("/intakes/", payload),
   updateIntake: (id, payload) => api.patch(`/intakes/${id}/`, payload),
   deleteIntake: (id) => api.delete(`/intakes/${id}/`),
-  
+
+  // Programmes
+  createProgramme: (payload) => api.post("/programmes/", payload),
+  updateProgramme: (id, payload) => api.patch(`/programmes/${id}/`, payload),
+  deleteProgramme: (id) => api.delete(`/programmes/${id}/`),
+
+  // Courses
+  createCourse: (payload) => api.post("/courses/", payload),
+  updateCourse: (id, payload) => api.patch(`/courses/${id}/`, payload),
+  deleteCourse: (id) => api.delete(`/courses/${id}/`),
+
+  // Curriculum versions
+  createCurriculumVersion: (payload) => api.post("/curriculum-versions/", payload),
+  updateCurriculumVersion: (id, payload) => api.patch(`/curriculum-versions/${id}/`, payload),
+  deleteCurriculumVersion: (id) => api.delete(`/curriculum-versions/${id}/`),
+
+  // Curriculum units
+  curriculumUnits: (params) => api.get("/curriculum-units/", { params }),
+  createCurriculumUnit: (payload) => api.post("/curriculum-units/", payload),
+  updateCurriculumUnit: (id, payload) => api.patch(`/curriculum-units/${id}/`, payload),
+  deleteCurriculumUnit: (id) => api.delete(`/curriculum-units/${id}/`),
+
+  // Lecturer unit allocations
+  lecturerAllocations: (params) => api.get("/lecturer-allocations/", { params }),
+  createLecturerAllocation: (payload) => api.post("/lecturer-allocations/", payload),
+  updateLecturerAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
+  deleteLecturerAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
+
 };
 
 // ---------------------------------------------------------------------

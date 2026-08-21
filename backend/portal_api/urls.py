@@ -56,6 +56,7 @@ router.register(r"examinations", v.ExaminationViewSet)
 router.register(r"timetable", v.TimetableViewSet)
 router.register(r"attendance-sessions", v.AttendanceSessionViewSet)
 router.register(r"attendance", v.AttendanceViewSet, basename="attendance")
+router.register(r"curriculum-units", v.CurriculumUnitViewSet, basename="curriculum-unit"),
 
 # Notifications
 router.register(r"notifications", v.NotificationViewSet, basename="notifications")
@@ -89,6 +90,7 @@ urlpatterns = [
     path("admin-ops/run-promotion/", v.RunPromotionView.as_view(), name="run-promotion"),
     
     path("admin/dashboard/", v.AdminDashboardView.as_view(), name="admin-dashboard"),
+    
 
 
     path("", include(router.urls)),

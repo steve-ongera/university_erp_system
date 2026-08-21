@@ -121,18 +121,24 @@ class ProgrammeViewSet(viewsets.ModelViewSet):
     queryset = m.Programme.objects.all()
     serializer_class = s.ProgrammeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    search_fields = ["name", "code"]
+    filterset_fields = ["faculty", "department", "programme_type", "is_active"]
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = m.Course.objects.all()
     serializer_class = s.CourseSerializer
     permission_classes = [permissions.IsAuthenticated]
+    search_fields = ["name", "code"]
+    filterset_fields = ["department", "course_type", "is_active"]
 
 
 class CurriculumVersionViewSet(viewsets.ModelViewSet):
     queryset = m.CurriculumVersion.objects.all()
     serializer_class = s.CurriculumVersionSerializer
     permission_classes = [IsStaffRole]
+    filterset_fields = ["programme", "effective_academic_year", "is_active"]
+
 
 
 # ======================================================================
@@ -220,7 +226,7 @@ class LecturerViewSet(viewsets.ModelViewSet):
     queryset = m.Lecturer.objects.select_related("user", "department")
     serializer_class = s.LecturerSerializer
     permission_classes = [IsStaffRole]
-
+    filterset_fields = ["department"]
 
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = m.Staff.objects.select_related("user")
@@ -258,6 +264,12 @@ class StudentDefermentViewSet(viewsets.ModelViewSet):
         return Response(s.StudentSerializer(student).data)
 
 
+class CurriculumUnitViewSet(viewsets.ModelViewSet):
+    queryset = m.CurriculumUnit.objects.select_related("course", "curriculum_version")
+    serializer_class = s.CurriculumUnitSerializer
+    permission_classes = [IsStaffRole]
+    filterset_fields = ["curriculum_version", "course", "year", "semester"]
+    
 # ======================================================================
 # UNIT REGISTRATION / ALLOCATION
 # ======================================================================
@@ -266,6 +278,7 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
     queryset = m.LecturerUnitAllocation.objects.select_related("lecturer", "course")
     serializer_class = s.LecturerUnitAllocationSerializer
     permission_classes = [IsStaffRole]
+    filterset_fields = ["course", "programme", "year", "programme_semester", "semester", "lecturer", "is_active"]
 
     def get_queryset(self):
         qs = super().get_queryset()
