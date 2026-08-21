@@ -112,11 +112,21 @@ export const unitsApi = {
   currentSemester: () => api.get("/me/current-semester/"),
 };
 
+// Updated catsApi
 export const catsApi = {
   list: (params) => api.get("/cats/", { params }),
   create: (payload) => api.post("/cats/", payload),
-  submit: (payload) => api.post("/cat-submissions/", payload),
-  mySubmissions: () => api.get("/cat-submissions/"),
+  submit: (payload) => {
+    const formData = new FormData();
+    formData.append("cat_id", payload.cat_id);
+    if (payload.answer_file) formData.append("answer_file", payload.answer_file);
+    if (payload.answer_text) formData.append("answer_text", payload.answer_text);
+    return api.post("/me/cats/submit/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  mySubmissions: () => api.get("/me/cat-submissions/"),
+  myCats: () => api.get("/me/cats/"),
 };
 
 export const gradesApi = {
