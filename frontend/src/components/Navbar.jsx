@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import muLogo from "../assets/mut_logo.png"; // Adjust path as needed
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
@@ -63,7 +64,11 @@ export default function Navbar({ onToggleSidebar }) {
         </button>
         
         <div className="mu-navbar-brand">
-          <i className="bi bi-mortarboard-fill" />
+          <img 
+            src={muLogo} 
+            alt="Muranga University" 
+            className="mu-navbar-logo"
+          />
           <span>Muranga Portal</span>
         </div>
       </div>

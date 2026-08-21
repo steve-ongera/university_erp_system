@@ -509,6 +509,44 @@ hr {
   display: block;
 }
 
+/* Update the sidebar header styles */
+.mu-sidebar-header {
+  height: var(--mu-navbar-height);
+  display: flex;
+  align-items: center;
+  gap: var(--mu-spacing-3);
+  padding: 0 var(--mu-spacing-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.mu-sidebar-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.mu-sidebar-header .mu-brand-text {
+  color: var(--mu-white);
+  font-family: var(--mu-font-heading);
+  font-weight: var(--mu-font-weight-bold);
+  font-size: var(--mu-font-size-lg);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.mu-sidebar-header .mu-brand-sub {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: var(--mu-font-size-xs);
+  font-weight: var(--mu-font-weight-medium);
+}
+
+/* Remove the old logo icon styles */
+.mu-sidebar-header .mu-logo-icon {
+  display: none;
+}
+
 /* ==========================================================================
    5c. MOBILE RESPONSIVE
    ========================================================================== */
@@ -940,6 +978,34 @@ hr {
   margin-bottom: var(--mu-spacing-2);
 }
 
+
+/* Add to the navbar brand section */
+.mu-navbar-brand {
+  display: none;
+  align-items: center;
+  gap: var(--mu-spacing-2);
+  font-family: var(--mu-font-heading);
+  font-weight: var(--mu-font-weight-bold);
+  color: var(--mu-gray-900);
+}
+
+.mu-navbar-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.mu-navbar-brand .bi {
+  color: var(--mu-primary-500);
+  font-size: 1.3rem;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 992px) {
+  .mu-navbar-brand {
+    display: flex;
+  }
+}
 /* ==========================================================================
    7. MOBILE RESPONSIVE (Sidebar & Navbar)
    ========================================================================== */
