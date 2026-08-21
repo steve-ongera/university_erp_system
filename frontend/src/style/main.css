@@ -2608,3 +2608,116 @@ hr {
   font-weight: var(--mu-font-weight-bold);
   flex-shrink: 0;
 }
+
+
+/* ==========================================================================
+   23. MY UNITS PAGE SPECIFIC STYLES
+   ========================================================================== */
+
+/* Registration Type Badges */
+.mu-badge-primary {
+  background: var(--mu-primary-100);
+  color: var(--mu-primary-700);
+}
+
+.mu-badge-success {
+  background: var(--mu-success-light);
+  color: var(--mu-success);
+}
+
+.mu-badge-warning {
+  background: var(--mu-warning-light);
+  color: var(--mu-warning);
+}
+
+.mu-badge-danger {
+  background: var(--mu-danger-light);
+  color: var(--mu-danger);
+}
+
+.mu-badge-info {
+  background: var(--mu-info-light);
+  color: var(--mu-info);
+}
+
+.mu-badge-gray {
+  background: var(--mu-gray-200);
+  color: var(--mu-gray-600);
+}
+
+/* Badge with icon */
+.mu-badge .bi {
+  font-size: var(--mu-font-size-xs);
+}
+
+/* Table hover effect */
+.mu-table-hover tbody tr:hover {
+  background: var(--mu-primary-50);
+  cursor: default;
+}
+
+/* Quick action cards in grid */
+.mu-dashboard-grid-3 .mu-card {
+  transition: transform var(--mu-transition-fast), box-shadow var(--mu-transition-fast);
+}
+
+.mu-dashboard-grid-3 .mu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mu-shadow-md);
+}
+
+/* Alert with icon alignment */
+.mu-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mu-spacing-3);
+  padding: var(--mu-spacing-3) var(--mu-spacing-4);
+  border-radius: var(--mu-radius-sm);
+  font-size: var(--mu-font-size-sm);
+}
+
+.mu-alert .bi {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mu-alert-info {
+  background: var(--mu-info-light);
+  color: var(--mu-primary-700);
+  border: 1px solid rgba(59, 108, 224, 0.2);
+}
+
+.mu-alert-info .bi {
+  color: var(--mu-primary-500);
+}
+
+.mu-alert-success {
+  background: var(--mu-success-light);
+  color: var(--mu-success);
+  border: 1px solid rgba(26, 138, 90, 0.2);
+}
+
+.mu-alert-success .bi {
+  color: var(--mu-success);
+}
+
+.mu-alert-warning {
+  background: var(--mu-warning-light);
+  color: var(--mu-warning);
+  border: 1px solid rgba(201, 125, 42, 0.2);
+}
+
+.mu-alert-warning .bi {
+  color: var(--mu-warning);
+}
+
+.mu-alert-danger {
+  background: var(--mu-danger-light);
+  color: var(--mu-danger);
+  border: 1px solid rgba(194, 59, 59, 0.2);
+}
+
+.mu-alert-danger .bi {
+  color: var(--mu-danger);
+}

@@ -103,11 +103,13 @@ export const studentsApi = {
   myDashboard: () => api.get("/me/dashboard/"), // NEW: Student dashboard data
 };
 
+// Add new units endpoints
 export const unitsApi = {
-  autoRegister: (semester) => api.post("/unit-registrations/auto-register/", { semester }),
-  myRegistrations: () => api.get("/unit-registrations/"),
+  autoRegister: (semester) => api.post("/me/units/auto-register/", { semester }),
+  myRegistrations: () => api.get("/me/units/"),
   lecturerAllocations: () => api.get("/lecturer-allocations/"),
   roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
+  currentSemester: () => api.get("/me/current-semester/"),
 };
 
 export const catsApi = {
