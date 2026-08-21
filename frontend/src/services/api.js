@@ -87,23 +87,26 @@ export const authApi = {
   },
 };
 
-// ---------------------------------------------------------------------
-// Domain-grouped endpoints (thin wrappers, extend as pages need them)
-// ---------------------------------------------------------------------
+// Add these to studentsApi:
 export const studentsApi = {
   list: (params) => api.get("/students/", { params }),
   get: (id) => api.get(`/students/${id}/`),
   admit: (payload) => api.post("/students/admit/", payload),
+  update: (id, payload) => api.patch(`/students/${id}/`, payload),
+  remove: (id) => api.delete(`/students/${id}/`),
   transcript: (id) => api.get(`/students/${id}/transcript/`),
   feeSummary: (id) => api.get(`/students/${id}/fee-summary/`),
+  enrollments: (params) => api.get("/enrollments/", { params }),
   myProfile: () => api.get("/me/profile/"),
   myTranscript: () => api.get("/me/transcript/"),
   myFeeSummary: () => api.get("/me/fee-summary/"),
   mySupplementary: () => api.get("/me/supplementary/"),
-  myDashboard: () => api.get("/me/dashboard/"), // NEW: Student dashboard data
+  myDashboard: () => api.get("/me/dashboard/"),
 };
 
-// Add new units endpoints
+// ---------------------------------------------------------------------
+// Unit APIs
+// ---------------------------------------------------------------------
 export const unitsApi = {
   autoRegister: (semester) => api.post("/me/units/auto-register/", { semester }),
   myRegistrations: () => api.get("/me/units/"),
@@ -112,7 +115,9 @@ export const unitsApi = {
   currentSemester: () => api.get("/me/current-semester/"),
 };
 
-// Updated catsApi
+// ---------------------------------------------------------------------
+// CATs APIs
+// ---------------------------------------------------------------------
 export const catsApi = {
   list: (params) => api.get("/cats/", { params }),
   create: (payload) => api.post("/cats/", payload),
@@ -129,28 +134,46 @@ export const catsApi = {
   myCats: () => api.get("/me/cats/"),
 };
 
+// ---------------------------------------------------------------------
+// Grades APIs
+// ---------------------------------------------------------------------
 export const gradesApi = {
   enter: (payload) => api.post("/grades/enter/", payload),
   myGrades: () => api.get("/grades/"),
 };
 
+// ---------------------------------------------------------------------
+// Fees APIs
+// ---------------------------------------------------------------------
 export const feesApi = {
   myFeeSummary: () => api.get("/me/fee-summary/"),
   invoices: () => api.get("/invoices/"),
   payments: () => api.get("/fee-payments/"),
+  feeStructures: () => api.get("/fee-structures/"),
 };
 
+// ---------------------------------------------------------------------
+// Hostel APIs
+// ---------------------------------------------------------------------
 export const hostelApi = {
   beds: (params) => api.get("/beds/", { params }),
   book: (payload) => api.post("/hostel-bookings/", payload),
   myBookings: () => api.get("/hostel-bookings/"),
+  hostels: () => api.get("/hostels/"),
+  rooms: () => api.get("/rooms/"),
 };
 
+// ---------------------------------------------------------------------
+// Clearance APIs
+// ---------------------------------------------------------------------
 export const clearanceApi = {
   request: (clearanceType) => api.post("/clearances/", { clearance_type: clearanceType }),
   mine: () => api.get("/clearances/"),
 };
 
+// ---------------------------------------------------------------------
+// Notifications APIs
+// ---------------------------------------------------------------------
 export const notificationsApi = {
   list: () => api.get("/notifications/"),
   markRead: (id) => api.post(`/notifications/${id}/mark-read/`),
@@ -160,6 +183,9 @@ export const notificationsApi = {
 // Admin APIs
 // ---------------------------------------------------------------------
 export const adminApi = {
+  // Dashboard
+  dashboard: () => api.get("/admin/dashboard/"),
+  
   // Academic Structure
   faculties: () => api.get("/faculties/"),
   departments: () => api.get("/departments/"),
@@ -176,9 +202,9 @@ export const adminApi = {
   students: (params) => api.get("/students/", { params }),
   lecturers: () => api.get("/lecturers/"),
   staff: () => api.get("/staff/"),
+  deferments: () => api.get("/deferments/"),
   
   // Operations
-  deferments: () => api.get("/deferments/"),
   clearances: () => api.get("/clearances/"),
   examinations: () => api.get("/examinations/"),
   
@@ -190,9 +216,13 @@ export const adminApi = {
   hostels: () => api.get("/hostels/"),
   rooms: () => api.get("/rooms/"),
   beds: (params) => api.get("/beds/", { params }),
+  hostelBookings: () => api.get("/hostel-bookings/"),
   
   // Promotions
   runPromotion: () => api.post("/admin-ops/run-promotion/"),
+  
+  // Reports
+  reports: () => api.get("/reports/"),
 };
 
 // ---------------------------------------------------------------------

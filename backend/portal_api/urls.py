@@ -87,6 +87,9 @@ urlpatterns = [
     # Integrations / admin ops
     path("integrations/bank-payment/", v.BankPaymentWebhookView.as_view(), name="bank-payment-webhook"),
     path("admin-ops/run-promotion/", v.RunPromotionView.as_view(), name="run-promotion"),
+    
+    path("admin/dashboard/", v.AdminDashboardView.as_view(), name="admin-dashboard"),
+
 
     path("", include(router.urls)),
 ]

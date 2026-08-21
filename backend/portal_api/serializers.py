@@ -494,3 +494,54 @@ class CatAnswerSubmissionDetailSerializer(serializers.ModelSerializer):
     
     def get_student_name(self, obj):
         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
+    
+    
+    
+    
+
+# ======================================================================
+# ADMIN DASHBOARD SERIALIZERS
+# ======================================================================
+
+class AdminDashboardStatsSerializer(serializers.Serializer):
+    total_students = serializers.IntegerField()
+    total_staff = serializers.IntegerField()
+    total_programmes = serializers.IntegerField()
+    total_departments = serializers.IntegerField()
+    active_students = serializers.IntegerField()
+    graduated_students = serializers.IntegerField()
+
+
+class AdminDashboardStudentSerializer(serializers.ModelSerializer):
+    """Simplified student serializer for admin dashboard."""
+    user_detail = UserSerializer(source="user", read_only=True)
+    programme_detail = ProgrammeSerializer(source="programme", read_only=True)
+    
+    class Meta:
+        model = m.Student
+        fields = [
+            "id", "registration_number", "user_detail", "programme_detail",
+            "current_year", "current_semester", "status", "admission_date"
+        ]
+
+
+class AdminDashboardProgrammeDistributionSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    code = serializers.CharField()
+    count = serializers.IntegerField()
+    color = serializers.CharField(default="#3b6ce0")
+
+
+class AdminDashboardDepartmentStatSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    code = serializers.CharField()
+    student_count = serializers.IntegerField()
+    programmes = serializers.IntegerField()
+
+
+class AdminDashboardResponseSerializer(serializers.Serializer):
+    stats = AdminDashboardStatsSerializer()
+    recent_students = AdminDashboardStudentSerializer(many=True)
+    enrollment_trends = serializers.ListField()
+    programme_distribution = AdminDashboardProgrammeDistributionSerializer(many=True)
+    department_stats = AdminDashboardDepartmentStatSerializer(many=True)
