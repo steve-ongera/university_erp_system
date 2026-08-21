@@ -100,6 +100,7 @@ export const studentsApi = {
   myTranscript: () => api.get("/me/transcript/"),
   myFeeSummary: () => api.get("/me/fee-summary/"),
   mySupplementary: () => api.get("/me/supplementary/"),
+  myDashboard: () => api.get("/me/dashboard/"), // NEW: Student dashboard data
 };
 
 export const unitsApi = {
@@ -141,6 +142,85 @@ export const clearanceApi = {
 export const notificationsApi = {
   list: () => api.get("/notifications/"),
   markRead: (id) => api.post(`/notifications/${id}/mark-read/`),
+};
+
+// ---------------------------------------------------------------------
+// Admin APIs
+// ---------------------------------------------------------------------
+export const adminApi = {
+  // Academic Structure
+  faculties: () => api.get("/faculties/"),
+  departments: () => api.get("/departments/"),
+  programmes: () => api.get("/programmes/"),
+  courses: () => api.get("/courses/"),
+  curriculumVersions: () => api.get("/curriculum-versions/"),
+  
+  // Calendar
+  academicYears: () => api.get("/academic-years/"),
+  semesters: () => api.get("/semesters/"),
+  intakes: () => api.get("/intakes/"),
+  
+  // People Management
+  students: (params) => api.get("/students/", { params }),
+  lecturers: () => api.get("/lecturers/"),
+  staff: () => api.get("/staff/"),
+  
+  // Operations
+  deferments: () => api.get("/deferments/"),
+  clearances: () => api.get("/clearances/"),
+  examinations: () => api.get("/examinations/"),
+  
+  // Fee Management
+  feeStructures: () => api.get("/fee-structures/"),
+  financialAwards: () => api.get("/financial-awards/"),
+  
+  // Hostel
+  hostels: () => api.get("/hostels/"),
+  rooms: () => api.get("/rooms/"),
+  beds: (params) => api.get("/beds/", { params }),
+  
+  // Promotions
+  runPromotion: () => api.post("/admin-ops/run-promotion/"),
+};
+
+// ---------------------------------------------------------------------
+// Lecturer APIs
+// ---------------------------------------------------------------------
+export const lecturerApi = {
+  myAllocations: () => api.get("/lecturer-allocations/"),
+  roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
+  enterGrades: (payload) => api.post("/grades/enter/", payload),
+  createCat: (payload) => api.post("/cats/", payload),
+  myCats: () => api.get("/cats/"),
+  attendanceSessions: () => api.get("/attendance-sessions/"),
+  markAttendance: (payload) => api.post("/attendance/", payload),
+};
+
+// ---------------------------------------------------------------------
+// Finance APIs
+// ---------------------------------------------------------------------
+export const financeApi = {
+  feeStructures: () => api.get("/fee-structures/"),
+  createFeeStructure: (payload) => api.post("/fee-structures/", payload),
+  invoices: () => api.get("/invoices/"),
+  payments: () => api.get("/fee-payments/"),
+  financialAwards: () => api.get("/financial-awards/"),
+  createAward: (payload) => api.post("/financial-awards/", payload),
+  bankWebhook: (payload) => api.post("/integrations/bank-payment/", payload),
+};
+
+// ---------------------------------------------------------------------
+// Hostel Warden APIs
+// ---------------------------------------------------------------------
+export const hostelWardenApi = {
+  hostels: () => api.get("/hostels/"),
+  createHostel: (payload) => api.post("/hostels/", payload),
+  rooms: () => api.get("/rooms/"),
+  createRoom: (payload) => api.post("/rooms/", payload),
+  beds: (params) => api.get("/beds/", { params }),
+  createBed: (payload) => api.post("/beds/", payload),
+  bookings: () => api.get("/hostel-bookings/"),
+  updateBooking: (id, payload) => api.patch(`/hostel-bookings/${id}/`, payload),
 };
 
 export default api;

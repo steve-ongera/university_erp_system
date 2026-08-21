@@ -2420,3 +2420,191 @@ hr {
 .mu-under-dev-badge .bi {
   font-size: 1rem;
 }
+
+
+/* ==========================================================================
+   22. STUDENT DASHBOARD SPECIFIC STYLES
+   ========================================================================== */
+
+/* Quick Actions Grid */
+.mu-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--mu-spacing-4);
+}
+
+.mu-quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mu-spacing-4);
+  background: var(--mu-gray-50);
+  border: 1px solid var(--mu-border);
+  border-radius: var(--mu-radius-md);
+  cursor: pointer;
+  transition: all var(--mu-transition-fast);
+  text-align: center;
+  color: var(--mu-gray-700);
+  font-size: var(--mu-font-size-sm);
+  font-weight: var(--mu-font-weight-medium);
+  text-decoration: none;
+  position: relative;
+  min-height: 90px;
+}
+
+.mu-quick-action:hover {
+  background: var(--mu-primary-50);
+  border-color: var(--mu-primary-300);
+  color: var(--mu-primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--mu-shadow-md);
+}
+
+.mu-quick-action .bi {
+  font-size: 1.5rem;
+  color: var(--mu-primary-500);
+  margin-bottom: var(--mu-spacing-2);
+}
+
+.mu-quick-action .mu-badge {
+  margin-top: var(--mu-spacing-1);
+  font-size: var(--mu-font-size-xs);
+}
+
+/* Stat Card Icons */
+.mu-stat-card .mu-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--mu-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin-bottom: var(--mu-spacing-3);
+}
+
+.mu-stat-card .mu-stat-icon.blue {
+  background: var(--mu-primary-50);
+  color: var(--mu-primary-500);
+}
+
+.mu-stat-card .mu-stat-icon.green {
+  background: var(--mu-success-light);
+  color: var(--mu-success);
+}
+
+.mu-stat-card .mu-stat-icon.gold {
+  background: var(--mu-warning-light);
+  color: var(--mu-warning);
+}
+
+.mu-stat-card .mu-stat-icon.red {
+  background: var(--mu-danger-light);
+  color: var(--mu-danger);
+}
+
+.mu-stat-card .mu-stat-icon.purple {
+  background: #f0e6ff;
+  color: #7c3aed;
+}
+
+.mu-stat-card .mu-stat-label {
+  font-size: var(--mu-font-size-sm);
+  color: var(--mu-gray-500);
+  font-weight: var(--mu-font-weight-medium);
+}
+
+.mu-stat-card .mu-stat-value {
+  font-family: var(--mu-font-heading);
+  font-size: var(--mu-font-size-2xl);
+  font-weight: var(--mu-font-weight-bold);
+  color: var(--mu-gray-900);
+}
+
+.mu-stat-card .mu-stat-change {
+  font-size: var(--mu-font-size-sm);
+  font-weight: var(--mu-font-weight-medium);
+  margin-top: var(--mu-spacing-1);
+}
+
+.mu-stat-card .mu-stat-change.up {
+  color: var(--mu-success);
+}
+
+.mu-stat-card .mu-stat-change.down {
+  color: var(--mu-danger);
+}
+
+/* Dashboard Grid Layouts */
+.mu-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--mu-spacing-4);
+  margin-bottom: var(--mu-spacing-6);
+}
+
+.mu-dashboard-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mu-spacing-6);
+}
+
+.mu-dashboard-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mu-spacing-6);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .mu-dashboard-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .mu-dashboard-grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mu-quick-actions {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .mu-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mu-dashboard-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .mu-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mu-quick-action {
+    min-height: 80px;
+    padding: var(--mu-spacing-3);
+  }
+
+  .mu-quick-action .bi {
+    font-size: 1.2rem;
+  }
+}
+
+/* Welcome Section Avatar */
+.mu-avatar-lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--mu-primary-500);
+  color: var(--mu-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: var(--mu-font-weight-bold);
+  flex-shrink: 0;
+}
