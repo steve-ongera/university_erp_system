@@ -78,6 +78,11 @@ urlpatterns = [
     path("me/units/", v.MyUnitsView.as_view(), name="my-units"),
     path("me/units/auto-register/", v.AutoRegisterUnitsView.as_view(), name="auto-register-units"),
     path("me/current-semester/", v.CurrentSemesterView.as_view(), name="current-semester"),
+    
+    # Student CAT endpoints
+    path("me/cats/", v.MyCatsView.as_view(), name="my-cats"),
+    path("me/cats/submit/", v.SubmitCatAnswerView.as_view(), name="submit-cat-answer"),
+    path("me/cat-submissions/", v.MyCatSubmissionsView.as_view(), name="my-cat-submissions"),
 
     # Integrations / admin ops
     path("integrations/bank-payment/", v.BankPaymentWebhookView.as_view(), name="bank-payment-webhook"),

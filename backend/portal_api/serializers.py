@@ -460,3 +460,37 @@ class AutoRegisterUnitsSerializer(serializers.Serializer):
     semester = serializers.PrimaryKeyRelatedField(
         queryset=m.Semester.objects.filter(is_current=True)
     )
+    
+    
+    
+# ----------------------------------------------------------------------
+# CATS / ASSESSMENTS (Enhanced)
+# ----------------------------------------------------------------------
+
+class CatSubmissionDetailSerializer(serializers.ModelSerializer):
+    """Detailed CAT submission with course and lecturer info."""
+    course_code = serializers.CharField(source="lecturer_allocation.course.code", read_only=True)
+    course_name = serializers.CharField(source="lecturer_allocation.course.name", read_only=True)
+    lecturer_name = serializers.SerializerMethodField()
+    is_open = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = m.CatSubmission
+        fields = "__all__"
+    
+    def get_lecturer_name(self, obj):
+        return f"{obj.lecturer_allocation.lecturer.user.first_name} {obj.lecturer_allocation.lecturer.user.last_name}"
+
+
+class CatAnswerSubmissionDetailSerializer(serializers.ModelSerializer):
+    """Detailed student CAT answer submission."""
+    student_name = serializers.SerializerMethodField()
+    cat_title = serializers.CharField(source="cat.title", read_only=True)
+    
+    class Meta:
+        model = m.CatAnswerSubmission
+        fields = "__all__"
+        read_only_fields = ["submitted_at", "is_late", "marks_awarded", "graded_at", "graded_by"]
+    
+    def get_student_name(self, obj):
+        return f"{obj.student.user.first_name} {obj.student.user.last_name}"

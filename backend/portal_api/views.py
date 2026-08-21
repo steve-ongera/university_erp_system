@@ -815,3 +815,138 @@ class CurrentSemesterView(APIView):
             )
         serializer = s.SemesterSerializer(semester)
         return Response(serializer.data)
+    
+    
+    
+# ======================================================================
+# STUDENT CAT VIEWS (FIXED)
+# ======================================================================
+
+class MyCatsView(APIView):
+    """Get all CAT submissions for the current student's enrolled units."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get all enrollments for the student
+        enrollments = m.Enrollment.objects.filter(
+            student=student,
+            is_active=True
+        ).select_related("course", "semester")
+
+        # Get CAT submissions for these enrollments
+        cat_ids = []
+        for enrollment in enrollments:
+            allocations = m.LecturerUnitAllocation.objects.filter(
+                course=enrollment.course,
+                semester=enrollment.semester,
+                is_active=True
+            )
+            cats = m.CatSubmission.objects.filter(
+                lecturer_allocation__in=allocations,
+                is_published=True
+            )
+            cat_ids.extend(cats.values_list("id", flat=True))
+
+        cats = m.CatSubmission.objects.filter(
+            id__in=cat_ids
+        ).select_related(
+            "lecturer_allocation",
+            "lecturer_allocation__course",
+            "lecturer_allocation__lecturer",
+            "lecturer_allocation__lecturer__user"
+        ).order_by("-opens_at")  # Changed from created_at to opens_at
+
+        # Get student's submissions for these CATs
+        student_submissions = m.CatAnswerSubmission.objects.filter(
+            student=student,
+            cat__in=cats
+        ).select_related("cat")
+
+        serializer = s.CatSubmissionDetailSerializer(cats, many=True)
+        data = serializer.data
+
+        # Add submission status to each CAT
+        for cat_data in data:
+            cat_id = cat_data["id"]
+            submission = student_submissions.filter(cat_id=cat_id).first()
+            cat_data["has_submitted"] = bool(submission)
+            if submission:
+                cat_data["submission"] = s.CatAnswerSubmissionSerializer(submission).data
+
+        return Response(data)
+    
+
+class SubmitCatAnswerView(APIView):
+    """Submit an answer for a CAT."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        cat_id = request.data.get("cat_id")
+        answer_file = request.FILES.get("answer_file")
+        answer_text = request.data.get("answer_text", "")
+
+        if not cat_id:
+            return Response({"detail": "CAT ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cat = m.CatSubmission.objects.get(pk=cat_id)
+        except m.CatSubmission.DoesNotExist:
+            return Response({"detail": "CAT not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if CAT is open
+        if not cat.is_open:
+            return Response({"detail": "This CAT is not open for submissions."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if student is enrolled in the course
+        enrollment = m.Enrollment.objects.filter(
+            student=student,
+            course=cat.lecturer_allocation.course,
+            semester=cat.lecturer_allocation.semester,
+            is_active=True
+        ).first()
+
+        if not enrollment:
+            return Response({"detail": "You are not enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check if already submitted
+        existing = m.CatAnswerSubmission.objects.filter(cat=cat, student=student).first()
+        if existing:
+            return Response({"detail": "You have already submitted for this CAT."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create submission
+        is_late = timezone.now() > cat.closes_at
+        submission = m.CatAnswerSubmission.objects.create(
+            cat=cat,
+            student=student,
+            answer_file=answer_file,
+            answer_text=answer_text,
+            is_late=is_late
+        )
+
+        serializer = s.CatAnswerSubmissionSerializer(submission)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MyCatSubmissionsView(APIView):
+    """Get all CAT submissions for the current student."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        submissions = m.CatAnswerSubmission.objects.filter(
+            student=student
+        ).select_related("cat", "cat__lecturer_allocation", "cat__lecturer_allocation__course").order_by("-submitted_at")
+
+        serializer = s.CatAnswerSubmissionDetailSerializer(submissions, many=True)
+        return Response(serializer.data)
