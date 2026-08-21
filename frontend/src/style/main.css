@@ -1,6 +1,6 @@
 /* ==========================================================================
    Muranga University Student Portal — Complete Design System
-   Theme: Professional Blue & White, Minimal Icons, Clean UI
+   Theme: MUT Green & White, Clean UI
    ========================================================================== */
 
 /* ==========================================================================
@@ -8,17 +8,17 @@
    ========================================================================== */
 
 :root {
-  /* ----- Primary Palette (Blue & White) ----- */
-  --mu-primary-50: #f0f4ff;
-  --mu-primary-100: #dbe4ff;
-  --mu-primary-200: #b6c8ff;
-  --mu-primary-300: #8aa8ff;
-  --mu-primary-400: #5d85f5;
-  --mu-primary-500: #3b6ce0;
-  --mu-primary-600: #2a56c4;
-  --mu-primary-700: #1d429a;
-  --mu-primary-800: #14307a;
-  --mu-primary-900: #0d1f55;
+  /* ----- Primary Palette (MUT Green) ----- */
+  --mu-primary-50: #E8F5E9;
+  --mu-primary-100: #C8E6C9;
+  --mu-primary-200: #A5D6A7;
+  --mu-primary-300: #81C784;
+  --mu-primary-400: #66BB6A;
+  --mu-primary-500: #4CAF50;
+  --mu-primary-600: #43A047;
+  --mu-primary-700: #388E3C;
+  --mu-primary-800: #2E7D32;
+  --mu-primary-900: #1B5E20;
 
   /* ----- Neutral Palette ----- */
   --mu-white: #ffffff;
@@ -34,24 +34,24 @@
   --mu-gray-900: #141a28;
 
   /* ----- Semantic Colors ----- */
-  --mu-success: #1a8a5a;
-  --mu-success-light: #e6f5ef;
-  --mu-warning: #c97d2a;
-  --mu-warning-light: #fdf2e6;
-  --mu-danger: #c23b3b;
-  --mu-danger-light: #fdeaea;
-  --mu-info: #3b6ce0;
-  --mu-info-light: #ebeffd;
+  --mu-success: #2E7D32;
+  --mu-success-light: #E8F5E9;
+  --mu-warning: #F9A825;
+  --mu-warning-light: #FFF8E1;
+  --mu-danger: #C62828;
+  --mu-danger-light: #FFEBEE;
+  --mu-info: #1E88E5;
+  --mu-info-light: #E3F2FD;
 
   /* ----- Surface & Border ----- */
   --mu-surface: #f5f7fc;
   --mu-card-bg: #ffffff;
   --mu-border: #e4e7ef;
-  --mu-border-focus: #3b6ce0;
-  --mu-shadow-sm: 0 1px 3px rgba(13, 27, 42, 0.06);
-  --mu-shadow-md: 0 4px 16px rgba(13, 27, 42, 0.08);
-  --mu-shadow-lg: 0 8px 40px rgba(13, 27, 42, 0.12);
-  --mu-shadow-xl: 0 16px 64px rgba(13, 27, 42, 0.16);
+  --mu-border-focus: #4CAF50;
+  --mu-shadow-sm: 0 1px 3px rgba(46, 125, 50, 0.08);
+  --mu-shadow-md: 0 4px 16px rgba(46, 125, 50, 0.10);
+  --mu-shadow-lg: 0 8px 40px rgba(46, 125, 50, 0.14);
+  --mu-shadow-xl: 0 16px 64px rgba(46, 125, 50, 0.18);
 
   /* ----- Typography ----- */
   --mu-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -277,7 +277,7 @@ hr {
 .mu-sidebar {
   width: var(--mu-sidebar-width);
   background: var(--mu-primary-900);
-  color: #cdd6e5;
+  color: #ffffff;
   position: fixed;
   top: 0;
   left: 0;
@@ -287,6 +287,7 @@ hr {
   z-index: 100;
   transition: transform var(--mu-transition-normal), width var(--mu-transition-normal);
   overflow: hidden;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Sidebar Header */
@@ -298,23 +299,19 @@ hr {
   padding: 0 var(--mu-spacing-5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.15);
 }
 
-.mu-sidebar-header .mu-logo-icon {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: var(--mu-radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--mu-white);
-  font-size: 1.2rem;
+.mu-sidebar-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
   flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 
 .mu-sidebar-header .mu-brand-text {
-  color: var(--mu-white);
+  color: #ffffff;
   font-family: var(--mu-font-heading);
   font-weight: var(--mu-font-weight-bold);
   font-size: var(--mu-font-size-lg);
@@ -328,6 +325,11 @@ hr {
   font-weight: var(--mu-font-weight-medium);
 }
 
+/* Remove the old logo icon styles */
+.mu-sidebar-header .mu-logo-icon {
+  display: none;
+}
+
 /* Sidebar Navigation */
 .mu-sidebar-nav {
   flex: 1;
@@ -335,12 +337,25 @@ hr {
   padding: var(--mu-spacing-4) var(--mu-spacing-3);
 }
 
+.mu-sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mu-sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mu-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--mu-radius-full);
+}
+
 .mu-nav-section-label {
   font-size: var(--mu-font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   font-weight: var(--mu-font-weight-semibold);
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.4);
   padding: var(--mu-spacing-4) var(--mu-spacing-3) var(--mu-spacing-2);
 }
 
@@ -350,39 +365,54 @@ hr {
   gap: var(--mu-spacing-3);
   padding: var(--mu-spacing-2) var(--mu-spacing-3);
   border-radius: var(--mu-radius-sm);
-  color: #cdd6e5;
+  color: rgba(255, 255, 255, 0.7);
   font-size: var(--mu-font-size-sm);
   font-weight: var(--mu-font-weight-medium);
   transition: all var(--mu-transition-fast);
   cursor: pointer;
   position: relative;
+  text-decoration: none;
 }
 
 .mu-nav-link .bi {
-  font-size: 1.1rem;
-  width: 20px;
+  font-size: 1.15rem;
+  width: 22px;
   text-align: center;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
+  transition: color var(--mu-transition-fast);
+}
+
+.mu-nav-link span {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color var(--mu-transition-fast);
 }
 
 .mu-nav-link:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--mu-white);
+  color: #ffffff;
 }
 
 .mu-nav-link:hover .bi {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mu-nav-link:hover span {
+  color: #ffffff;
 }
 
 .mu-nav-link.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--mu-white);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
   font-weight: var(--mu-font-weight-semibold);
 }
 
 .mu-nav-link.active .bi {
-  color: var(--mu-gold);
+  color: #ffffff;
+}
+
+.mu-nav-link.active span {
+  color: #ffffff;
 }
 
 .mu-nav-link.active::before {
@@ -392,8 +422,19 @@ hr {
   top: 4px;
   bottom: 4px;
   width: 3px;
-  background: var(--mu-gold);
+  background: #ffffff;
   border-radius: 0 var(--mu-radius-sm) var(--mu-radius-sm) 0;
+}
+
+.mu-nav-link .mu-badge {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: var(--mu-font-size-xs);
+  padding: 1px var(--mu-spacing-2);
+  border-radius: var(--mu-radius-full);
+  min-width: 20px;
+  text-align: center;
 }
 
 /* ==========================================================================
@@ -407,6 +448,7 @@ hr {
   display: flex;
   flex-direction: column;
   gap: var(--mu-spacing-2);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* User Info in Footer */
@@ -414,15 +456,15 @@ hr {
   display: flex;
   align-items: center;
   gap: var(--mu-spacing-3);
-  padding: var(--mu-spacing-1) var(--mu-spacing-1) var(--mu-spacing-1) var(--mu-spacing-1);
+  padding: var(--mu-spacing-1) var(--mu-spacing-1);
 }
 
 .mu-footer-user .mu-avatar-sm {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--mu-gold);
-  color: var(--mu-primary-900);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -439,7 +481,7 @@ hr {
 .mu-footer-user-name {
   font-size: var(--mu-font-size-sm);
   font-weight: var(--mu-font-weight-semibold);
-  color: var(--mu-white);
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -447,7 +489,7 @@ hr {
 
 .mu-footer-user-role {
   font-size: var(--mu-font-size-xs);
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   text-transform: capitalize;
 }
 
@@ -474,7 +516,8 @@ hr {
 }
 
 .mu-divider-dot .bi {
-  font-size: 0.5rem;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.2);
 }
 
 /* Copyright Section */
@@ -484,12 +527,17 @@ hr {
   justify-content: center;
   gap: var(--mu-spacing-1);
   font-size: var(--mu-font-size-xs);
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.3);
   padding: var(--mu-spacing-1) 0;
 }
 
 .mu-footer-copyright .bi {
   font-size: var(--mu-font-size-xs);
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.mu-footer-copyright span {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* ==========================================================================
@@ -499,52 +547,86 @@ hr {
 .mu-sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 90;
   display: none;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
 }
 
 .mu-sidebar-overlay.active {
   display: block;
 }
 
-/* Update the sidebar header styles */
-.mu-sidebar-header {
-  height: var(--mu-navbar-height);
-  display: flex;
-  align-items: center;
-  gap: var(--mu-spacing-3);
-  padding: 0 var(--mu-spacing-5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
+/* ==========================================================================
+   5c. SIDEBAR COLLAPSED STATE
+   ========================================================================== */
+
+.mu-sidebar.collapsed {
+  width: 64px;
 }
 
-.mu-sidebar-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.mu-sidebar-header .mu-brand-text {
-  color: var(--mu-white);
-  font-family: var(--mu-font-heading);
-  font-weight: var(--mu-font-weight-bold);
-  font-size: var(--mu-font-size-lg);
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-.mu-sidebar-header .mu-brand-sub {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: var(--mu-font-size-xs);
-  font-weight: var(--mu-font-weight-medium);
-}
-
-/* Remove the old logo icon styles */
-.mu-sidebar-header .mu-logo-icon {
+.mu-sidebar.collapsed .mu-brand-text,
+.mu-sidebar.collapsed .mu-brand-sub,
+.mu-sidebar.collapsed .mu-nav-link span,
+.mu-sidebar.collapsed .mu-nav-section-label,
+.mu-sidebar.collapsed .mu-footer-user-info,
+.mu-sidebar.collapsed .mu-footer-copyright span,
+.mu-sidebar.collapsed .mu-footer-divider,
+.mu-sidebar.collapsed .mu-nav-link .mu-badge {
   display: none;
+}
+
+.mu-sidebar.collapsed .mu-nav-link {
+  justify-content: center;
+  padding: var(--mu-spacing-3);
+}
+
+.mu-sidebar.collapsed .mu-nav-link .bi {
+  font-size: 1.3rem;
+  width: auto;
+}
+
+.mu-sidebar.collapsed .mu-sidebar-header {
+  justify-content: center;
+  padding: 0 var(--mu-spacing-2);
+}
+
+.mu-sidebar.collapsed .mu-sidebar-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.mu-sidebar.collapsed .mu-footer-user {
+  justify-content: center;
+}
+
+.mu-sidebar.collapsed .mu-footer-copyright {
+  font-size: var(--mu-font-size-xs);
+}
+
+/* ==========================================================================
+   5d. RESPONSIVE SIDEBAR
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .mu-sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .mu-sidebar.mu-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .mu-sidebar-overlay.active {
+    display: block;
+  }
+}
+
+@media (max-width: 576px) {
+  .mu-sidebar {
+    width: 260px;
+  }
 }
 
 /* ==========================================================================

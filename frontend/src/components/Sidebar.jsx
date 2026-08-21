@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth, ROLES } from "../context/AuthContext";
-import muLogo from "../assets/mut_logo2.png"; // Adjust path as needed
+import muLogo from "../assets/mut_logo.png"; // Adjust path as needed
 
 /**
  * One nav tree per role. Keys are route paths (see App.jsx), so adding a
@@ -123,11 +123,20 @@ export default function Sidebar({ mobileOpen, onClose }) {
       <aside className={`mu-sidebar ${mobileOpen ? "mu-sidebar-open" : ""}`}>
         {/* Sidebar Header */}
         <div className="mu-sidebar-header">
-          <img 
-            src={muLogo} 
-            alt="Muranga University" 
-            className="mu-sidebar-logo"
-          />
+          {muLogo ? (
+            <img 
+              src={muLogo} 
+              alt="Muranga University" 
+              className="mu-sidebar-logo"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.querySelector('.mu-logo-fallback').style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="mu-logo-fallback" style={{ display: muLogo ? 'none' : 'flex' }}>
+            <i className="bi bi-mortarboard-fill" style={{ fontSize: '1.5rem', color: '#ffffff' }} />
+          </div>
           <div>
             <div className="mu-brand-text">Muranga Portal</div>
             <div className="mu-brand-sub">University ERP</div>
