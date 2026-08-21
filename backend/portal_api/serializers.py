@@ -185,13 +185,6 @@ class LecturerUnitAllocationSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class UnitRegistrationSerializer(serializers.ModelSerializer):
-    course_detail = CourseSerializer(source="course", read_only=True)
-
-    class Meta:
-        model = m.UnitRegistration
-        fields = "__all__"
-
 
 class EnrollmentSerializer(serializers.ModelSerializer):
     student_detail = StudentSerializer(source="student", read_only=True)
@@ -395,3 +388,75 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = m.Notification
         fields = "__all__"
         read_only_fields = ["created_at"]
+
+
+
+# ----------------------------------------------------------------------
+# UNITS / ENROLLMENT (Enhanced)
+# ----------------------------------------------------------------------
+
+class CourseDetailSerializer(serializers.ModelSerializer):
+    """Detailed course information for unit registrations."""
+    department_name = serializers.CharField(source="department.name", read_only=True)
+    
+    class Meta:
+        model = m.Course
+        fields = ["id", "code", "name", "credit_hours", "course_type", "department_name", "description"]
+
+
+class SemesterDetailSerializer(serializers.ModelSerializer):
+    """Detailed semester information."""
+    academic_year_detail = AcademicYearSerializer(source="academic_year", read_only=True)
+    
+    class Meta:
+        model = m.Semester
+        fields = ["id", "semester_number", "academic_year", "academic_year_detail", "is_current"]
+
+
+class UnitRegistrationSerializer(serializers.ModelSerializer):
+    course_detail = CourseDetailSerializer(source="course", read_only=True)
+    semester_detail = SemesterDetailSerializer(source="semester", read_only=True)
+    student_detail = StudentSerializer(source="student", read_only=True)
+    has_grade = serializers.SerializerMethodField()
+    grade_detail = serializers.SerializerMethodField()
+    invoice_status = serializers.SerializerMethodField()
+    is_paid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = m.UnitRegistration
+        fields = "__all__"
+        read_only_fields = ["registered_at"]
+
+    def get_has_grade(self, obj):
+        return hasattr(obj, "enrollment") and hasattr(obj.enrollment, "grade")
+
+    def get_grade_detail(self, obj):
+        if hasattr(obj, "enrollment") and hasattr(obj.enrollment, "grade"):
+            return GradeSerializer(obj.enrollment.grade).data
+        return None
+
+    def get_invoice_status(self, obj):
+        if obj.supplementary_invoice:
+            from .services import FeeService
+            balance = FeeService.invoice_balance(obj.supplementary_invoice)
+            return {
+                "invoice_id": obj.supplementary_invoice.id,
+                "amount_due": obj.supplementary_invoice.amount_due,
+                "balance": balance,
+                "is_paid": balance <= 0
+            }
+        return None
+
+    def get_is_paid(self, obj):
+        if obj.registration_type == m.UnitRegistration.RegType.SUPPLEMENTARY:
+            if obj.supplementary_invoice:
+                from .services import FeeService
+                return FeeService.invoice_balance(obj.supplementary_invoice) <= 0
+            return False
+        return True
+
+
+class AutoRegisterUnitsSerializer(serializers.Serializer):
+    semester = serializers.PrimaryKeyRelatedField(
+        queryset=m.Semester.objects.filter(is_current=True)
+    )

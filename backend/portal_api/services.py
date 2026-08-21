@@ -124,6 +124,10 @@ class AdmissionService:
 # UNIT REGISTRATION
 # ======================================================================
 
+# ======================================================================
+# UNIT REGISTRATION (Enhanced)
+# ======================================================================
+
 class UnitRegistrationService:
     @staticmethod
     @transaction.atomic
@@ -134,43 +138,73 @@ class UnitRegistrationService:
         outstanding supplementary/repeat units they still owe from
         earlier semesters.
         """
-        units = m.CurriculumUnit.objects.filter(
+        # Get current curriculum units
+        curriculum_units = m.CurriculumUnit.objects.filter(
             curriculum_version=student.curriculum_version,
             year=student.current_year,
             semester=student.current_semester,
         )
-        created = []
-        for unit in units:
-            reg, _ = m.UnitRegistration.objects.get_or_create(
-                student=student, course=unit.course, semester=semester,
-                defaults={"registration_type": m.UnitRegistration.RegType.NORMAL},
-            )
-            created.append(reg)
 
-        # Pull forward any pending supplementary/repeat units.
+        created = []
+        
+        # Register normal units
+        for unit in curriculum_units:
+            reg, created_flag = m.UnitRegistration.objects.get_or_create(
+                student=student, 
+                course=unit.course, 
+                semester=semester,
+                defaults={
+                    "registration_type": m.UnitRegistration.RegType.NORMAL,
+                    "is_active": True
+                },
+            )
+            if created_flag:
+                created.append(reg)
+
+        # Pull forward any pending supplementary/repeat units
         pending = SupplementaryService.outstanding_units(student)
         for course in pending:
-            reg, _ = m.UnitRegistration.objects.get_or_create(
-                student=student, course=course, semester=semester,
-                defaults={"registration_type": m.UnitRegistration.RegType.SUPPLEMENTARY},
+            reg, created_flag = m.UnitRegistration.objects.get_or_create(
+                student=student, 
+                course=course, 
+                semester=semester,
+                defaults={
+                    "registration_type": m.UnitRegistration.RegType.SUPPLEMENTARY,
+                    "is_active": True
+                },
             )
-            created.append(reg)
+            if created_flag:
+                # Create supplementary invoice
+                invoice = SupplementaryService.create_supplementary_invoice(
+                    student, course, semester
+                )
+                reg.supplementary_invoice = invoice
+                reg.save(update_fields=["supplementary_invoice"])
+                created.append(reg)
+
         return created
 
     @staticmethod
     def enroll_with_lecturer(registration: m.UnitRegistration):
         """
         Attach a registration to whichever LecturerUnitAllocation is
-        currently teaching that course, so it shows up automatically on
-        the lecturer's roster — this is how a lecturer teaching the
-        2.2 offering of a unit sees a 1.2-supplementary student too.
+        currently teaching that course.
         """
         allocation = m.LecturerUnitAllocation.objects.filter(
-            course=registration.course, semester=registration.semester, is_active=True
+            course=registration.course, 
+            semester=registration.semester, 
+            is_active=True
         ).first()
+
         enrollment, _ = m.Enrollment.objects.get_or_create(
-            student=registration.student, course=registration.course, semester=registration.semester,
-            defaults={"lecturer_allocation": allocation, "registration": registration},
+            student=registration.student, 
+            course=registration.course, 
+            semester=registration.semester,
+            defaults={
+                "lecturer_allocation": allocation, 
+                "registration": registration,
+                "is_active": True
+            },
         )
         return enrollment
 

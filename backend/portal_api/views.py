@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
+from django.db import transaction
 
 from . import models as m
 from . import serializers as s
@@ -722,3 +723,95 @@ class MyDashboardView(APIView):
             }
         }
         return Response(data)
+    
+    
+# Add these imports at the top if not already present
+from django.db.models import Q, Count, Sum
+from django.utils import timezone
+
+# ======================================================================
+# STUDENT UNIT VIEWS
+# ======================================================================
+
+class MyUnitsView(APIView):
+    """Get all unit registrations for the current student with detailed information."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get all registrations for the student
+        registrations = m.UnitRegistration.objects.filter(
+            student=student,
+            is_active=True
+        ).select_related(
+            "course",
+            "semester__academic_year",
+            "enrollment",
+            "supplementary_invoice"
+        ).order_by("-semester__academic_year__year", "-semester__semester_number")
+
+        serializer = s.UnitRegistrationSerializer(registrations, many=True)
+        return Response(serializer.data)
+
+
+class AutoRegisterUnitsView(APIView):
+    """Auto-register student for current semester units + outstanding supplementaries."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        semester_id = request.data.get("semester")
+        if not semester_id:
+            return Response(
+                {"detail": "Semester ID is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            semester = m.Semester.objects.get(pk=semester_id, is_current=True)
+        except m.Semester.DoesNotExist:
+            return Response(
+                {"detail": "Invalid or inactive semester."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                # Register semester units
+                registrations = services.UnitRegistrationService.register_semester_units(
+                    student, semester
+                )
+                
+                # Enroll with lecturer for each registration
+                for reg in registrations:
+                    services.UnitRegistrationService.enroll_with_lecturer(reg)
+
+                serializer = s.UnitRegistrationSerializer(registrations, many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {"detail": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class CurrentSemesterView(APIView):
+    """Get the current active semester."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        semester = m.Semester.objects.filter(is_current=True).first()
+        if not semester:
+            return Response(
+                {"detail": "No active semester found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = s.SemesterSerializer(semester)
+        return Response(serializer.data)
