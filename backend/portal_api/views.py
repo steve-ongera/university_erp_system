@@ -290,6 +290,24 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
     def roster(self, request, pk=None):
         allocation = self.get_object()
         return Response(s.EnrollmentSerializer(allocation.roster(), many=True).data)
+    
+    @action(detail=True, methods=["get"], url_path="grading-sheet")
+    def grading_sheet(self, request, pk=None):
+        allocation = self.get_object()
+        if request.user.user_type == "lecturer" and allocation.lecturer.user != request.user:
+            return Response({"detail": "Not your allocation."}, status=status.HTTP_403_FORBIDDEN)
+
+        enrollments = allocation.roster().select_related("student__user", "registration")
+        rows = []
+        for enrollment in enrollments:
+            grade = getattr(enrollment, "grade", None)
+            rows.append({
+                "enrollment_id": enrollment.id,
+                "student": s.StudentSerializer(enrollment.student).data,
+                "registration_type": enrollment.registration.registration_type,
+                "grade": s.GradeSerializer(grade).data if grade else None,
+            })
+        return Response(rows)
 
 
 class UnitRegistrationViewSet(viewsets.ModelViewSet):
@@ -597,6 +615,12 @@ class TimetableViewSet(viewsets.ModelViewSet):
     queryset = m.Timetable.objects.select_related("course", "lecturer")
     serializer_class = s.TimetableSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "lecturer":
+            return qs.filter(lecturer__user=self.request.user)
+        return qs
 
 
 class AttendanceSessionViewSet(viewsets.ModelViewSet):
@@ -1395,5 +1419,144 @@ class MyClearanceStatusView(APIView):
         })
         
         
-    
+# ======================================================================
+# LECTURER DASHBOARD
+# ======================================================================
 
+class LecturerDashboardView(APIView):
+    permission_classes = [IsRole.for_roles("lecturer")]
+
+    def get(self, request):
+        lecturer = getattr(request.user, "lecturer_profile", None)
+        if not lecturer:
+            return Response({"detail": "Not a lecturer."}, status=status.HTTP_403_FORBIDDEN)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+
+        allocations = m.LecturerUnitAllocation.objects.filter(lecturer=lecturer, is_active=True)
+        if current_semester:
+            allocations = allocations.filter(semester=current_semester)
+        allocation_ids = list(allocations.values_list("id", flat=True))
+
+        total_students = m.Enrollment.objects.filter(
+            lecturer_allocation_id__in=allocation_ids, is_active=True
+        ).values("student").distinct().count()
+
+        ungraded_count = m.Enrollment.objects.filter(
+            lecturer_allocation_id__in=allocation_ids, is_active=True
+        ).exclude(grade__isnull=False).count()
+
+        open_cats = m.CatSubmission.objects.filter(
+            lecturer_allocation_id__in=allocation_ids,
+            is_published=True,
+            closes_at__gte=timezone.now(),
+        ).select_related("lecturer_allocation__course").order_by("closes_at")[:5]
+
+        upcoming_classes = m.Timetable.objects.filter(
+            lecturer=lecturer, is_active=True
+        ).select_related("course").order_by("day_of_week", "start_time")[:5]
+
+        pending_cat_grading = m.CatAnswerSubmission.objects.filter(
+            cat__lecturer_allocation_id__in=allocation_ids,
+            marks_awarded__isnull=True,
+        ).select_related("student__user", "cat").order_by("-submitted_at")[:5]
+
+        data = {
+            "lecturer": s.LecturerSerializer(lecturer).data,
+            "current_semester": s.SemesterSerializer(current_semester).data if current_semester else None,
+            "stats": {
+                "total_allocations": allocations.count(),
+                "total_students": total_students,
+                "ungraded_enrollments": ungraded_count,
+                "open_cats": open_cats.count(),
+            },
+            "allocations": s.LecturerUnitAllocationSerializer(allocations, many=True).data,
+            "upcoming_classes": s.TimetableSerializer(upcoming_classes, many=True).data,
+            "open_cat_windows": s.CatSubmissionSerializer(open_cats, many=True).data,
+            "pending_cat_grading": s.CatAnswerSubmissionDetailSerializer(pending_cat_grading, many=True).data,
+        }
+        return Response(data)
+
+
+# ======================================================================
+# QR ATTENDANCE
+# ======================================================================
+
+class MyAttendanceSessionsView(APIView):
+    """Lecturer's own attendance sessions, most recent first."""
+    permission_classes = [IsRole.for_roles("lecturer")]
+
+    def get(self, request):
+        lecturer = request.user.lecturer_profile
+        sessions = m.AttendanceSession.objects.filter(
+            timetable_slot__lecturer=lecturer
+        ).select_related("timetable_slot__course").order_by("-session_date", "-id")[:20]
+        return Response(s.AttendanceSessionSerializer(sessions, many=True).data)
+
+
+class StartAttendanceSessionView(APIView):
+    """Opens a QR attendance window for one of the lecturer's own timetable slots."""
+    permission_classes = [IsRole.for_roles("lecturer")]
+
+    def post(self, request):
+        lecturer = request.user.lecturer_profile
+        timetable_slot_id = request.data.get("timetable_slot")
+        duration_minutes = int(request.data.get("duration_minutes", 15))
+
+        try:
+            timetable_slot = m.Timetable.objects.get(pk=timetable_slot_id, lecturer=lecturer)
+        except m.Timetable.DoesNotExist:
+            return Response({"detail": "Timetable slot not found for this lecturer."},
+                             status=status.HTTP_404_NOT_FOUND)
+
+        session = m.AttendanceSession.objects.create(
+            timetable_slot=timetable_slot,
+            session_date=timezone.now().date(),
+            expires_at=timezone.now() + timezone.timedelta(minutes=duration_minutes),
+        )
+        return Response(s.AttendanceSessionSerializer(session).data, status=status.HTTP_201_CREATED)
+
+
+class AttendanceSessionLiveView(APIView):
+    """Poll while a QR session is open to see who has checked in."""
+    permission_classes = [IsRole.for_roles("lecturer")]
+
+    def get(self, request, session_id):
+        lecturer = request.user.lecturer_profile
+        session = m.AttendanceSession.objects.filter(
+            pk=session_id, timetable_slot__lecturer=lecturer
+        ).select_related("timetable_slot__course").first()
+        if not session:
+            return Response({"detail": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        records = m.Attendance.objects.filter(attendance_session=session).select_related("student__user")
+        enrolled_count = m.Enrollment.objects.filter(
+            course=session.timetable_slot.course,
+            semester=session.timetable_slot.semester,
+            is_active=True,
+        ).count()
+
+        return Response({
+            "session": s.AttendanceSessionSerializer(session).data,
+            "is_open": session.is_active and timezone.now() <= session.expires_at,
+            "enrolled_count": enrolled_count,
+            "checked_in_count": records.count(),
+            "records": s.AttendanceSerializer(records, many=True).data,
+        })
+
+
+class CloseAttendanceSessionView(APIView):
+    """End a QR session early."""
+    permission_classes = [IsRole.for_roles("lecturer")]
+
+    def post(self, request, session_id):
+        lecturer = request.user.lecturer_profile
+        session = m.AttendanceSession.objects.filter(
+            pk=session_id, timetable_slot__lecturer=lecturer
+        ).first()
+        if not session:
+            return Response({"detail": "Session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        session.is_active = False
+        session.save(update_fields=["is_active"])
+        return Response(s.AttendanceSessionSerializer(session).data)

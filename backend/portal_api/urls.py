@@ -87,7 +87,14 @@ urlpatterns = [
     path("me/hostel-status/", v.MyHostelStatusView.as_view(), name="my-hostel-status"),
     path("me/reporting-status/", v.MyReportingStatusView.as_view(), name="my-reporting-status"),
     path("me/clearance-status/", v.MyClearanceStatusView.as_view(), name="my-clearance-status"),
-        
+    
+    path("lecturer/dashboard/", v.LecturerDashboardView.as_view(), name="lecturer-dashboard"),
+
+    path("attendance/mine/", v.MyAttendanceSessionsView.as_view(), name="my-attendance-sessions"),
+    path("attendance/start/", v.StartAttendanceSessionView.as_view(), name="start-attendance-session"),
+    path("attendance/<int:session_id>/live/", v.AttendanceSessionLiveView.as_view(), name="attendance-session-live"),
+    path("attendance/<int:session_id>/close/", v.CloseAttendanceSessionView.as_view(), name="close-attendance-session"),
+            
     # Student CAT endpoints
     path("me/cats/", v.MyCatsView.as_view(), name="my-cats"),
     path("me/cats/submit/", v.SubmitCatAnswerView.as_view(), name="submit-cat-answer"),

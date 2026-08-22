@@ -316,13 +316,19 @@ export const adminApi = {
 // Lecturer APIs
 // ---------------------------------------------------------------------
 export const lecturerApi = {
+  dashboard: () => api.get("/lecturer/dashboard/"),
   myAllocations: () => api.get("/lecturer-allocations/"),
   roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
+  gradingSheet: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/grading-sheet/`),
   enterGrades: (payload) => api.post("/grades/enter/", payload),
   createCat: (payload) => api.post("/cats/", payload),
   myCats: () => api.get("/cats/"),
-  attendanceSessions: () => api.get("/attendance-sessions/"),
-  markAttendance: (payload) => api.post("/attendance/", payload),
+  myTimetable: () => api.get("/timetable/"),
+  attendanceSessions: () => api.get("/attendance/mine/"),
+  startAttendanceSession: (timetableSlotId, durationMinutes = 15) =>
+    api.post("/attendance/start/", { timetable_slot: timetableSlotId, duration_minutes: durationMinutes }),
+  attendanceSessionLive: (sessionId) => api.get(`/attendance/${sessionId}/live/`),
+  closeAttendanceSession: (sessionId) => api.post(`/attendance/${sessionId}/close/`),
 };
 
 // ---------------------------------------------------------------------
