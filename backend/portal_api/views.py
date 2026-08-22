@@ -1147,3 +1147,133 @@ class AdminDashboardView(APIView):
             return sample_programmes
         
         return distribution
+    
+    
+
+class MyCurriculumUnitsView(APIView):
+    """
+    The checklist for the logged-in student: every CurriculumUnit mapped
+    to their curriculum_version + current_year + current_semester, plus
+    any outstanding supplementary units, each flagged with whether it's
+    already registered. Also carries the fee-balance gate.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        if not current_semester:
+            return Response({"detail": "No active semester found."}, status=status.HTTP_404_NOT_FOUND)
+
+        curriculum_units = m.CurriculumUnit.objects.filter(
+            curriculum_version=student.curriculum_version,
+            year=student.current_year,
+            semester=student.current_semester,
+        ).select_related("course", "course__department")
+
+        existing_regs = {
+            reg.course_id: reg
+            for reg in m.UnitRegistration.objects.filter(
+                student=student, semester=current_semester, is_active=True
+            )
+        }
+
+        units = [{
+            "course": s.CourseSerializer(cu.course).data,
+            "is_mandatory": cu.is_mandatory,
+            "is_registered": cu.course_id in existing_regs,
+            "registration_type": "normal",
+        } for cu in curriculum_units]
+
+        # Units failed in earlier semesters that still need clearing.
+        supplementary_courses = services.SupplementaryService.outstanding_units(student)
+        supplementary_units = [{
+            "course": s.CourseSerializer(course).data,
+            "is_mandatory": True,
+            "is_registered": (
+                course.id in existing_regs
+                and existing_regs[course.id].registration_type == m.UnitRegistration.RegType.SUPPLEMENTARY
+            ),
+            "registration_type": "supplementary",
+        } for course in supplementary_courses]
+
+        fee_summary = services.FeeService.student_balance_summary(student)
+        total_outstanding = fee_summary["total_outstanding"]
+
+        return Response({
+            "semester": s.SemesterSerializer(current_semester).data,
+            "units": units,
+            "supplementary_units": supplementary_units,
+            "fee": {
+                "total_outstanding": total_outstanding,
+                "wallet_credit": fee_summary["wallet_credit"],
+                "can_register": total_outstanding <= 0,
+            },
+        })
+
+
+class RegisterSelectedUnitsView(APIView):
+    """
+    Student ticks specific units and submits — replaces blanket
+    auto-register. Hard-blocked if there's ANY outstanding balance
+    (current or prior semester), per FeeService.student_balance_summary.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        course_ids = request.data.get("course_ids", [])
+        if not course_ids:
+            return Response({"detail": "Select at least one unit."}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        if not current_semester:
+            return Response({"detail": "No active semester found."}, status=status.HTTP_404_NOT_FOUND)
+
+        fee_summary = services.FeeService.student_balance_summary(student)
+        if fee_summary["total_outstanding"] > 0:
+            return Response(
+                {
+                    "detail": "You have an outstanding fee balance. Clear it before registering units.",
+                    "total_outstanding": fee_summary["total_outstanding"],
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        created = []
+        try:
+            with transaction.atomic():
+                for course_id in course_ids:
+                    course = m.Course.objects.get(pk=course_id)
+                    is_curriculum_unit = m.CurriculumUnit.objects.filter(
+                        curriculum_version=student.curriculum_version,
+                        course=course,
+                        year=student.current_year,
+                        semester=student.current_semester,
+                    ).exists()
+
+                    if is_curriculum_unit:
+                        reg, was_created = m.UnitRegistration.objects.get_or_create(
+                            student=student, course=course, semester=current_semester,
+                            defaults={"registration_type": m.UnitRegistration.RegType.NORMAL},
+                        )
+                        if was_created:
+                            services.UnitRegistrationService.enroll_with_lecturer(reg)
+                    else:
+                        reg = services.SupplementaryService.register_supplementary(
+                            student, course, current_semester
+                        )
+                    created.append(reg)
+        except m.Course.DoesNotExist:
+            return Response({"detail": "One of the selected units does not exist."},
+                             status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(s.UnitRegistrationSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
