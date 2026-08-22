@@ -8,92 +8,86 @@ export default function MyUnits() {
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState([]);
   const [studentProfile, setStudentProfile] = useState(null);
+  const [availableUnits, setAvailableUnits] = useState([]);
+  const [supplementaryUnits, setSupplementaryUnits] = useState([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
   const [currentSemester, setCurrentSemester] = useState(null);
+  const [feeInfo, setFeeInfo] = useState({ total_outstanding: 0, wallet_credit: 0, can_register: true });
   const [error, setError] = useState("");
-  const [autoRegistering, setAutoRegistering] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    normal: 0,
-    supplementary: 0,
-    repeat: 0,
-  });
+  const [registering, setRegistering] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        // Fetch student profile
-        const profileRes = await studentsApi.myProfile();
-        setStudentProfile(profileRes.data);
-
-        // Fetch registrations
-        const regRes = await unitsApi.myRegistrations();
-        const registrationsData = regRes.data || [];
-        setRegistrations(registrationsData);
-
-        // Calculate stats
-        const statsData = {
-          total: registrationsData.length,
-          normal: registrationsData.filter(r => r.registration_type === 'normal').length,
-          supplementary: registrationsData.filter(r => r.registration_type === 'supplementary').length,
-          repeat: registrationsData.filter(r => r.registration_type === 'repeat').length,
-        };
-        setStats(statsData);
-
-        // Extract semester info from first registration
-        if (registrationsData.length > 0 && registrationsData[0].semester) {
-          setCurrentSemester(registrationsData[0].semester);
-        }
-
-      } catch (err) {
-        console.error("Error fetching units:", err);
-        setError("Failed to load your registered units. Please refresh the page.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const handleAutoRegister = async () => {
-    setAutoRegistering(true);
+  const loadData = async () => {
+    setLoading(true);
     setError("");
     try {
-      // Get current semester ID - you might want to fetch this from API
-      // For now, we'll use a placeholder or you can add a semester selector
-      const semesterId = currentSemester?.id || null;
-      if (!semesterId) {
-        setError("No active semester found. Please contact the registrar.");
-        setAutoRegistering(false);
-        return;
-      }
+      const [profileRes, availRes, regRes] = await Promise.all([
+        studentsApi.myProfile(),
+        unitsApi.availableUnits(),
+        unitsApi.myRegistrations(),
+      ]);
 
-      const response = await unitsApi.autoRegister(semesterId);
-      
-      // Refresh registrations
-      const regRes = await unitsApi.myRegistrations();
-      const registrationsData = regRes.data || [];
-      setRegistrations(registrationsData);
+      setStudentProfile(profileRes.data);
+      setCurrentSemester(availRes.data.semester);
+      setAvailableUnits(availRes.data.units || []);
+      setSupplementaryUnits(availRes.data.supplementary_units || []);
+      setFeeInfo(availRes.data.fee || { total_outstanding: 0, wallet_credit: 0, can_register: true });
+      setRegistrations(regRes.data || []);
 
-      // Update stats
-      setStats({
-        total: registrationsData.length,
-        normal: registrationsData.filter(r => r.registration_type === 'normal').length,
-        supplementary: registrationsData.filter(r => r.registration_type === 'supplementary').length,
-        repeat: registrationsData.filter(r => r.registration_type === 'repeat').length,
-      });
-
+      const alreadyRegistered = [...(availRes.data.units || []), ...(availRes.data.supplementary_units || [])]
+        .filter((u) => u.is_registered)
+        .map((u) => u.course.id);
+      setSelectedCourseIds(alreadyRegistered);
     } catch (err) {
-      console.error("Error auto-registering:", err);
-      setError(err.response?.data?.detail || "Failed to register units. Please try again.");
+      console.error("Error fetching units:", err);
+      setError("Failed to load your units. Please refresh the page.");
     } finally {
-      setAutoRegistering(false);
+      setLoading(false);
     }
   };
 
-  // Get registration type badge
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const toggleUnit = (courseId, isRegistered) => {
+    if (isRegistered) return;
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const handleRegister = async () => {
+    const allUnits = [...availableUnits, ...supplementaryUnits];
+    const newlySelected = selectedCourseIds.filter((id) => {
+      const unit = allUnits.find((u) => u.course.id === id);
+      return unit && !unit.is_registered;
+    });
+
+    if (newlySelected.length === 0) {
+      setError("Select at least one unit that isn't already registered.");
+      return;
+    }
+
+    setRegistering(true);
+    setError("");
+    try {
+      await unitsApi.registerSelected(newlySelected);
+      await loadData();
+    } catch (err) {
+      console.error("Error registering units:", err);
+      setError(err.response?.data?.detail || "Failed to register units. Please try again.");
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const stats = {
+    total: registrations.length,
+    normal: registrations.filter((r) => r.registration_type === "normal").length,
+    supplementary: registrations.filter((r) => r.registration_type === "supplementary").length,
+    repeat: registrations.filter((r) => r.registration_type === "repeat").length,
+  };
+
   const getTypeBadge = (type) => {
     const typeMap = {
       normal: { class: "mu-badge-primary", label: "Normal" },
@@ -104,25 +98,15 @@ export default function MyUnits() {
     return typeMap[type] || typeMap.normal;
   };
 
-  // Get status badge based on registration
   const getStatusBadge = (registration) => {
-    // Check if there's a grade
-    if (registration.enrollment?.grade) {
-      const grade = registration.enrollment.grade;
-      if (grade.is_pass) {
-        return { class: "mu-badge-success", icon: "bi-check-circle", label: "Passed" };
-      } else if (grade.requires_supplementary) {
+    if (registration.grade_detail) {
+      const grade = registration.grade_detail;
+      if (grade.is_pass) return { class: "mu-badge-success", icon: "bi-check-circle", label: "Passed" };
+      if (grade.requires_supplementary)
         return { class: "mu-badge-warning", icon: "bi-arrow-repeat", label: "Supplementary Required" };
-      } else {
-        return { class: "mu-badge-danger", icon: "bi-x-circle", label: "Failed" };
-      }
+      return { class: "mu-badge-danger", icon: "bi-x-circle", label: "Failed" };
     }
-    
-    // Check if active
-    if (registration.is_active) {
-      return { class: "mu-badge-info", icon: "bi-clock", label: "In Progress" };
-    }
-    
+    if (registration.is_active) return { class: "mu-badge-info", icon: "bi-clock", label: "In Progress" };
     return { class: "mu-badge-gray", icon: "bi-dash-circle", label: "Pending" };
   };
 
@@ -135,9 +119,10 @@ export default function MyUnits() {
     );
   }
 
+  const allSelectable = [...availableUnits, ...supplementaryUnits];
+
   return (
     <div>
-      {/* Page Header */}
       <div className="mu-page-header">
         <div>
           <h1>
@@ -148,25 +133,6 @@ export default function MyUnits() {
             Home <span className="separator">/</span> Academics <span className="separator">/</span> My Units
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <button 
-            className="mu-btn mu-btn-primary" 
-            onClick={handleAutoRegister}
-            disabled={autoRegistering}
-          >
-            {autoRegistering ? (
-              <>
-                <i className="bi bi-arrow-repeat mu-animate-spin" />
-                Registering...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-plus-circle" />
-                Auto-Register Units
-              </>
-            )}
-          </button>
-        </div>
       </div>
 
       {error && (
@@ -176,44 +142,31 @@ export default function MyUnits() {
         </div>
       )}
 
-      {/* Stats Summary */}
-      <div className="mu-dashboard-grid" style={{ marginBottom: 24 }}>
-        <div className="mu-stat-card">
-          <div className="mu-stat-icon blue">
-            <i className="bi bi-journal-bookmark" />
+      {!feeInfo.can_register ? (
+        <div className="mu-alert mu-alert-danger" style={{ marginBottom: 24 }}>
+          <i className="bi bi-exclamation-octagon" />
+          <div>
+            <strong>Unit registration is locked.</strong> You have an outstanding fee balance of{" "}
+            <strong>KES {Number(feeInfo.total_outstanding).toLocaleString()}</strong> from the current or a
+            previous semester. Clear it to unlock registration.{" "}
+            <Link to="/fees" className="mu-link">View fee statement</Link>
           </div>
-          <div className="mu-stat-label">Total Units</div>
-          <div className="mu-stat-value">{stats.total}</div>
         </div>
-        <div className="mu-stat-card">
-          <div className="mu-stat-icon green">
-            <i className="bi bi-check-circle" />
+      ) : (
+        feeInfo.wallet_credit > 0 && (
+          <div className="mu-alert mu-alert-info" style={{ marginBottom: 24 }}>
+            <i className="bi bi-piggy-bank" />
+            You have a wallet credit of KES {Number(feeInfo.wallet_credit).toLocaleString()} that will apply
+            to your next invoice.
           </div>
-          <div className="mu-stat-label">Normal Units</div>
-          <div className="mu-stat-value">{stats.normal}</div>
-        </div>
-        <div className="mu-stat-card">
-          <div className="mu-stat-icon gold">
-            <i className="bi bi-arrow-repeat" />
-          </div>
-          <div className="mu-stat-label">Supplementary</div>
-          <div className="mu-stat-value">{stats.supplementary}</div>
-        </div>
-        <div className="mu-stat-card">
-          <div className="mu-stat-icon red">
-            <i className="bi bi-exclamation-triangle" />
-          </div>
-          <div className="mu-stat-label">Repeat</div>
-          <div className="mu-stat-value">{stats.repeat}</div>
-        </div>
-      </div>
+        )
+      )}
 
-      {/* Semester Info */}
       {currentSemester && (
         <div className="mu-alert mu-alert-info" style={{ marginBottom: 24 }}>
           <i className="bi bi-calendar3" />
           <div>
-            <strong>Current Semester:</strong> {currentSemester.academic_year?.year || "N/A"} - 
+            <strong>Current Semester:</strong> {currentSemester.academic_year_detail?.year || "N/A"} -
             Semester {currentSemester.semester_number}
             {currentSemester.is_current && (
               <span className="mu-badge mu-badge-success" style={{ marginLeft: 8 }}>
@@ -225,13 +178,107 @@ export default function MyUnits() {
         </div>
       )}
 
-      {/* Units Table */}
+      <div className="mu-dashboard-grid" style={{ marginBottom: 24 }}>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon blue"><i className="bi bi-journal-bookmark" /></div>
+          <div className="mu-stat-label">Total Registered</div>
+          <div className="mu-stat-value">{stats.total}</div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon green"><i className="bi bi-check-circle" /></div>
+          <div className="mu-stat-label">Normal Units</div>
+          <div className="mu-stat-value">{stats.normal}</div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon gold"><i className="bi bi-arrow-repeat" /></div>
+          <div className="mu-stat-label">Supplementary</div>
+          <div className="mu-stat-value">{stats.supplementary}</div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon red"><i className="bi bi-exclamation-triangle" /></div>
+          <div className="mu-stat-label">Repeat</div>
+          <div className="mu-stat-value">{stats.repeat}</div>
+        </div>
+      </div>
+
+      <div className="mu-card" style={{ marginBottom: 24 }}>
+        <div className="mu-card-header">
+          <h4>
+            Units For Year {studentProfile?.current_year} · Semester {studentProfile?.current_semester}
+          </h4>
+          <button
+            className="mu-btn mu-btn-primary mu-btn-sm"
+            onClick={handleRegister}
+            disabled={registering || !feeInfo.can_register}
+            title={!feeInfo.can_register ? "Clear your fee balance to register" : ""}
+          >
+            {registering ? (
+              <><i className="bi bi-arrow-repeat mu-animate-spin" /> Registering...</>
+            ) : (
+              <><i className="bi bi-check2-square" /> Register Selected</>
+            )}
+          </button>
+        </div>
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          {allSelectable.length > 0 ? (
+            <div className="mu-table-wrapper">
+              <table className="mu-table mu-table-hover">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}></th>
+                    <th>Course Code</th>
+                    <th>Course Name</th>
+                    <th>Credit Hours</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allSelectable.map((u) => (
+                    <tr key={u.course.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedCourseIds.includes(u.course.id)}
+                          disabled={u.is_registered || !feeInfo.can_register}
+                          onChange={() => toggleUnit(u.course.id, u.is_registered)}
+                        />
+                      </td>
+                      <td><strong>{u.course.code}</strong></td>
+                      <td>{u.course.name}</td>
+                      <td>{u.course.credit_hours}</td>
+                      <td>
+                        <span className={`mu-badge ${u.registration_type === "supplementary" ? "mu-badge-warning" : u.is_mandatory ? "mu-badge-primary" : "mu-badge-gray"}`}>
+                          {u.registration_type === "supplementary" ? "Supplementary" : u.is_mandatory ? "Mandatory" : "Elective"}
+                        </span>
+                      </td>
+                      <td>
+                        {u.is_registered ? (
+                          <span className="mu-badge mu-badge-success">
+                            <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                            Registered
+                          </span>
+                        ) : (
+                          <span className="mu-badge mu-badge-gray">Not Registered</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              No units are mapped to your current year/semester yet. Contact the registrar.
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="mu-card">
         <div className="mu-card-header">
-          <h4>Registered Units</h4>
-          <span className="mu-badge mu-badge-primary">
-            {registrations.length} Units
-          </span>
+          <h4>All My Registered Units</h4>
+          <span className="mu-badge mu-badge-primary">{registrations.length} Units</span>
         </div>
         <div className="mu-card-body" style={{ padding: 0 }}>
           {registrations.length > 0 ? (
@@ -251,18 +298,11 @@ export default function MyUnits() {
                   {registrations.map((reg) => {
                     const typeBadge = getTypeBadge(reg.registration_type);
                     const statusBadge = getStatusBadge(reg);
-                    
                     return (
                       <tr key={reg.id}>
-                        <td>
-                          <strong>{reg.course_detail?.code || "N/A"}</strong>
-                        </td>
+                        <td><strong>{reg.course_detail?.code || "N/A"}</strong></td>
                         <td>{reg.course_detail?.name || "Unknown Course"}</td>
-                        <td>
-                          <span className={`mu-badge ${typeBadge.class}`}>
-                            {typeBadge.label}
-                          </span>
-                        </td>
+                        <td><span className={`mu-badge ${typeBadge.class}`}>{typeBadge.label}</span></td>
                         <td>{reg.course_detail?.credit_hours || "N/A"}</td>
                         <td>
                           <span className={`mu-badge ${statusBadge.class}`}>
@@ -271,10 +311,7 @@ export default function MyUnits() {
                           </span>
                         </td>
                         <td>
-                          <Link 
-                            to={`/unit/${reg.course_detail?.id}`} 
-                            className="mu-btn mu-btn-sm mu-btn-outline-primary"
-                          >
+                          <Link to={`/unit/${reg.course_detail?.id}`} className="mu-btn mu-btn-sm mu-btn-outline-primary">
                             <i className="bi bi-eye" />
                             View
                           </Link>
@@ -290,32 +327,13 @@ export default function MyUnits() {
               <i className="bi bi-journal-bookmark" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
               <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Units Registered</h3>
               <p style={{ margin: "8px 0 16px" }}>
-                You haven't registered for any units this semester.
-                Click "Auto-Register Units" to register for your current semester units.
+                Use the checklist above to select and register your units for this semester.
               </p>
-              <button 
-                className="mu-btn mu-btn-primary" 
-                onClick={handleAutoRegister}
-                disabled={autoRegistering}
-              >
-                {autoRegistering ? (
-                  <>
-                    <i className="bi bi-arrow-repeat mu-animate-spin" />
-                    Registering...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-plus-circle" />
-                    Auto-Register Units
-                  </>
-                )}
-              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
         <div className="mu-card">
           <div className="mu-card-body" style={{ textAlign: "center" }}>
@@ -343,13 +361,13 @@ export default function MyUnits() {
         </div>
         <div className="mu-card">
           <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Supplementary</h4>
+            <i className="bi bi-cash-coin" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
+            <h4 style={{ margin: "8px 0 4px" }}>Fees</h4>
             <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Manage supplementary units
+              View your fee statement
             </p>
-            <Link to="/supplementary" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Supplementaries
+            <Link to="/fees" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
+              View Fees
             </Link>
           </div>
         </div>

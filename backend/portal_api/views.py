@@ -515,11 +515,11 @@ class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = s.RoomSerializer
     permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
 
-
 class BedViewSet(viewsets.ModelViewSet):
-    queryset = m.Bed.objects.filter(is_available=True)
+    queryset = m.Bed.objects.filter(is_available=True).select_related("room", "room__hostel")
     serializer_class = s.BedSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["room", "room__hostel", "academic_year"]
 
 
 class HostelBookingViewSet(viewsets.ModelViewSet):
@@ -1277,3 +1277,123 @@ class RegisterSelectedUnitsView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(s.UnitRegistrationSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
+    
+    
+    
+# ======================================================================
+# STUDENT TIMETABLE
+# ======================================================================
+
+class MyTimetableView(APIView):
+    """This semester's class schedule, scoped to the student's programme/year/semester."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        if not current_semester:
+            return Response({"detail": "No active semester found."}, status=status.HTTP_404_NOT_FOUND)
+
+        slots = m.Timetable.objects.filter(
+            programme=student.programme,
+            year=student.current_year,
+            programme_semester=student.current_semester,
+            semester=current_semester,
+            is_active=True,
+        ).select_related("course", "lecturer__user").order_by("day_of_week", "start_time")
+
+        return Response({
+            "semester": s.SemesterSerializer(current_semester).data,
+            "slots": s.TimetableSerializer(slots, many=True).data,
+        })
+
+
+# ======================================================================
+# STUDENT HOSTEL STATUS
+# ======================================================================
+
+class MyHostelStatusView(APIView):
+    """Current-year hostel booking (if any) + whether the student has reported (gates fresh bookings)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        current_year = m.AcademicYear.objects.filter(is_current=True).first()
+        booking = None
+        if current_year:
+            booking = m.HostelBooking.objects.filter(
+                student=student, academic_year=current_year
+            ).select_related("bed__room__hostel").first()
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        has_reported = False
+        if current_semester:
+            has_reported = m.StudentReporting.objects.filter(
+                student=student, semester=current_semester, status=m.StudentReporting.Status.APPROVED
+            ).exists()
+
+        return Response({
+            "academic_year": s.AcademicYearSerializer(current_year).data if current_year else None,
+            "has_reported": has_reported,
+            "booking": s.HostelBookingSerializer(booking).data if booking else None,
+        })
+
+
+# ======================================================================
+# STUDENT SEMESTER REPORTING STATUS
+# ======================================================================
+
+class MyReportingStatusView(APIView):
+    """Whether the student has reported for the current semester, plus their fee balance (reporting is often fee-gated)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        if not current_semester:
+            return Response({"detail": "No active semester found."}, status=status.HTTP_404_NOT_FOUND)
+
+        reporting = m.StudentReporting.objects.filter(student=student, semester=current_semester).first()
+        fee_summary = services.FeeService.student_balance_summary(student)
+
+        return Response({
+            "semester": s.SemesterSerializer(current_semester).data,
+            "reporting": s.StudentReportingSerializer(reporting).data if reporting else None,
+            "fee_outstanding": fee_summary["total_outstanding"],
+        })
+
+
+# ======================================================================
+# STUDENT CLEARANCE STATUS
+# ======================================================================
+
+class MyClearanceStatusView(APIView):
+    """Eligibility (final year/semester check) + all of the student's clearance requests, grouped."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        is_eligible = services.ClearanceService.is_eligible(student)
+        requests = m.ClearanceRequest.objects.filter(student=student).order_by("-requested_at")
+
+        return Response({
+            "is_eligible": is_eligible,
+            "clearance_types": m.ClearanceRequest.ClearanceType.choices,
+            "requests": s.ClearanceRequestSerializer(requests, many=True).data,
+        })
+        
+        
+    
+

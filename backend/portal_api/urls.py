@@ -80,7 +80,14 @@ urlpatterns = [
     path("me/units/", v.MyUnitsView.as_view(), name="my-units"),
     path("me/units/auto-register/", v.AutoRegisterUnitsView.as_view(), name="auto-register-units"),
     path("me/current-semester/", v.CurrentSemesterView.as_view(), name="current-semester"),
+    path("me/units/available/", v.MyCurriculumUnitsView.as_view(), name="my-available-units"),
+    path("me/units/register-selected/", v.RegisterSelectedUnitsView.as_view(), name="register-selected-units"),
     
+    path("me/timetable/", v.MyTimetableView.as_view(), name="my-timetable"),
+    path("me/hostel-status/", v.MyHostelStatusView.as_view(), name="my-hostel-status"),
+    path("me/reporting-status/", v.MyReportingStatusView.as_view(), name="my-reporting-status"),
+    path("me/clearance-status/", v.MyClearanceStatusView.as_view(), name="my-clearance-status"),
+        
     # Student CAT endpoints
     path("me/cats/", v.MyCatsView.as_view(), name="my-cats"),
     path("me/cats/submit/", v.SubmitCatAnswerView.as_view(), name="submit-cat-answer"),

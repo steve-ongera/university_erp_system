@@ -110,6 +110,8 @@ export const studentsApi = {
 export const unitsApi = {
   autoRegister: (semester) => api.post("/me/units/auto-register/", { semester }),
   myRegistrations: () => api.get("/me/units/"),
+  availableUnits: () => api.get("/me/units/available/"),
+  registerSelected: (courseIds) => api.post("/me/units/register-selected/", { course_ids: courseIds }),
   lecturerAllocations: () => api.get("/lecturer-allocations/"),
   roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
   currentSemester: () => api.get("/me/current-semester/"),
@@ -132,6 +134,40 @@ export const catsApi = {
   },
   mySubmissions: () => api.get("/me/cat-submissions/"),
   myCats: () => api.get("/me/cats/"),
+};
+
+
+// Add register() alongside the existing mySupplementary GET
+export const supplementaryApi = {
+  outstanding: () => api.get("/me/supplementary/"),
+  register: (course, semester) => api.post("/me/supplementary/", { course, semester }),
+};
+
+export const timetableApi = {
+  mine: () => api.get("/me/timetable/"),
+};
+
+export const reportingApi = {
+  status: () => api.get("/me/reporting-status/"),
+  mine: () => api.get("/student-reportings/"),
+  submit: (semester, reportingType = "online") =>
+    api.post("/student-reportings/", { semester, reporting_type: reportingType }),
+};
+
+export const defermentApi = {
+  mine: () => api.get("/deferments/"),
+  create: (payload) => {
+    // payload may include a File (supporting_document), so send multipart.
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        formData.append(key, value);
+      }
+    });
+    return api.post("/deferments/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };
 
 // ---------------------------------------------------------------------
@@ -163,7 +199,9 @@ export const hostelApi = {
   myBookings: () => api.get("/hostel-bookings/"),
   hostels: () => api.get("/hostels/"),
   rooms: () => api.get("/rooms/"),
+  status: () => api.get("/me/hostel-status/"),
 };
+
 
 // ---------------------------------------------------------------------
 // Clearance APIs
@@ -171,6 +209,7 @@ export const hostelApi = {
 export const clearanceApi = {
   request: (clearanceType) => api.post("/clearances/", { clearance_type: clearanceType }),
   mine: () => api.get("/clearances/"),
+  status: () => api.get("/me/clearance-status/"),
 };
 
 // ---------------------------------------------------------------------

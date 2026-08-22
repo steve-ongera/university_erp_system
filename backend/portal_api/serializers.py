@@ -231,12 +231,13 @@ class CatAnswerSubmissionSerializer(serializers.ModelSerializer):
 
 
 class GradeSerializer(serializers.ModelSerializer):
+    enrollment_detail = EnrollmentSerializer(source="enrollment", read_only=True)
+
     class Meta:
         model = m.Grade
         fields = "__all__"
         read_only_fields = ["total_marks", "letter_grade", "grade_points", "quality_points",
                              "is_pass", "requires_supplementary", "published_at"]
-
 
 class GradeEntrySerializer(serializers.Serializer):
     """Payload lecturers submit: raw CAT + exam marks; grading is computed server-side."""
@@ -248,6 +249,7 @@ class GradeEntrySerializer(serializers.Serializer):
 
 class TranscriptEntrySerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
+    academic_year_detail = AcademicYearSerializer(source="academic_year", read_only=True)
 
     class Meta:
         model = m.TranscriptEntry
@@ -377,6 +379,7 @@ class ExaminationSerializer(serializers.ModelSerializer):
 
 class TimetableSerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
+    lecturer_detail = LecturerSerializer(source="lecturer", read_only=True)
 
     class Meta:
         model = m.Timetable
