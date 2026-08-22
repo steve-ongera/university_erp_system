@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { studentsApi } from "../../services/api";
 import { Link } from "react-router-dom";
+import defaultProfile from "../../assets/default-profile.jpg";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -57,9 +58,14 @@ export default function StudentDashboard() {
 
   const { student, stats, recent_grades, upcoming_exams, quick_actions } = dashboardData;
   const fullName = user ? `${user.first_name} ${user.last_name}` : "Student";
-  const initials = user
-    ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || user.username[0].toUpperCase()
-    : "?";
+
+  // Get profile picture URL
+  const getProfilePicture = () => {
+    if (user?.profile_picture) {
+      return user.profile_picture;
+    }
+    return defaultProfile;
+  };
 
   // Get student status badge color
   const getStatusBadge = (status) => {
@@ -102,9 +108,21 @@ export default function StudentDashboard() {
       {/* Welcome Section */}
       <div className="mu-card" style={{ marginBottom: 24 }}>
         <div className="mu-card-body" style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <div className="mu-avatar" style={{ width: 64, height: 64, fontSize: 24, background: "var(--mu-primary-500)" }}>
-            {initials}
-          </div>
+          <img 
+            src={getProfilePicture()} 
+            alt={fullName}
+            className="mu-profile-avatar"
+            style={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: "50%", 
+              objectFit: "cover",
+              border: "3px solid var(--mu-primary-100)",
+            }}
+            onError={(e) => {
+              e.target.src = defaultProfile;
+            }}
+          />
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0 }}>Welcome back, {fullName}!</h2>
             <p style={{ margin: "4px 0 0", color: "var(--mu-gray-500)" }}>

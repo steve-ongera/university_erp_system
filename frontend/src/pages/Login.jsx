@@ -61,8 +61,14 @@ export default function Login() {
             alt="Muranga University" 
             className="mu-auth-logo-img"
           />
-          <h2>Muranga University</h2>
+          <h2>Muranga University Of Technology</h2>
           <p>Student & Staff Portal</p>
+        </div>
+
+        {/* Welcome Message */}
+        <div className="mu-auth-welcome">
+          <h3>Welcome Back</h3>
+          <p>Sign in to access your account portal</p>
         </div>
 
         {step === "credentials" ? (

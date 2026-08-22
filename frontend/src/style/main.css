@@ -346,7 +346,7 @@ hr {
 }
 
 .mu-sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgb(244, 240, 240);
   border-radius: var(--mu-radius-full);
 }
 
@@ -1199,7 +1199,7 @@ hr {
   border: 1px solid var(--mu-border);
   border-radius: var(--mu-radius-lg);
   box-shadow: var(--mu-shadow-sm);
-  transition: box-shadow var(--mu-transition-fast);
+  transition: box-shadow var(--mu-transition-fast) ease-in-out, transform var(--mu-transition-fast) ease-in-out;
 }
 
 .mu-card:hover {
@@ -1237,7 +1237,7 @@ hr {
   border: 1px solid var(--mu-border);
   border-radius: var(--mu-radius-md);
   padding: var(--mu-spacing-5);
-  transition: all var(--mu-transition-fast);
+  transition: all var(--mu-transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mu-stat-card:hover {
@@ -1320,7 +1320,7 @@ hr {
   border: 1px solid var(--mu-border);
   border-radius: var(--mu-radius-md);
   cursor: pointer;
-  transition: all var(--mu-transition-fast);
+  transition: all var(--mu-transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
   color: var(--mu-gray-700);
   font-size: var(--mu-font-size-sm);
@@ -1450,13 +1450,13 @@ hr {
   justify-content: center;
   gap: var(--mu-spacing-2);
   padding: var(--mu-spacing-2) var(--mu-spacing-5);
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--mu-radius-sm);
   font-family: var(--mu-font-family);
   font-size: var(--mu-font-size-sm);
   font-weight: var(--mu-font-weight-semibold);
   cursor: pointer;
-  transition: all var(--mu-transition-fast);
+  transition: all var(--mu-transition-fast) ease-in-out;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -1615,7 +1615,7 @@ hr {
   font-size: var(--mu-font-size-sm);
   color: var(--mu-gray-800);
   background: var(--mu-white);
-  transition: all var(--mu-transition-fast);
+  transition: all var(--mu-transition-fast) ease-in-out;
 }
 
 .mu-input:focus,
@@ -1623,7 +1623,7 @@ hr {
 .mu-textarea:focus {
   outline: none;
   border-color: var(--mu-primary-500);
-  box-shadow: 0 0 0 3px rgba(59, 108, 224, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 108, 224, 0.15);
 }
 
 .mu-input::placeholder,
@@ -1647,7 +1647,7 @@ hr {
 .mu-input.error:focus,
 .mu-select.error:focus,
 .mu-textarea.error:focus {
-  box-shadow: 0 0 0 3px rgba(194, 59, 59, 0.1);
+  box-shadow: 0 0 0 3px rgba(194, 59, 59, 0.15);
 }
 
 .mu-textarea {
@@ -1714,7 +1714,7 @@ hr {
   padding-left: var(--mu-spacing-8);
 }
 
-.mu-input-icon .mu-input:focus+.bi {
+.mu-input-icon .mu-input:focus ~ .bi {
   color: var(--mu-primary-500);
 }
 
@@ -2870,7 +2870,6 @@ hr {
   color: var(--mu-danger);
 }
 
-
 /* ==========================================================================
    24. MODAL & LOADER COMPONENTS
    ========================================================================== */
@@ -2885,8 +2884,8 @@ hr {
   align-items: center;
   justify-content: center;
   padding: var(--mu-spacing-4);
-  backdrop-filter: blur(4px);
-  animation: mu-fade-in 200ms ease;
+  animation: mu-fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
 }
 
 @keyframes mu-fade-in {
@@ -2906,13 +2905,17 @@ hr {
   display: flex;
   flex-direction: column;
   box-shadow: var(--mu-shadow-xl);
-  animation: mu-modal-slide-up 250ms ease;
+  animation: mu-modal-slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  overflow: hidden;
 }
 
 @keyframes mu-modal-slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.98);
+    transform: translateY(16px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -2934,22 +2937,25 @@ hr {
   font-size: var(--mu-font-size-lg);
   font-weight: var(--mu-font-weight-semibold);
   color: var(--mu-gray-900);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .mu-modal-close {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--mu-gray-400);
   font-size: 1.2rem;
   padding: var(--mu-spacing-1);
   cursor: pointer;
   border-radius: var(--mu-radius-sm);
-  transition: all var(--mu-transition-fast);
+  transition: all var(--mu-transition-fast) ease-in-out;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
+  outline: none;
 }
 
 .mu-modal-close:hover {
@@ -2961,6 +2967,8 @@ hr {
   padding: var(--mu-spacing-5);
   overflow-y: auto;
   flex: 1;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mu-modal-footer {
@@ -2971,6 +2979,7 @@ hr {
   padding: var(--mu-spacing-4) var(--mu-spacing-5);
   border-top: 1px solid var(--mu-border);
   flex-shrink: 0;
+  background: var(--mu-white);
 }
 
 /* Loading Spinner */
@@ -2985,12 +2994,16 @@ hr {
 
 .mu-loader-spinner {
   color: var(--mu-primary-500);
+  display: inline-block;
+  transform-origin: center center;
 }
 
 .mu-loader-text {
   margin-top: var(--mu-spacing-3);
   color: var(--mu-gray-500);
   font-size: var(--mu-font-size-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 /* Alert in modal */
@@ -3022,4 +3035,498 @@ hr {
     flex: 1;
     min-width: 100px;
   }
+}
+
+/* Profile Page Specific */
+.mu-profile-avatar-lg {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--mu-primary-100);
+}
+
+@media (max-width: 768px) {
+  .mu-profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ==========================================================================
+   STUDENT PROFILE PAGE - RESPONSIVE STYLING
+   ========================================================================== */
+
+/* ==========================================================================
+   1. PROFILE PAGE - DEFAULT (LAPTOP/DESKTOP)
+   ========================================================================== */
+
+/* Profile Grid - 4x8 Layout */
+.mu-profile-grid {
+  display: grid;
+  grid-template-columns: 4fr 8fr;
+  gap: var(--mu-spacing-6);
+}
+
+/* Left Column - Profile Card */
+.mu-profile-card {
+  height: fit-content;
+  position: sticky;
+  top: var(--mu-spacing-6);
+}
+
+.mu-profile-card .mu-profile-avatar-lg {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--mu-primary-100);
+  margin-bottom: var(--mu-spacing-4);
+}
+
+.mu-profile-card .mu-profile-name {
+  margin: 0;
+  font-size: var(--mu-font-size-xl);
+}
+
+.mu-profile-card .mu-profile-role {
+  color: var(--mu-gray-500);
+  font-size: var(--mu-font-size-sm);
+  text-transform: capitalize;
+}
+
+.mu-profile-card .mu-profile-divider {
+  margin: var(--mu-spacing-4) 0;
+  border: 0;
+  border-top: 1px solid var(--mu-border);
+}
+
+.mu-profile-card .mu-profile-detail-item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--mu-spacing-1) 0;
+  font-size: var(--mu-font-size-sm);
+}
+
+.mu-profile-card .mu-profile-detail-item .label {
+  color: var(--mu-gray-500);
+}
+
+.mu-profile-card .mu-profile-detail-item .value {
+  font-weight: var(--mu-font-weight-medium);
+}
+
+/* Right Column - Tabs */
+.mu-profile-tabs-container {
+  min-height: 400px;
+}
+
+.mu-profile-tabs {
+  display: flex;
+  gap: var(--mu-spacing-1);
+  border-bottom: 1px solid var(--mu-border);
+  margin-bottom: var(--mu-spacing-5);
+  flex-wrap: wrap;
+}
+
+.mu-profile-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--mu-spacing-2) var(--mu-spacing-4);
+  cursor: pointer;
+  color: var(--mu-gray-500);
+  font-weight: var(--mu-font-weight-medium);
+  font-size: var(--mu-font-size-sm);
+  transition: all var(--mu-transition-fast);
+}
+
+.mu-profile-tab:hover {
+  color: var(--mu-primary-600);
+  background: var(--mu-primary-50);
+}
+
+.mu-profile-tab.active {
+  color: var(--mu-primary-600);
+  border-bottom-color: var(--mu-primary-500);
+  font-weight: var(--mu-font-weight-semibold);
+}
+
+.mu-profile-tab .bi {
+  margin-right: var(--mu-spacing-1);
+}
+
+.mu-profile-tab-content {
+  min-height: 300px;
+}
+
+.mu-profile-tab-content .mu-dashboard-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mu-spacing-4);
+}
+
+/* ==========================================================================
+   2. PROFILE PAGE - TABLET (768px - 991px)
+   ========================================================================== */
+
+@media (max-width: 991px) {
+  .mu-profile-grid {
+    grid-template-columns: 1fr;
+    gap: var(--mu-spacing-4);
+  }
+
+  .mu-profile-card {
+    position: static;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--mu-spacing-4);
+    align-items: center;
+    padding: var(--mu-spacing-4);
+  }
+
+  .mu-profile-card .mu-profile-avatar-lg {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 0;
+  }
+
+  .mu-profile-card .mu-profile-card-text {
+    text-align: left;
+  }
+
+  .mu-profile-card .mu-profile-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mu-spacing-2);
+  }
+
+  .mu-profile-card .mu-profile-divider {
+    display: none;
+  }
+
+  .mu-profile-tabs-container {
+    min-height: 350px;
+  }
+}
+
+/* ==========================================================================
+   3. PROFILE PAGE - SMARTPHONE (320px - 767px)
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Profile Grid */
+  .mu-profile-grid {
+    grid-template-columns: 1fr;
+    gap: var(--mu-spacing-3);
+  }
+
+  /* Left Column - Profile Card (Mobile) */
+  .mu-profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--mu-spacing-4) var(--mu-spacing-3);
+  }
+
+  .mu-profile-card .mu-profile-avatar-lg {
+    width: 90px;
+    height: 90px;
+    margin-bottom: var(--mu-spacing-3);
+    border-width: 3px;
+  }
+
+  .mu-profile-card .mu-profile-name {
+    font-size: var(--mu-font-size-lg);
+  }
+
+  .mu-profile-card .mu-profile-role {
+    font-size: var(--mu-font-size-sm);
+  }
+
+  .mu-profile-card .mu-profile-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mu-spacing-1);
+    width: 100%;
+    margin-top: var(--mu-spacing-3);
+    padding-top: var(--mu-spacing-3);
+    border-top: 1px solid var(--mu-border);
+  }
+
+  .mu-profile-card .mu-profile-detail-item {
+    font-size: var(--mu-font-size-xs);
+    padding: var(--mu-spacing-1) 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .mu-profile-card .mu-profile-detail-item .label {
+    font-size: var(--mu-font-size-xs);
+    color: var(--mu-gray-400);
+  }
+
+  .mu-profile-card .mu-profile-detail-item .value {
+    font-size: var(--mu-font-size-sm);
+  }
+
+  /* Right Column - Tabs (Mobile) */
+  .mu-profile-tabs-container {
+    min-height: 280px;
+  }
+
+  /* Tabs - Horizontal Scroll on Mobile */
+  .mu-profile-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+    padding-bottom: var(--mu-spacing-1);
+  }
+
+  .mu-profile-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mu-profile-tab {
+    white-space: nowrap;
+    padding: var(--mu-spacing-2) var(--mu-spacing-3);
+    font-size: var(--mu-font-size-xs);
+    flex-shrink: 0;
+  }
+
+  .mu-profile-tab .bi {
+    font-size: var(--mu-font-size-sm);
+    margin-right: 4px;
+  }
+
+  .mu-profile-tab.active {
+    border-bottom-width: 2px;
+  }
+
+  /* Tab Content - Mobile */
+  .mu-profile-tab-content {
+    min-height: 250px;
+  }
+
+  .mu-profile-tab-content .mu-dashboard-grid-2 {
+    grid-template-columns: 1fr;
+    gap: var(--mu-spacing-2);
+  }
+
+  .mu-profile-tab-content .mu-form-group {
+    margin-bottom: var(--mu-spacing-2);
+  }
+
+  .mu-profile-tab-content .mu-form-group label {
+    font-size: var(--mu-font-size-xs);
+  }
+
+  .mu-profile-tab-content .mu-input {
+    font-size: var(--mu-font-size-sm);
+    padding: var(--mu-spacing-2) var(--mu-spacing-3);
+    min-height: 38px;
+  }
+
+  /* Profile Stats Cards - Mobile */
+  .mu-profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--mu-spacing-2);
+    margin-top: var(--mu-spacing-3);
+  }
+
+  .mu-profile-stats .mu-stat-card {
+    padding: var(--mu-spacing-2);
+    min-height: 70px;
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-value {
+    font-size: var(--mu-font-size-base);
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-label {
+    font-size: var(--mu-font-size-xs);
+  }
+
+  /* Page Header - Mobile */
+  .mu-page-header .mu-btn {
+    font-size: var(--mu-font-size-xs);
+    padding: var(--mu-spacing-1) var(--mu-spacing-3);
+  }
+
+  /* Alert spacing - Mobile */
+  .mu-alert {
+    font-size: var(--mu-font-size-sm);
+    padding: var(--mu-spacing-2) var(--mu-spacing-3);
+  }
+}
+
+/* ==========================================================================
+   4. EXTRA SMALL DEVICES (320px - 480px)
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .mu-profile-card .mu-profile-avatar-lg {
+    width: 75px;
+    height: 75px;
+  }
+
+  .mu-profile-card .mu-profile-name {
+    font-size: var(--mu-font-size-base);
+  }
+
+  .mu-profile-card .mu-profile-details {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mu-spacing-1);
+  }
+
+  .mu-profile-card .mu-profile-detail-item {
+    font-size: 0.6rem;
+  }
+
+  .mu-profile-card .mu-profile-detail-item .value {
+    font-size: var(--mu-font-size-xs);
+  }
+
+  .mu-profile-tab {
+    font-size: 0.65rem;
+    padding: var(--mu-spacing-1) var(--mu-spacing-2);
+  }
+
+  .mu-profile-tab .bi {
+    font-size: 0.75rem;
+  }
+
+  .mu-profile-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mu-spacing-1);
+  }
+
+  .mu-profile-stats .mu-stat-card {
+    padding: var(--mu-spacing-1) var(--mu-spacing-2);
+    min-height: 60px;
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+    margin-bottom: var(--mu-spacing-1);
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-value {
+    font-size: var(--mu-font-size-sm);
+  }
+
+  .mu-profile-stats .mu-stat-card .mu-stat-label {
+    font-size: 0.55rem;
+  }
+}
+
+/* ==========================================================================
+   5. PROFILE PAGE - PRINT STYLES
+   ========================================================================== */
+
+@media print {
+  .mu-profile-card {
+    break-inside: avoid;
+  }
+
+  .mu-profile-tabs-container {
+    break-inside: avoid;
+  }
+
+  .mu-profile-tab {
+    display: none;
+  }
+
+  .mu-profile-tab-content {
+    display: block !important;
+  }
+
+  .mu-profile-tab-content .mu-dashboard-grid-2 {
+    display: grid !important;
+  }
+}
+
+/* ==========================================================================
+   AUTH PAGES - WELCOME SECTION
+   ========================================================================== */
+
+.mu-auth-welcome {
+  text-align: center;
+  margin-bottom: var(--mu-spacing-5);
+}
+
+.mu-auth-welcome h3 {
+  margin: var(--mu-spacing-1) 0 0;
+  color: var(--mu-gray-500);
+  font-size: var(--mu-font-size-sm);
+}
+
+.mu-auth-welcome p {
+  margin: var(--mu-spacing-1) 0 0;
+  color: var(--mu-gray-500);
+  font-size: var(--mu-font-size-sm);
+}
+
+/* ==========================================================================
+   AUTH PAGES (Login) - UPDATED
+   ========================================================================== */
+
+.mu-auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mu-gray-50);
+  padding: var(--mu-spacing-4);
+}
+
+.mu-auth-card {
+  position: relative;
+  z-index: 1;
+  background: var(--mu-white);
+  border-radius: 8px;
+  padding: var(--mu-spacing-8);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--mu-shadow-lg);
+  border: 1px solid var(--mu-border);
+}
+
+/* Logo Section */
+.mu-auth-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mu-auth-logo-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: var(--mu-spacing-2);
+}
+
+.mu-auth-logo h2 {
+  margin: 0;
+  font-size: var(--mu-font-size-xl);
+  color: var(--mu-gray-900);
+  font-weight: var(--mu-font-weight-bold);
+}
+
+.mu-auth-logo p {
+  color: var(--mu-gray-500);
+  font-size: var(--mu-font-size-sm);
+  margin: var(--mu-spacing-1) 0 0;
 }

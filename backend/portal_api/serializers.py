@@ -52,6 +52,12 @@ class GradingSchemeSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class AcademicYearSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = m.AcademicYear
+        fields = "__all__"
+
+
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.Department
@@ -71,9 +77,19 @@ class CourseSerializer(serializers.ModelSerializer):
         model = m.Course
         fields = "__all__"
 
+class CurriculumVersionBriefSerializer(serializers.ModelSerializer):
+    """Used inside CurriculumUnitSerializer — deliberately excludes `units` to avoid recursion."""
+    effective_academic_year_detail = AcademicYearSerializer(source="effective_academic_year", read_only=True)
+
+    class Meta:
+        model = m.CurriculumVersion
+        fields = ["id", "programme", "effective_academic_year", "effective_academic_year_detail", "is_active", "notes"]
+
+
 
 class CurriculumUnitSerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
+    curriculum_version_detail = CurriculumVersionBriefSerializer(source="curriculum_version", read_only=True)
 
     class Meta:
         model = m.CurriculumUnit
@@ -82,6 +98,7 @@ class CurriculumUnitSerializer(serializers.ModelSerializer):
 
 class CurriculumVersionSerializer(serializers.ModelSerializer):
     units = CurriculumUnitSerializer(many=True, read_only=True)
+    effective_academic_year_detail = AcademicYearSerializer(source="effective_academic_year", read_only=True)
 
     class Meta:
         model = m.CurriculumVersion
@@ -91,11 +108,6 @@ class CurriculumVersionSerializer(serializers.ModelSerializer):
 # ----------------------------------------------------------------------
 # CALENDAR
 # ----------------------------------------------------------------------
-
-class AcademicYearSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = m.AcademicYear
-        fields = "__all__"
 
 
 class SemesterSerializer(serializers.ModelSerializer):
@@ -179,6 +191,7 @@ class StudentDefermentSerializer(serializers.ModelSerializer):
 class LecturerUnitAllocationSerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
     lecturer_detail = LecturerSerializer(source="lecturer", read_only=True)
+    semester_detail = SemesterSerializer(source="semester", read_only=True)
 
     class Meta:
         model = m.LecturerUnitAllocation
@@ -189,10 +202,13 @@ class LecturerUnitAllocationSerializer(serializers.ModelSerializer):
 class EnrollmentSerializer(serializers.ModelSerializer):
     student_detail = StudentSerializer(source="student", read_only=True)
     course_detail = CourseSerializer(source="course", read_only=True)
+    semester_detail = SemesterSerializer(source="semester", read_only=True)
 
     class Meta:
         model = m.Enrollment
         fields = "__all__"
+
+
 
 
 # ----------------------------------------------------------------------
