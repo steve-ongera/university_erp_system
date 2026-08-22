@@ -86,6 +86,7 @@ const NAV_BY_ROLE = {
     {
       section: "Operations",
       links: [
+        { to: "/resultsmanagement" , label:'Results Manager' , icon:"bi bi-arrow-bar-up"},
         { to: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle" },
         { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
         { to: "/clearances", label: "Clearances", icon: "bi-file-earmark-check" },

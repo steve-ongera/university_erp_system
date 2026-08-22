@@ -38,6 +38,7 @@ import Promotions from "./pages/admin/Promotions";
 import Examinations from "./pages/admin/Examinations";
 import ClearancesManagement from "./pages/admin/ClearancesManagement";
 import Reports from "./pages/admin/Reports";
+import ResultsManager from "./pages/admin/ResultsManagement";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -134,6 +135,7 @@ export default function App() {
             <Route path="/examinations" element={<ProtectedRoute allow={ADMIN_ROLES}><Examinations /></ProtectedRoute>} />
             <Route path="/clearances" element={<ProtectedRoute allow={ADMIN_ROLES}><ClearancesManagement /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute allow={ADMIN_ROLES}><Reports /></ProtectedRoute>} />
+            <Route path="/resultsmanagement" element={<ProtectedRoute allow={ADMIN_ROLES}><ResultsManager /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

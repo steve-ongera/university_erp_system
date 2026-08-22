@@ -138,7 +138,9 @@ export const catsApi = {
 // Grades APIs
 // ---------------------------------------------------------------------
 export const gradesApi = {
+  list: (params) => api.get("/grades/", { params }),
   enter: (payload) => api.post("/grades/enter/", payload),
+  remove: (id) => api.delete(`/grades/${id}/`),
   myGrades: () => api.get("/grades/"),
 };
 
@@ -220,6 +222,7 @@ export const adminApi = {
   
   // Promotions
   runPromotion: () => api.post("/admin-ops/run-promotion/"),
+  unitRegistrations: (params) => api.get("/unit-registrations/", { params }),
   
   // Reports
   reports: () => api.get("/reports/"),
@@ -267,6 +270,8 @@ export const adminApi = {
   deleteLecturerAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
 
 };
+
+
 
 // ---------------------------------------------------------------------
 // Lecturer APIs

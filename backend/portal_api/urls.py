@@ -29,6 +29,7 @@ router.register(r"deferments", v.StudentDefermentViewSet, basename="deferments")
 router.register(r"lecturer-allocations", v.LecturerUnitAllocationViewSet, basename="lecturer-allocations")
 router.register(r"unit-registrations", v.UnitRegistrationViewSet, basename="unit-registrations")
 router.register(r"enrollments", v.EnrollmentViewSet, basename="enrollments")
+router.register(r"unit-registrations", v.UnitRegistrationViewSet, basename="unit-registration")
 
 # CATs / Grades
 router.register(r"cats", v.CatSubmissionViewSet, basename="cats")

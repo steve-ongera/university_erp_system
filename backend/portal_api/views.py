@@ -296,6 +296,7 @@ class UnitRegistrationViewSet(viewsets.ModelViewSet):
     queryset = m.UnitRegistration.objects.select_related("course", "student")
     serializer_class = s.UnitRegistrationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["student", "semester", "course", "registration_type", "is_active"]
 
     def get_queryset(self):
         user = self.request.user
@@ -359,6 +360,7 @@ class GradeViewSet(viewsets.ModelViewSet):
     queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")
     serializer_class = s.GradeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["enrollment", "enrollment__student", "enrollment__course", "enrollment__semester"]
 
     def get_queryset(self):
         user = self.request.user

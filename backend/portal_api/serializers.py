@@ -429,12 +429,14 @@ class SemesterDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "semester_number", "academic_year", "academic_year_detail", "is_current"]
 
 
+
 class UnitRegistrationSerializer(serializers.ModelSerializer):
     course_detail = CourseDetailSerializer(source="course", read_only=True)
     semester_detail = SemesterDetailSerializer(source="semester", read_only=True)
     student_detail = StudentSerializer(source="student", read_only=True)
     has_grade = serializers.SerializerMethodField()
     grade_detail = serializers.SerializerMethodField()
+    enrollment_id = serializers.SerializerMethodField()   # <-- new
     invoice_status = serializers.SerializerMethodField()
     is_paid = serializers.SerializerMethodField()
 
@@ -450,6 +452,10 @@ class UnitRegistrationSerializer(serializers.ModelSerializer):
         if hasattr(obj, "enrollment") and hasattr(obj.enrollment, "grade"):
             return GradeSerializer(obj.enrollment.grade).data
         return None
+
+    def get_enrollment_id(self, obj):               # <-- new
+        return obj.enrollment.id if hasattr(obj, "enrollment") else None
+
 
     def get_invoice_status(self, obj):
         if obj.supplementary_invoice:
