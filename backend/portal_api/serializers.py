@@ -187,16 +187,18 @@ class StudentDefermentSerializer(serializers.ModelSerializer):
 # ----------------------------------------------------------------------
 # UNITS / ENROLLMENT
 # ----------------------------------------------------------------------
-
 class LecturerUnitAllocationSerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
     lecturer_detail = LecturerSerializer(source="lecturer", read_only=True)
     semester_detail = SemesterSerializer(source="semester", read_only=True)
+    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = m.LecturerUnitAllocation
         fields = "__all__"
 
+    def get_student_count(self, obj):
+        return obj.roster().count()
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
