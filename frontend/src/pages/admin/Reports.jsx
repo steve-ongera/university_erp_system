@@ -4,6 +4,17 @@ import { adminApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { TabBar, EmptyState, downloadCsv } from "../../components/ui/AdminUI";
 
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
+  BarElement, ArcElement, Title, Tooltip, Legend, Filler,
+} from "chart.js";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
+
+const PALETTE = ["#3b6ce0", "#1a8a5a", "#c97d2a", "#7c3aed", "#c23b3b", "#2f6fed", "#d4a437", "#0d1f55"];
+const STATUS_COLORS = { active: "success", deferred: "warning", graduated: "info", suspended: "danger", discontinued: "gray", expelled: "danger" };
+
 function printSection(title, columns, rows) {
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) return;
@@ -20,7 +31,11 @@ function printSection(title, columns, rows) {
   win.print();
 }
 
-const STATUS_COLORS = { active: "success", deferred: "warning", graduated: "info", suspended: "danger", discontinued: "gray", expelled: "danger" };
+const chartOpts = (extra = {}) => ({
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { position: "bottom", labels: { usePointStyle: true, font: { size: 11 } } } },
+  ...extra,
+});
 
 export default function Reports() {
   const [data, setData] = useState(null);
@@ -40,6 +55,38 @@ export default function Reports() {
   if (!data) return <EmptyState icon="bi-bar-chart" label="No report data available" />;
 
   const statusRows = Object.entries(data.students_by_status || {}).map(([status, count]) => ({ status, count }));
+
+  const statusDoughnut = {
+    labels: statusRows.map((r) => r.status),
+    datasets: [{ data: statusRows.map((r) => r.count), backgroundColor: PALETTE, borderColor: "#fff", borderWidth: 2 }],
+  };
+
+  const programmeBar = {
+    labels: data.students_by_programme.map((p) => p.programme__code),
+    datasets: [{ label: "Students", data: data.students_by_programme.map((p) => p.c), backgroundColor: PALETTE, borderRadius: 6 }],
+  };
+
+  const admissionsLine = {
+    labels: data.admissions_by_academic_year.map((a) => a.year),
+    datasets: [{
+      label: "Admissions", data: data.admissions_by_academic_year.map((a) => a.count),
+      borderColor: "#3b6ce0", backgroundColor: "rgba(59,108,224,0.1)", fill: true, tension: 0.4,
+      pointBackgroundColor: "#3b6ce0", pointBorderColor: "#fff", pointBorderWidth: 2, pointRadius: 4,
+    }],
+  };
+
+  const gradeBar = {
+    labels: data.grade_distribution.map((g) => g.letter_grade),
+    datasets: [{ label: "Students", data: data.grade_distribution.map((g) => g.count), backgroundColor: "#1a8a5a", borderRadius: 6 }],
+  };
+
+  const feesBar = {
+    labels: ["Invoiced", "Collected", "Outstanding"],
+    datasets: [{
+      data: [data.fees.total_invoiced, data.fees.total_collected, data.fees.total_outstanding],
+      backgroundColor: ["#3b6ce0", "#1a8a5a", "#c23b3b"], borderRadius: 6,
+    }],
+  };
 
   return (
     <div>
@@ -63,27 +110,38 @@ export default function Reports() {
       />
 
       {tab === "overview" && (
-        <div className="mu-dashboard-grid">
-          {statusRows.map((r) => (
-            <div key={r.status} className="mu-stat-card">
-              <div className={`mu-stat-icon ${STATUS_COLORS[r.status] === "danger" ? "red" : "blue"}`}>
-                <i className="bi bi-people" />
+        <>
+          <div className="mu-dashboard-grid" style={{ marginBottom: 20 }}>
+            {statusRows.map((r) => (
+              <div key={r.status} className="mu-stat-card">
+                <div className={`mu-stat-icon ${STATUS_COLORS[r.status] === "danger" ? "red" : "blue"}`}><i className="bi bi-people" /></div>
+                <div className="mu-stat-label" style={{ textTransform: "capitalize" }}>{r.status}</div>
+                <div className="mu-stat-value">{r.count}</div>
               </div>
-              <div className="mu-stat-label" style={{ textTransform: "capitalize" }}>{r.status}</div>
-              <div className="mu-stat-value">{r.count}</div>
+            ))}
+            <div className="mu-stat-card">
+              <div className="mu-stat-icon gold"><i className="bi bi-pause-circle" /></div>
+              <div className="mu-stat-label">Deferments Pending</div>
+              <div className="mu-stat-value">{data.deferments_pending}</div>
             </div>
-          ))}
-          <div className="mu-stat-card">
-            <div className="mu-stat-icon gold"><i className="bi bi-pause-circle" /></div>
-            <div className="mu-stat-label">Deferments Pending</div>
-            <div className="mu-stat-value">{data.deferments_pending}</div>
+            <div className="mu-stat-card">
+              <div className="mu-stat-icon purple"><i className="bi bi-patch-check" /></div>
+              <div className="mu-stat-label">Clearances Pending</div>
+              <div className="mu-stat-value">{data.clearances_pending}</div>
+            </div>
           </div>
-          <div className="mu-stat-card">
-            <div className="mu-stat-icon purple"><i className="bi bi-patch-check" /></div>
-            <div className="mu-stat-label">Clearances Pending</div>
-            <div className="mu-stat-value">{data.clearances_pending}</div>
+
+          <div className="mu-dashboard-grid-3">
+            <div className="mu-card" style={{ gridColumn: "span 2" }}>
+              <div className="mu-card-header"><h4>Admissions Trend</h4></div>
+              <div className="mu-card-body" style={{ height: 280 }}><Line data={admissionsLine} options={chartOpts()} /></div>
+            </div>
+            <div className="mu-card">
+              <div className="mu-card-header"><h4>Students by Status</h4></div>
+              <div className="mu-card-body" style={{ height: 280 }}><Doughnut data={statusDoughnut} options={{ ...chartOpts(), cutout: "60%" }} /></div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {tab === "programmes" && (
@@ -105,6 +163,9 @@ export default function Reports() {
               </button>
             </div>
           </div>
+          <div className="mu-card-body" style={{ height: 300 }}>
+            <Bar data={programmeBar} options={{ ...chartOpts(), plugins: { legend: { display: false } } }} />
+          </div>
           <div className="mu-card-body" style={{ padding: 0 }}>
             <div className="mu-table-wrapper">
               <table className="mu-table">
@@ -124,27 +185,50 @@ export default function Reports() {
       )}
 
       {tab === "academics" && (
-        <div className="mu-card">
-          <div className="mu-card-header"><h4>Academic Performance</h4></div>
-          <div className="mu-card-body">
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              <Stat label="Grades Published" value={data.grades.published} />
-              <Stat label="Passes" value={data.grades.pass} />
-              <Stat label="Fails / Supplementary" value={data.grades.fail} />
-              <Stat label="Pass Rate" value={data.grades.pass_rate !== null ? `${data.grades.pass_rate}%` : "—"} />
+        <>
+          <div className="mu-card" style={{ marginBottom: 20 }}>
+            <div className="mu-card-body">
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                <Stat label="Grades Published" value={data.grades.published} />
+                <Stat label="Passes" value={data.grades.pass} />
+                <Stat label="Fails / Supplementary" value={data.grades.fail} />
+                <Stat label="Pass Rate" value={data.grades.pass_rate !== null ? `${data.grades.pass_rate}%` : "—"} />
+              </div>
             </div>
           </div>
-        </div>
+          <div className="mu-card">
+            <div className="mu-card-header">
+              <h4>Grade Distribution</h4>
+              <button className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                      onClick={() => downloadCsv("grade_distribution.csv", data.grade_distribution, ["letter_grade", "count"])}>
+                <i className="bi bi-download" /> CSV
+              </button>
+            </div>
+            <div className="mu-card-body" style={{ height: 300 }}>
+              {data.grade_distribution.length === 0
+                ? <EmptyState icon="bi-bar-chart" label="No published grades yet" />
+                : <Bar data={gradeBar} options={{ ...chartOpts(), plugins: { legend: { display: false } } }} />}
+            </div>
+          </div>
+        </>
       )}
 
       {tab === "fees" && (
-        <div className="mu-card">
-          <div className="mu-card-header"><h4>Fee Collection</h4></div>
-          <div className="mu-card-body">
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              <Stat label="Total Invoiced" value={`Ksh ${data.fees.total_invoiced.toLocaleString()}`} />
-              <Stat label="Total Collected" value={`Ksh ${data.fees.total_collected.toLocaleString()}`} />
-              <Stat label="Total Outstanding" value={`Ksh ${data.fees.total_outstanding.toLocaleString()}`} />
+        <div className="mu-dashboard-grid-3">
+          <div className="mu-card">
+            <div className="mu-card-header"><h4>Fee Collection</h4></div>
+            <div className="mu-card-body" style={{ height: 280 }}>
+              <Bar data={feesBar} options={{ ...chartOpts(), plugins: { legend: { display: false } } }} />
+            </div>
+          </div>
+          <div className="mu-card" style={{ gridColumn: "span 2" }}>
+            <div className="mu-card-header"><h4>Totals</h4></div>
+            <div className="mu-card-body">
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                <Stat label="Total Invoiced" value={`Ksh ${data.fees.total_invoiced.toLocaleString()}`} />
+                <Stat label="Total Collected" value={`Ksh ${data.fees.total_collected.toLocaleString()}`} />
+                <Stat label="Total Outstanding" value={`Ksh ${data.fees.total_outstanding.toLocaleString()}`} />
+              </div>
             </div>
           </div>
         </div>
