@@ -479,9 +479,11 @@ class SupplementaryView(APIView):
 # ======================================================================
 
 class FeeStructureViewSet(viewsets.ModelViewSet):
-    queryset = m.FeeStructure.objects.all()
+    queryset = m.FeeStructure.objects.select_related("programme", "academic_year")
     serializer_class = s.FeeStructureSerializer
     permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+    filterset_fields = ["programme", "academic_year", "year", "semester"]
+
 
 
 class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -496,16 +498,6 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
         return super().get_queryset()
 
 
-class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = m.FeePayment.objects.all()
-    serializer_class = s.FeePaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.user_type == "student":
-            return m.FeePayment.objects.filter(student__user=user)
-        return super().get_queryset()
 
 
 class BankPaymentWebhookView(APIView):
@@ -542,38 +534,20 @@ class MyFeeSummaryView(APIView):
         })
 
 
-class HelbBursaryAwardViewSet(viewsets.ModelViewSet):
-    queryset = m.HelbBursaryAward.objects.all()
-    serializer_class = s.HelbBursaryAwardSerializer
-    permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
-
-
 # ======================================================================
 # HOSTEL
 # ======================================================================
 
-class HostelViewSet(viewsets.ModelViewSet):
-    queryset = m.Hostel.objects.all()
-    serializer_class = s.HostelSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
 
-class RoomViewSet(viewsets.ModelViewSet):
-    queryset = m.Room.objects.all()
-    serializer_class = s.RoomSerializer
-    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
-
-class BedViewSet(viewsets.ModelViewSet):
-    queryset = m.Bed.objects.filter(is_available=True).select_related("room", "room__hostel")
-    serializer_class = s.BedSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ["room", "room__hostel", "academic_year"]
 
 
 class HostelBookingViewSet(viewsets.ModelViewSet):
-    queryset = m.HostelBooking.objects.select_related("bed", "student")
+    queryset = m.HostelBooking.objects.select_related("bed__room__hostel", "student__user")
     serializer_class = s.HostelBookingSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["academic_year", "status", "bed__room__hostel", "student"]
+    search_fields = ["student__registration_number"]
 
     def get_queryset(self):
         user = self.request.user
@@ -590,6 +564,37 @@ class HostelBookingViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(s.HostelBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"], url_path="manual_book",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def manual_book(self, request):
+        try:
+            student = m.Student.objects.get(pk=request.data["student"])
+            bed = m.Bed.objects.get(pk=request.data["bed"])
+        except (m.Student.DoesNotExist, m.Bed.DoesNotExist, KeyError):
+            return Response({"detail": "Valid student and bed are required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            booking = services.HostelService.manual_book(
+                student, bed, bed.academic_year, status=request.data.get("status")
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(s.HostelBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="check_in",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def check_in(self, request, pk=None):
+        return Response(s.HostelBookingSerializer(services.HostelService.check_in(self.get_object())).data)
+
+    @action(detail=True, methods=["post"], url_path="check_out",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def check_out(self, request, pk=None):
+        return Response(s.HostelBookingSerializer(services.HostelService.check_out(self.get_object())).data)
+
+    @action(detail=True, methods=["post"], url_path="cancel",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def cancel(self, request, pk=None):
+        return Response(s.HostelBookingSerializer(services.HostelService.cancel(self.get_object())).data)
 
 
 # ======================================================================
@@ -1621,3 +1626,135 @@ class CloseAttendanceSessionView(APIView):
         session.is_active = False
         session.save(update_fields=["is_active"])
         return Response(s.AttendanceSessionSerializer(session).data)
+    
+    
+    
+
+# --- Add to views.py ---
+
+# ======================================================================
+# FINANCE
+# ======================================================================
+
+class InvoiceAllocationViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.InvoiceAllocation.objects.select_related("invoice", "payment")
+    serializer_class = s.InvoiceAllocationSerializer
+    permission_classes = [IsRole.for_roles("admin", "finance")]
+    filterset_fields = ["payment", "invoice"]
+
+
+
+
+class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.FeePayment.objects.select_related("student__user")
+    serializer_class = s.FeePaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["method", "is_reconciled", "student"]
+    search_fields = ["registration_number_on_slip", "payer_name_on_slip", "bank_reference", "receipt_number"]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.FeePayment.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    @action(detail=False, methods=["get"], url_path="flagged",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def flagged(self, request):
+        qs = self.get_queryset().exclude(reconciliation_notes="")
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page or qs, many=True)
+        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="resolve",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def resolve(self, request, pk=None):
+        payment = self.get_object()
+        payment.reconciliation_notes = ""
+        payment.save(update_fields=["reconciliation_notes"])
+        return Response(s.FeePaymentSerializer(payment).data)
+
+    @action(detail=True, methods=["post"], url_path="reassign",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def reassign(self, request, pk=None):
+        payment = self.get_object()
+        try:
+            new_student = m.Student.objects.get(pk=request.data.get("student"))
+        except (m.Student.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Valid target student is required."}, status=status.HTTP_400_BAD_REQUEST)
+        payment = services.FeeService.reassign_payment(payment, new_student)
+        return Response(s.FeePaymentSerializer(payment).data)
+
+
+class HelbBursaryAwardViewSet(viewsets.ModelViewSet):
+    queryset = m.HelbBursaryAward.objects.select_related("student__user")
+    serializer_class = s.HelbBursaryAwardSerializer
+    permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+    filterset_fields = ["source", "academic_year", "disbursed", "student"]
+    search_fields = ["student__registration_number"]
+
+    @action(detail=True, methods=["post"], url_path="mark-disbursed")
+    def mark_disbursed(self, request, pk=None):
+        award = self.get_object()
+        award.disbursed = True
+        award.disbursed_date = timezone.now().date()
+        award.save(update_fields=["disbursed", "disbursed_date"])
+        return Response(s.HelbBursaryAwardSerializer(award).data)
+
+
+class FinanceDashboardView(APIView):
+    permission_classes = [IsRole.for_roles("admin", "finance")]
+
+    def get(self, request):
+        data = services.FeeService.dashboard_summary()
+        data["recent_payments"] = s.FeePaymentSerializer(data["recent_payments"], many=True).data
+        return Response(data)
+
+
+# ======================================================================
+# HOSTEL
+# ======================================================================
+
+class HostelViewSet(viewsets.ModelViewSet):
+    queryset = m.Hostel.objects.all()
+    serializer_class = s.HostelSerializer
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+    search_fields = ["name"]
+
+
+class RoomViewSet(viewsets.ModelViewSet):
+    queryset = m.Room.objects.select_related("hostel")
+    serializer_class = s.RoomSerializer
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+    filterset_fields = ["hostel", "is_active"]
+    search_fields = ["room_number"]
+
+class BedViewSet(viewsets.ModelViewSet):
+    queryset = m.Bed.objects.all()
+    serializer_class = s.BedSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["room", "academic_year", "is_available"]
+
+    def get_queryset(self):
+        qs = m.Bed.objects.select_related("room__hostel")
+
+        # Staff managing inventory need to see occupied beds too;
+        # students booking only ever see free ones.
+        if self.request.user.user_type in {"admin", "hostel_warden"}:
+            return qs
+
+        return qs.filter(is_available=True)
+    
+    
+class HostelDashboardView(APIView):
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+
+    def get(self, request):
+        academic_year = None
+        ay_id = request.query_params.get("academic_year")
+        if ay_id:
+            academic_year = m.AcademicYear.objects.filter(pk=ay_id).first()
+        data = services.HostelService.dashboard_summary(academic_year)
+        data["recent_bookings"] = s.HostelBookingSerializer(data["recent_bookings"], many=True).data
+        return Response(data)
+
