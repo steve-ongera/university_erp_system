@@ -636,3 +636,35 @@ class ClearanceService:
             defaults={"status": m.ClearanceRequest.Status.PENDING},
         )
         return clearance
+
+
+class StaffService:
+    @staticmethod
+    @transaction.atomic
+    def admit_lecturer(*, first_name, last_name, gender, department, academic_rank="", joining_date=None):
+        employee_no = utils.generate_employee_number("LEC", m.Lecturer)
+        user = m.User.objects.create_user(
+            username=employee_no, password=employee_no, first_name=first_name,
+            last_name=last_name, gender=gender, user_type=m.User.UserType.LECTURER,
+        )
+        user.must_change_password = True
+        user.save(update_fields=["must_change_password"])
+        return m.Lecturer.objects.create(
+            user=user, employee_number=employee_no, department=department,
+            academic_rank=academic_rank, joining_date=joining_date or timezone.now().date(),
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def admit_staff(*, first_name, last_name, gender, department=None, designation="",
+                     user_type=m.User.UserType.STAFF):
+        employee_no = utils.generate_employee_number("STF", m.Staff)
+        user = m.User.objects.create_user(
+            username=employee_no, password=employee_no, first_name=first_name,
+            last_name=last_name, gender=gender, user_type=user_type,
+        )
+        user.must_change_password = True
+        user.save(update_fields=["must_change_password"])
+        return m.Staff.objects.create(
+            user=user, employee_number=employee_no, department=department, designation=designation,
+        )

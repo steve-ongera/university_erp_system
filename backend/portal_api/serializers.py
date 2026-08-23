@@ -572,3 +572,27 @@ class AdminDashboardResponseSerializer(serializers.Serializer):
     enrollment_trends = serializers.ListField()
     programme_distribution = AdminDashboardProgrammeDistributionSerializer(many=True)
     department_stats = AdminDashboardDepartmentStatSerializer(many=True)
+    
+    
+class AdmitLecturerSerializer(serializers.Serializer):
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    gender = serializers.ChoiceField(choices=m.User.Gender.choices)
+    department = serializers.PrimaryKeyRelatedField(queryset=m.Department.objects.all())
+    academic_rank = serializers.CharField(required=False, allow_blank=True, default="")
+    joining_date = serializers.DateField(required=False)
+
+    def create(self, validated_data):
+        return services.StaffService.admit_lecturer(**validated_data)
+
+
+class AdmitStaffSerializer(serializers.Serializer):
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    gender = serializers.ChoiceField(choices=m.User.Gender.choices)
+    department = serializers.PrimaryKeyRelatedField(queryset=m.Department.objects.all(), required=False, allow_null=True)
+    designation = serializers.CharField(required=False, allow_blank=True, default="")
+    user_type = serializers.ChoiceField(choices=m.User.UserType.choices, default=m.User.UserType.STAFF)
+
+    def create(self, validated_data):
+        return services.StaffService.admit_staff(**validated_data)
