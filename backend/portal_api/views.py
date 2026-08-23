@@ -226,18 +226,37 @@ class LecturerViewSet(viewsets.ModelViewSet):
     queryset = m.Lecturer.objects.select_related("user", "department")
     serializer_class = s.LecturerSerializer
     permission_classes = [IsStaffRole]
-    filterset_fields = ["department"]
+    filterset_fields = ["department", "is_active"]
+    search_fields = ["employee_number", "user__first_name", "user__last_name"]
+
+    @action(detail=False, methods=["post"], url_path="admit")
+    def admit(self, request):
+        serializer = s.AdmitLecturerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        lecturer = serializer.save()
+        return Response(s.LecturerSerializer(lecturer).data, status=status.HTTP_201_CREATED)
 
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = m.Staff.objects.select_related("user")
     serializer_class = s.StaffSerializer
     permission_classes = [IsRole.for_roles("admin", "registrar")]
+    filterset_fields = ["department", "is_active"]
+    search_fields = ["employee_number", "user__first_name", "user__last_name"]
+
+    @action(detail=False, methods=["post"], url_path="admit")
+    def admit(self, request):
+        serializer = s.AdmitStaffSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff = serializer.save()
+        return Response(s.StaffSerializer(staff).data, status=status.HTTP_201_CREATED)
 
 
 class StudentDefermentViewSet(viewsets.ModelViewSet):
-    queryset = m.StudentDeferment.objects.all()
+    queryset = m.StudentDeferment.objects.select_related("student__user")
     serializer_class = s.StudentDefermentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["status", "student"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
 
     def get_queryset(self):
         user = self.request.user
@@ -262,6 +281,17 @@ class StudentDefermentViewSet(viewsets.ModelViewSet):
         deferment = self.get_object()
         student = services.DefermentService.resume(deferment)
         return Response(s.StudentSerializer(student).data)
+    
+    @action(detail=True, methods=["post"], url_path="reject",
+            permission_classes=[IsRole.for_roles("admin", "registrar")])
+    def reject(self, request, pk=None):
+        deferment = self.get_object()
+        deferment.status = m.StudentDeferment.Status.REJECTED
+        deferment.processed_by = request.user
+        deferment.processed_at = timezone.now()
+        deferment.admin_remarks = request.data.get("remarks", "")
+        deferment.save()
+        return Response(s.StudentDefermentSerializer(deferment).data)
 
 
 class CurriculumUnitViewSet(viewsets.ModelViewSet):
