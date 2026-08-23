@@ -332,6 +332,7 @@ class HostelSerializer(serializers.ModelSerializer):
 
 
 class RoomSerializer(serializers.ModelSerializer):
+    hostel_detail = HostelSerializer(source="hostel", read_only=True)
     class Meta:
         model = m.Room
         fields = "__all__"

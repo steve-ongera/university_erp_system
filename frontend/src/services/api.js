@@ -358,27 +358,52 @@ export const lecturerApi = {
 // Finance APIs
 // ---------------------------------------------------------------------
 export const financeApi = {
-  feeStructures: () => api.get("/fee-structures/"),
+  feeStructures: (params) => api.get("/fee-structures/", { params }),
   createFeeStructure: (payload) => api.post("/fee-structures/", payload),
-  invoices: () => api.get("/invoices/"),
-  payments: () => api.get("/fee-payments/"),
-  financialAwards: () => api.get("/financial-awards/"),
-  createAward: (payload) => api.post("/financial-awards/", payload),
+  updateFeeStructure: (id, payload) => api.patch(`/fee-structures/${id}/`, payload),
+  deleteFeeStructure: (id) => api.delete(`/fee-structures/${id}/`),
+ 
+  payments: (params) => api.get("/fee-payments/", { params }),
+  paymentAllocations: (paymentId) => api.get("/invoice-allocations/", { params: { payment: paymentId } }),
+  resolvePayment: (id) => api.post(`/fee-payments/${id}/resolve/`),
+  reassignPayment: (id, studentId) => api.post(`/fee-payments/${id}/reassign/`, { student: studentId }),
+ 
+  helbAwards: (params) => api.get("/financial-awards/", { params }),
+  createHelbAward: (payload) => api.post("/financial-awards/", payload),
+  updateHelbAward: (id, payload) => api.patch(`/financial-awards/${id}/`, payload),
+  deleteHelbAward: (id) => api.delete(`/financial-awards/${id}/`),
+  markDisbursed: (id) => api.post(`/financial-awards/${id}/mark-disbursed/`),
+ 
   bankWebhook: (payload) => api.post("/integrations/bank-payment/", payload),
+  dashboard: () => api.get("/finance/dashboard/"),
 };
 
 // ---------------------------------------------------------------------
 // Hostel Warden APIs
 // ---------------------------------------------------------------------
 export const hostelWardenApi = {
-  hostels: () => api.get("/hostels/"),
+  hostels: (params) => api.get("/hostels/", { params }),
   createHostel: (payload) => api.post("/hostels/", payload),
-  rooms: () => api.get("/rooms/"),
+  updateHostel: (id, payload) => api.patch(`/hostels/${id}/`, payload),
+  deleteHostel: (id) => api.delete(`/hostels/${id}/`),
+ 
+  rooms: (params) => api.get("/rooms/", { params }),
   createRoom: (payload) => api.post("/rooms/", payload),
+  updateRoom: (id, payload) => api.patch(`/rooms/${id}/`, payload),
+  deleteRoom: (id) => api.delete(`/rooms/${id}/`),
+ 
   beds: (params) => api.get("/beds/", { params }),
   createBed: (payload) => api.post("/beds/", payload),
-  bookings: () => api.get("/hostel-bookings/"),
-  updateBooking: (id, payload) => api.patch(`/hostel-bookings/${id}/`, payload),
+  updateBed: (id, payload) => api.patch(`/beds/${id}/`, payload),
+  deleteBed: (id) => api.delete(`/beds/${id}/`),
+ 
+  bookings: (params) => api.get("/hostel-bookings/", { params }),
+  manualBook: (payload) => api.post("/hostel-bookings/manual_book/", payload),
+  checkIn: (id) => api.post(`/hostel-bookings/${id}/check_in/`),
+  checkOut: (id) => api.post(`/hostel-bookings/${id}/check_out/`),
+  cancelBooking: (id) => api.post(`/hostel-bookings/${id}/cancel/`),
+ 
+  dashboard: (academicYearId) => api.get("/hostel/dashboard/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
 };
 
 export default api;

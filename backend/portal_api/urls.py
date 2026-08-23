@@ -110,8 +110,7 @@ urlpatterns = [
     
     # path("finance/dashboard/",v.FinanceDashboardView.as_view(), name="finance-dashboard"),
     # path("hostel/dashboard/", v.HostelDashboardView.as_view(), name="hostel-dashboard"),
-        
-
+    
 
     path("", include(router.urls)),
 ]
