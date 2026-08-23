@@ -681,3 +681,50 @@ class StaffService:
         return m.Staff.objects.create(
             user=user, employee_number=employee_no, department=department, designation=designation,
         )
+
+
+class ReportService:
+    @staticmethod
+    def summary():
+        from django.db.models import Count, Sum
+
+        students = m.Student.objects.all()
+        by_status = {row["status"]: row["c"] for row in students.values("status").annotate(c=Count("id"))}
+        by_programme = list(
+            students.values("programme__code", "programme__name")
+            .annotate(c=Count("id")).order_by("-c")[:15]
+        )
+
+        grades = m.Grade.objects.filter(published_at__isnull=False)
+        pass_count = grades.filter(is_pass=True).count()
+        total_graded = grades.count()
+
+        invoices_due = m.Invoice.objects.filter(is_active=True).aggregate(total=Sum("amount_due"))["total"] or 0
+        allocations_paid = m.InvoiceAllocation.objects.filter(
+            invoice__is_active=True
+        ).aggregate(total=Sum("amount_applied"))["total"] or 0
+
+        upcoming_exams = m.Examination.objects.filter(
+            exam_date__gte=timezone.now().date()
+        ).select_related("course").order_by("exam_date")[:10]
+
+        return {
+            "students_by_status": by_status,
+            "students_by_programme": by_programme,
+            "grades": {
+                "published": total_graded, "pass": pass_count, "fail": total_graded - pass_count,
+                "pass_rate": round((pass_count / total_graded) * 100, 1) if total_graded else None,
+            },
+            "fees": {
+                "total_invoiced": float(invoices_due), "total_collected": float(allocations_paid),
+                "total_outstanding": float(invoices_due) - float(allocations_paid),
+            },
+            "deferments_pending": m.StudentDeferment.objects.filter(
+                status=m.StudentDeferment.Status.PENDING).count(),
+            "clearances_pending": m.ClearanceRequest.objects.filter(
+                status=m.ClearanceRequest.Status.PENDING).count(),
+            "upcoming_examinations": [
+                {"course": e.course.code, "type": e.exam_type, "date": e.exam_date, "venue": e.venue}
+                for e in upcoming_exams
+            ],
+        }
