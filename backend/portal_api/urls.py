@@ -94,6 +94,7 @@ urlpatterns = [
     path("attendance/start/", v.StartAttendanceSessionView.as_view(), name="start-attendance-session"),
     path("attendance/<int:session_id>/live/", v.AttendanceSessionLiveView.as_view(), name="attendance-session-live"),
     path("attendance/<int:session_id>/close/", v.CloseAttendanceSessionView.as_view(), name="close-attendance-session"),
+    path("reports/", v.ReportsView.as_view(), name="reports"),
             
     # Student CAT endpoints
     path("me/cats/", v.MyCatsView.as_view(), name="my-cats"),
