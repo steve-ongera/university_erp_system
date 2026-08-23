@@ -612,9 +612,11 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
 
 
 class ClearanceRequestViewSet(viewsets.ModelViewSet):
-    queryset = m.ClearanceRequest.objects.all()
+    queryset = m.ClearanceRequest.objects.select_related("student__user")
     serializer_class = s.ClearanceRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["clearance_type", "status", "student"]
+    search_fields = ["student__registration_number"]
 
     def get_queryset(self):
         user = self.request.user
@@ -629,6 +631,16 @@ class ClearanceRequestViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(s.ClearanceRequestSerializer(clearance).data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=["post"], url_path="approve", permission_classes=[IsStaffRole])
+    def approve(self, request, pk=None):
+        clearance = services.ClearanceService.approve(self.get_object(), request.user, request.data.get("remarks", ""))
+        return Response(s.ClearanceRequestSerializer(clearance).data)
+
+    @action(detail=True, methods=["post"], url_path="reject", permission_classes=[IsStaffRole])
+    def reject(self, request, pk=None):
+        clearance = services.ClearanceService.reject(self.get_object(), request.user, request.data.get("remarks", ""))
+        return Response(s.ClearanceRequestSerializer(clearance).data)
 
 
 # ======================================================================
@@ -636,9 +648,12 @@ class ClearanceRequestViewSet(viewsets.ModelViewSet):
 # ======================================================================
 
 class ExaminationViewSet(viewsets.ModelViewSet):
-    queryset = m.Examination.objects.all()
+    queryset = m.Examination.objects.select_related("course", "semester")
     serializer_class = s.ExaminationSerializer
     permission_classes = [IsStaffRole]
+    filterset_fields = ["course", "semester", "exam_type", "is_published"]
+    search_fields = ["course__code", "course__name", "venue"]
+
 
 
 class TimetableViewSet(viewsets.ModelViewSet):
@@ -698,13 +713,29 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 # ======================================================================
 
 class RunPromotionView(APIView):
-    """Kicks off end-of-semester promotion for every active student. Also exposed as a management command."""
     permission_classes = [IsRole.for_roles("admin", "registrar")]
 
     def post(self, request):
         results = services.PromotionService.promote_all_active()
-        return Response({"promoted_or_updated": len(results)})
+        summary = {"promoted": 0, "graduated": 0, "suspended": 0, "skipped": 0}
+        detail = []
+        for r in results:
+            summary[r["action"]] = summary.get(r["action"], 0) + 1
+            detail.append({
+                "student_id": str(r["student"].id), "registration_number": r["student"].registration_number,
+                "action": r["action"], "reason": r["reason"],
+                "current_year": r["student"].current_year, "current_semester": r["student"].current_semester,
+                "status": r["student"].status,
+            })
+        return Response({"summary": summary, "results": detail})
 
+
+
+class ReportsView(APIView):
+    permission_classes = [IsStaffRole]
+
+    def get(self, request):
+        return Response(services.ReportService.summary())
 
 class MyDashboardView(APIView):
     """Student dashboard with real-time statistics and data."""
