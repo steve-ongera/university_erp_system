@@ -488,30 +488,23 @@ class FeeService:
 # ======================================================================
 
 class PromotionService:
-    """
-    Run at the end of each Semester (management command / scheduled
-    task). Skips deferred students entirely. A student advances
-    regardless of individual unit failures (Kenyan university norm —
-    you carry supplementaries forward) UNLESS your policy caps the
-    number of outstanding supplementaries; enforce that cap here if
-    needed by checking SupplementaryService.outstanding_units(student).
-    """
-
-    MAX_CARRIED_SUPPLEMENTARIES = 4  # tune per university policy; None disables the cap
+    MAX_CARRIED_SUPPLEMENTARIES = 4
 
     @classmethod
     @transaction.atomic
     def promote_student(cls, student: m.Student):
         if student.status != m.Student.Status.ACTIVE:
-            return student  # deferred/suspended/graduated students are never auto-promoted
+            return {"student": student, "action": "skipped", "reason": f"status={student.status}"}
 
         outstanding = SupplementaryService.outstanding_units(student)
         if cls.MAX_CARRIED_SUPPLEMENTARIES is not None and outstanding.count() > cls.MAX_CARRIED_SUPPLEMENTARIES:
             student.status = m.Student.Status.SUSPENDED
             student.save(update_fields=["status"])
-            return student
+            return {"student": student, "action": "suspended",
+                     "reason": f"{outstanding.count()} outstanding supplementaries"}
 
         programme = student.programme
+        prev_year, prev_sem = student.current_year, student.current_semester
         next_year, next_sem = utils.next_year_semester(
             student.current_year, student.current_semester, programme.semesters_per_year
         )
@@ -519,18 +512,17 @@ class PromotionService:
         if next_year > programme.duration_years:
             student.status = m.Student.Status.GRADUATED
             student.save(update_fields=["status"])
-            return student
+            return {"student": student, "action": "graduated", "reason": f"Completed Y{prev_year}S{prev_sem}"}
 
         student.current_year, student.current_semester = next_year, next_sem
         student.save(update_fields=["current_year", "current_semester"])
-        return student
+        return {"student": student, "action": "promoted",
+                 "reason": f"Y{prev_year}S{prev_sem} -> Y{next_year}S{next_sem}"}
 
     @classmethod
     def promote_all_active(cls):
-        results = []
-        for student in m.Student.objects.filter(status=m.Student.Status.ACTIVE):
-            results.append(cls.promote_student(student))
-        return results
+        return [cls.promote_student(s) for s in m.Student.objects.filter(status=m.Student.Status.ACTIVE)]
+
 
 
 # ======================================================================
@@ -635,6 +627,27 @@ class ClearanceService:
             student=student, clearance_type=clearance_type,
             defaults={"status": m.ClearanceRequest.Status.PENDING},
         )
+        return clearance
+    
+    
+    @staticmethod
+    @transaction.atomic
+    def approve(clearance: m.ClearanceRequest, processed_by: m.User, remarks=""):
+        clearance.status = m.ClearanceRequest.Status.APPROVED
+        clearance.processed_by = processed_by
+        clearance.processed_at = timezone.now()
+        clearance.remarks = remarks
+        clearance.save()
+        return clearance
+
+    @staticmethod
+    @transaction.atomic
+    def reject(clearance: m.ClearanceRequest, processed_by: m.User, remarks=""):
+        clearance.status = m.ClearanceRequest.Status.REJECTED
+        clearance.processed_by = processed_by
+        clearance.processed_at = timezone.now()
+        clearance.remarks = remarks
+        clearance.save()
         return clearance
 
 
