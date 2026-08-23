@@ -5,6 +5,9 @@ services; services own transactions and invariants so the same rule
 """
 from decimal import Decimal
 
+from django.db.models import Count, Sum, Q
+from django.db.models.functions import TruncMonth
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
@@ -481,6 +484,59 @@ class FeeService:
             "wallet_credit": account.credit_balance,
             "open_invoices": open_invoices,
         }
+        
+        
+    @staticmethod
+    def dashboard_summary():
+        invoices_due = m.Invoice.objects.filter(is_active=True).aggregate(t=Sum("amount_due"))["t"] or 0
+        collected = m.InvoiceAllocation.objects.filter(
+            invoice__is_active=True).aggregate(t=Sum("amount_applied"))["t"] or 0
+        payments_by_method = list(
+            m.FeePayment.objects.values("method").annotate(count=Count("id"), total=Sum("amount")).order_by("-total")
+        )
+        flagged_count = m.FeePayment.objects.exclude(reconciliation_notes="").count()
+        trend_qs = (
+            m.FeePayment.objects.annotate(month=TruncMonth("payment_date"))
+            .values("month").annotate(total=Sum("amount")).order_by("month")
+        )
+        collections_trend = [{"month": row["month"].strftime("%b %Y"), "total": float(row["total"])} for row in trend_qs]
+        recent_payments = m.FeePayment.objects.select_related("student__user").order_by("-received_at")[:10]
+
+        return {
+            "totals": {
+                "invoiced": float(invoices_due), "collected": float(collected),
+                "outstanding": float(invoices_due) - float(collected),
+            },
+            "payments_by_method": [
+                {"method": r["method"], "count": r["count"], "total": float(r["total"])} for r in payments_by_method
+            ],
+            "flagged_count": flagged_count,
+            "collections_trend": collections_trend,
+            "recent_payments": recent_payments,  # serialized in the view
+        }
+
+    @staticmethod
+    @transaction.atomic
+    def reassign_payment(payment: m.FeePayment, new_student: m.Student) -> m.FeePayment:
+        """
+        Moves a misapplied payment to the correct student. Existing allocations
+        against the WRONG student's invoices are removed (that student's balance
+        reverts to unpaid); the payment is then re-allocated fresh against the
+        correct student's open invoices.
+
+        CAVEAT: if part of this payment had already spilled into the wrong
+        student's StudentFeeAccount.credit_balance as an overpayment, that
+        portion is NOT automatically clawed back — the wallet is a pooled
+        balance not tagged by source payment. Finance should manually check
+        the old student's wallet after reassigning an overpaid transaction.
+        """
+        m.InvoiceAllocation.objects.filter(payment=payment).delete()
+        payment.student = new_student
+        payment.registration_number_on_slip = new_student.registration_number
+        payment.reconciliation_notes = "REASSIGNED_BY_FINANCE"
+        payment.save(update_fields=["student", "registration_number_on_slip", "reconciliation_notes"])
+        FeeService.allocate_payment(payment)
+        return payment
 
 
 # ======================================================================
@@ -603,6 +659,67 @@ class HostelService:
         bed.is_available = False
         bed.save(update_fields=["is_available"])
         return booking
+    
+    @staticmethod
+    @transaction.atomic
+    def manual_book(student, bed, academic_year, status=None):
+        status = status or m.HostelBooking.Status.APPROVED
+        if not bed.is_available:
+            raise ValueError("Selected bed is not available.")
+        booking = m.HostelBooking.objects.create(
+            student=student, bed=bed, academic_year=academic_year, status=status
+        )
+        bed.is_available = False
+        bed.save(update_fields=["is_available"])
+        return booking
+
+    @staticmethod
+    @transaction.atomic
+    def check_in(booking):
+        booking.status = m.HostelBooking.Status.CHECKED_IN
+        booking.checked_in_at = timezone.now()
+        booking.save(update_fields=["status", "checked_in_at"])
+        return booking
+
+    @staticmethod
+    @transaction.atomic
+    def check_out(booking):
+        booking.status = m.HostelBooking.Status.CHECKED_OUT
+        booking.checked_out_at = timezone.now()
+        booking.save(update_fields=["status", "checked_out_at"])
+        booking.bed.is_available = True
+        booking.bed.save(update_fields=["is_available"])
+        return booking
+
+    @staticmethod
+    @transaction.atomic
+    def cancel(booking):
+        booking.status = m.HostelBooking.Status.CANCELLED
+        booking.save(update_fields=["status"])
+        booking.bed.is_available = True
+        booking.bed.save(update_fields=["is_available"])
+        return booking
+
+    @staticmethod
+    def dashboard_summary(academic_year=None):
+        ay = academic_year or m.AcademicYear.objects.filter(is_current=True).first()
+        beds = m.Bed.objects.filter(academic_year=ay) if ay else m.Bed.objects.none()
+        total_beds = beds.count()
+        occupied = beds.filter(is_available=False).count()
+        by_hostel = list(
+            beds.values("room__hostel__name")
+            .annotate(total=Count("id"), occupied=Count("id", filter=Q(is_available=False)))
+        )
+        bookings = m.HostelBooking.objects.filter(academic_year=ay) if ay else m.HostelBooking.objects.none()
+        by_status = {row["status"]: row["c"] for row in bookings.values("status").annotate(c=Count("id"))}
+        recent_bookings = bookings.select_related("student__user", "bed__room__hostel").order_by("-booked_at")[:10]
+        return {
+            "academic_year": ay.year if ay else None,
+            "total_beds": total_beds, "occupied_beds": occupied, "available_beds": total_beds - occupied,
+            "occupancy_by_hostel": by_hostel,
+            "bookings_by_status": by_status,
+            "recent_bookings": recent_bookings,  # serialized in the view
+        }
 
 
 # ======================================================================
@@ -683,21 +800,30 @@ class StaffService:
         )
 
 
+
 class ReportService:
     @staticmethod
     def summary():
-        from django.db.models import Count, Sum
-
         students = m.Student.objects.all()
         by_status = {row["status"]: row["c"] for row in students.values("status").annotate(c=Count("id"))}
         by_programme = list(
-            students.values("programme__code", "programme__name")
-            .annotate(c=Count("id")).order_by("-c")[:15]
+            students.values("programme__code", "programme__name").annotate(c=Count("id")).order_by("-c")[:15]
         )
+        admissions_qs = (
+            students.values("intake__academic_year__year")
+            .annotate(c=Count("id")).order_by("intake__academic_year__year")
+        )
+        admissions_by_academic_year = [
+            {"year": r["intake__academic_year__year"], "count": r["c"]} for r in admissions_qs
+        ]
 
         grades = m.Grade.objects.filter(published_at__isnull=False)
         pass_count = grades.filter(is_pass=True).count()
         total_graded = grades.count()
+        grade_distribution = [
+            {"letter_grade": r["letter_grade"], "count": r["c"]}
+            for r in grades.values("letter_grade").annotate(c=Count("id")).order_by("letter_grade")
+        ]
 
         invoices_due = m.Invoice.objects.filter(is_active=True).aggregate(total=Sum("amount_due"))["total"] or 0
         allocations_paid = m.InvoiceAllocation.objects.filter(
@@ -711,6 +837,8 @@ class ReportService:
         return {
             "students_by_status": by_status,
             "students_by_programme": by_programme,
+            "admissions_by_academic_year": admissions_by_academic_year,
+            "grade_distribution": grade_distribution,
             "grades": {
                 "published": total_graded, "pass": pass_count, "fail": total_graded - pass_count,
                 "pass_rate": round((pass_count / total_graded) * 100, 1) if total_graded else None,

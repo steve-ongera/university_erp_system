@@ -291,11 +291,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 class FeePaymentSerializer(serializers.ModelSerializer):
+    student_detail = StudentSerializer(source="student", read_only=True)
     class Meta:
         model = m.FeePayment
         fields = "__all__"
         read_only_fields = ["receipt_number", "is_reconciled", "received_at"]
-
 
 class BankNotificationSerializer(serializers.Serializer):
     """What the bank/ERP integration posts to the webhook."""
@@ -314,9 +314,11 @@ class StudentFeeAccountSerializer(serializers.ModelSerializer):
 
 
 class HelbBursaryAwardSerializer(serializers.ModelSerializer):
+    student_detail = StudentSerializer(source="student", read_only=True)
     class Meta:
         model = m.HelbBursaryAward
         fields = "__all__"
+
 
 
 # ----------------------------------------------------------------------
@@ -345,11 +347,12 @@ class BedSerializer(serializers.ModelSerializer):
 
 class HostelBookingSerializer(serializers.ModelSerializer):
     bed_detail = BedSerializer(source="bed", read_only=True)
-
+    student_detail = StudentSerializer(source="student", read_only=True)
     class Meta:
         model = m.HostelBooking
         fields = "__all__"
         read_only_fields = ["status", "booked_at", "checked_in_at", "checked_out_at"]
+
 
 
 # ----------------------------------------------------------------------
@@ -597,3 +600,11 @@ class AdmitStaffSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return services.StaffService.admit_staff(**validated_data)
+    
+      
+class InvoiceAllocationSerializer(serializers.ModelSerializer):
+    invoice_detail = InvoiceSerializer(source="invoice", read_only=True)
+    class Meta:
+        model = m.InvoiceAllocation
+        fields = "__all__"
+
