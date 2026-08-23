@@ -130,6 +130,7 @@ class IntakeSerializer(serializers.ModelSerializer):
 
 class LecturerSerializer(serializers.ModelSerializer):
     user_detail = UserSerializer(source="user", read_only=True)
+    department_detail = DepartmentSerializer(source="department", read_only=True)
 
     class Meta:
         model = m.Lecturer
@@ -177,12 +178,12 @@ class AdmitStudentSerializer(serializers.Serializer):
 
 
 class StudentDefermentSerializer(serializers.ModelSerializer):
+    student_detail = StudentSerializer(source="student", read_only=True)
     class Meta:
         model = m.StudentDeferment
         fields = "__all__"
         read_only_fields = ["status", "processed_by", "processed_at", "resumed_at",
                              "year_at_deferment", "semester_at_deferment"]
-
 
 # ----------------------------------------------------------------------
 # UNITS / ENROLLMENT
