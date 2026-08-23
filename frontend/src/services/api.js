@@ -308,6 +308,29 @@ export const adminApi = {
   updateLecturerAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
   deleteLecturerAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
 
+  // Lecturer & Staff accounts
+  admitLecturer: (payload) => api.post("/lecturers/admit/", payload),
+  updateLecturer: (id, payload) => api.patch(`/lecturers/${id}/`, payload),
+  deleteLecturer: (id) => api.delete(`/lecturers/${id}/`),
+ 
+  admitStaff: (payload) => api.post("/staff/admit/", payload),
+  updateStaffMember: (id, payload) => api.patch(`/staff/${id}/`, payload),
+  deleteStaffMember: (id) => api.delete(`/staff/${id}/`),
+ 
+  // Deferments
+  approveDeferment: (id) => api.post(`/deferments/${id}/approve/`),
+  rejectDeferment: (id, remarks) => api.post(`/deferments/${id}/reject/`, { remarks }),
+  resumeDeferment: (id) => api.post(`/deferments/${id}/resume/`),
+ 
+  // Examinations
+  createExamination: (payload) => api.post("/examinations/", payload),
+  updateExamination: (id, payload) => api.patch(`/examinations/${id}/`, payload),
+  deleteExamination: (id) => api.delete(`/examinations/${id}/`),
+ 
+  // Clearances
+  approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
+  rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
+
 };
 
 
