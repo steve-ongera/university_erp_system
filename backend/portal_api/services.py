@@ -4,7 +4,7 @@ services; services own transactions and invariants so the same rule
 (e.g. "final semester only" for clearance) is enforced once, everywhere.
 """
 from decimal import Decimal
-
+import secrets
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncMonth
 
@@ -886,6 +886,37 @@ class StaffService:
         )
 
 
+class UserManagementService:
+    """
+    Generic account management for roles that don't have a dedicated
+    admit flow with a linked profile (Student/Lecturer/Staff already
+    have AdmissionService/StaffService — this is for admin, registrar,
+    dean, cod, finance, hostel_warden, exam_office, and raw staff
+    accounts, plus password resets for anyone).
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def create_user(*, username, first_name, last_name, user_type, email="", phone="",
+                     gender="", password=None):
+        if m.User.objects.filter(username=username).exists():
+            raise ValueError("A user with this username already exists.")
+        temp_password = password or secrets.token_urlsafe(8)
+        user = m.User.objects.create_user(
+            username=username, password=temp_password, first_name=first_name,
+            last_name=last_name, email=email, phone=phone, gender=gender,
+            user_type=user_type,
+        )
+        user.must_change_password = True
+        user.save(update_fields=["must_change_password"])
+        return user, temp_password
+
+    @staticmethod
+    def set_password(user: m.User, new_password: str, force_change: bool = True):
+        user.set_password(new_password)
+        user.must_change_password = force_change
+        user.save(update_fields=["password", "must_change_password"])
+        return user
 
 class ReportService:
     @staticmethod

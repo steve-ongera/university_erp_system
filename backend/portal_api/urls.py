@@ -49,6 +49,7 @@ router.register(r"hostels", v.HostelViewSet)
 router.register(r"rooms", v.RoomViewSet)
 router.register(r"beds", v.BedViewSet)
 router.register(r"hostel-bookings", v.HostelBookingViewSet, basename="hostel-bookings")
+router.register(r"users", v.AdminUserViewSet, basename="admin-users")
 
 # Reporting / Clearance
 

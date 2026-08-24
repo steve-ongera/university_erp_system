@@ -250,6 +250,14 @@ export const adminApi = {
   semesters: () => api.get("/semesters/"),
   intakes: () => api.get("/intakes/"),
 
+  users: (params) => api.get("/users/", { params }),
+  getUser: (id) => api.get(`/users/${id}/`),
+  createUser: (payload) => api.post("/users/", payload),
+  updateUser: (id, payload) => api.patch(`/users/${id}/`, payload),
+  deleteUser: (id) => api.delete(`/users/${id}/`),
+  setUserPassword: (id, password, forceChange = true) =>
+    api.post(`/users/${id}/set-password/`, { password, force_change: forceChange }),
+
   // People Management
   students: (params) => api.get("/students/", { params }),
   lecturers: () => api.get("/lecturers/"),

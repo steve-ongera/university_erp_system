@@ -623,3 +623,28 @@ class StudentReportingDetailSerializer(serializers.ModelSerializer):
 class BulkReportingStatusUpdateSerializer(serializers.Serializer):
     reporting_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
     status = serializers.ChoiceField(choices=m.StudentReporting.Status.choices)
+    
+    
+    
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = m.User
+        fields = ["id", "username", "first_name", "last_name", "email", "phone", "gender",
+                  "user_type", "address", "is_active", "must_change_password",
+                  "is_2fa_enrolled", "date_joined", "created_at"]
+        # user_type is intentionally read-only after creation: changing it doesn't
+        # move/create the associated Student/Lecturer/Staff profile row, so an
+        # in-place type change would silently orphan or mismatch that profile.
+        read_only_fields = ["id", "user_type", "date_joined", "created_at"]
+
+
+class AdminCreateUserSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    gender = serializers.ChoiceField(choices=m.User.Gender.choices, required=False, allow_blank=True)
+    user_type = serializers.ChoiceField(choices=m.User.UserType.choices)
+    password = serializers.CharField(required=False, allow_blank=True)

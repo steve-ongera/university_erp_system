@@ -72,6 +72,10 @@ export const PAGES = {
     key: "promotions", path: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle",
     roles: [ROLES.ADMIN, ROLES.REGISTRAR],
   },
+    USER_MANAGEMENT: {
+    key: "usermanagement", path: "/user-management", label: "User Management", icon: "bi-person-gear",
+    roles: [ROLES.ADMIN],
+  },
   EXAMINATIONS: {
     key: "examinations", path: "/examinations", label: "Examinations", icon: "bi-clipboard-check",
     roles: [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.EXAM_OFFICE, ROLES.COD],

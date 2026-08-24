@@ -1852,3 +1852,40 @@ class MyPermissionsView(APIView):
             "role": request.user.user_type,
             "pages": services.ROLE_PAGE_PERMISSIONS.get(request.user.user_type, []),
         })
+        
+        
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    """
+    Generic account management, admin-only. Student/Lecturer creation
+    stays on StudentViewSet.admit / LecturerViewSet.admit, which also
+    create the linked profile row — this viewset is for everyone else
+    (admin, registrar, dean, cod, finance, hostel_warden, exam_office,
+    plain staff) plus editing/password-reset for any existing account.
+    """
+    queryset = m.User.objects.all().order_by("-created_at")
+    serializer_class = s.AdminUserSerializer
+    permission_classes = [IsRole.for_roles("admin")]
+    filterset_fields = ["user_type", "is_active", "gender"]
+    search_fields = ["username", "first_name", "last_name", "email", "phone"]
+
+    def create(self, request, *args, **kwargs):
+        serializer = s.AdminCreateUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user, temp_password = services.UserManagementService.create_user(**serializer.validated_data)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        payload = s.AdminUserSerializer(user).data
+        payload["temporary_password"] = temp_password
+        return Response(payload, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="set-password")
+    def set_password(self, request, pk=None):
+        user = self.get_object()
+        new_password = request.data.get("password", "")
+        if len(new_password) < 6:
+            return Response({"detail": "Password must be at least 6 characters."}, status=status.HTTP_400_BAD_REQUEST)
+        force_change = request.data.get("force_change", True)
+        services.UserManagementService.set_password(user, new_password, force_change=bool(force_change))
+        return Response({"detail": "Password updated."})
