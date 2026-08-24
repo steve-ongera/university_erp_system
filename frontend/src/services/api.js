@@ -229,8 +229,17 @@ export const adminApi = {
   dashboard: () => api.get("/admin/dashboard/"),
   
   // Academic Structure
-  faculties: () => api.get("/faculties/"),
-  departments: () => api.get("/departments/"),
+  faculties: (params) => api.get("/faculties/", { params }),
+  createFaculty: (payload) => api.post("/faculties/", payload),
+  updateFaculty: (id, payload) => api.patch(`/faculties/${id}/`, payload),
+  deleteFaculty: (id) => api.delete(`/faculties/${id}/`),
+
+  departments: (params) => api.get("/departments/", { params }),
+  createDepartment: (payload) => api.post("/departments/", payload),
+  updateDepartment: (id, payload) => api.patch(`/departments/${id}/`, payload),
+  deleteDepartment: (id) => api.delete(`/departments/${id}/`),
+
+  gradingSchemes: () => api.get("/grading-schemes/"),
   programmes: () => api.get("/programmes/"),
   courses: () => api.get("/courses/"),
   curriculumVersions: () => api.get("/curriculum-versions/"),
