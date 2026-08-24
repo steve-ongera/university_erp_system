@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from django.db import transaction
+from decimal import Decimal
 
 from . import models as m
 from . import serializers as s
@@ -483,6 +484,55 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
     serializer_class = s.FeeStructureSerializer
     permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
     filterset_fields = ["programme", "academic_year", "year", "semester"]
+    
+    @action(detail=True, methods=["get"], url_path="students",
+            permission_classes=[IsRole.for_roles("admin", "finance", "registrar")])
+    def students(self, request, pk=None):
+        fee_structure = self.get_object()
+        rows = services.FeeService.students_for_fee_structure(fee_structure)
+        return Response([{
+            "student": s.StudentSerializer(row["student"]).data,
+            "invoice_id": row["invoice"].id if row["invoice"] else None,
+            "amount_due": row["amount_due"],
+            "balance": row["balance"],
+            "is_paid": row["is_paid"],
+            "has_invoice": row["has_invoice"],
+        } for row in rows])
+
+    @action(detail=True, methods=["post"], url_path="raise-invoice",
+            permission_classes=[IsRole.for_roles("admin", "finance", "registrar")])
+    def raise_invoice(self, request, pk=None):
+        fee_structure = self.get_object()
+        try:
+            student = m.Student.objects.get(pk=request.data.get("student"))
+        except (m.Student.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Valid student is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            invoice = services.FeeService.raise_invoice_for_fee_structure(student, fee_structure)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(s.InvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="record-payment",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def record_payment(self, request, pk=None):
+        fee_structure = self.get_object()
+        try:
+            student = m.Student.objects.get(pk=request.data.get("student"))
+        except (m.Student.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Valid student is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            amount = Decimal(str(request.data.get("amount", "0")))
+        except Exception:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+        if amount <= 0:
+            return Response({"detail": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+        method = request.data.get("method", m.FeePayment.Method.CASH)
+
+        payment = services.FeeService.record_manual_payment(
+            student=student, amount=amount, method=method, recorded_by=request.user.get_full_name(),
+        )
+        return Response(s.FeePaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
 
 
 

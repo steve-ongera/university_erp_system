@@ -487,6 +487,92 @@ class FeeService:
         
         
     @staticmethod
+    def _student_row(student, invoice):
+        if invoice:
+            balance = FeeService.invoice_balance(invoice)
+            return {
+                "student": student, "invoice": invoice,
+                "amount_due": invoice.amount_due, "balance": balance,
+                "is_paid": balance <= 0, "has_invoice": True,
+            }
+        return {
+            "student": student, "invoice": None,
+            "amount_due": None, "balance": None,
+            "is_paid": False, "has_invoice": False,
+        }
+
+    @staticmethod
+    def students_for_fee_structure(fee_structure: m.FeeStructure):
+        """
+        Every student currently sitting in this fee structure's
+        programme/year, joined against any invoice already raised
+        against this specific fee structure — plus any student who has
+        such an invoice but has since moved on to a later year (so
+        historical balances stay visible).
+        """
+        students_qs = m.Student.objects.filter(
+            programme=fee_structure.programme, current_year=fee_structure.year,
+        ).select_related("user")
+        invoices = m.Invoice.objects.filter(
+            fee_structure=fee_structure, is_active=True
+        ).select_related("student__user")
+        invoice_by_student = {inv.student_id: inv for inv in invoices}
+
+        rows, seen_ids = [], set()
+        for student in students_qs:
+            seen_ids.add(student.id)
+            rows.append(FeeService._student_row(student, invoice_by_student.get(student.id)))
+        for student_id, invoice in invoice_by_student.items():
+            if student_id not in seen_ids:
+                rows.append(FeeService._student_row(invoice.student, invoice))
+        return rows
+
+    @staticmethod
+    @transaction.atomic
+    def raise_invoice_for_fee_structure(student: m.Student, fee_structure: m.FeeStructure) -> m.Invoice:
+        existing = m.Invoice.objects.filter(student=student, fee_structure=fee_structure).first()
+        if existing:
+            return existing
+        semester = m.Semester.objects.filter(
+            academic_year=fee_structure.academic_year, semester_number=fee_structure.semester
+        ).first()
+        if not semester:
+            raise ValueError("No Semester record matches this fee structure's academic year and semester number.")
+        invoice = m.Invoice.objects.create(
+            student=student, invoice_type=m.Invoice.InvoiceType.SEMESTER_FEE,
+            fee_structure=fee_structure, semester=semester,
+            amount_due=fee_structure.net_fee(),
+            description=f"Semester fee Y{fee_structure.year}S{fee_structure.semester}",
+        )
+        FeeService._auto_apply_credit(student, invoice)
+        return invoice
+
+    @staticmethod
+    @transaction.atomic
+    def record_manual_payment(*, student: m.Student, amount: Decimal, method: str = m.FeePayment.Method.CASH,
+                               payment_date=None, recorded_by=None) -> m.FeePayment:
+        """
+        Manual/counter payment entry (admin or finance recording cash,
+        or confirming an M-Pesa/HELB payment by hand) — the counterpart
+        to process_bank_notification, which is the automated bank
+        webhook path. Uses the same allocate_payment() so oldest-
+        invoice-first and wallet-credit overflow behave identically.
+        """
+        payment = m.FeePayment.objects.create(
+            student=student, method=method, amount=amount,
+            payer_name_on_slip=student.user.get_full_name(),
+            registration_number_on_slip=student.registration_number,
+            bank_reference=f"MANUAL-{student.registration_number}-{timezone.now().timestamp()}",
+            payment_date=payment_date or timezone.now(),
+            reconciliation_notes=f"Recorded manually by {recorded_by}" if recorded_by else "Recorded manually",
+        )
+        payment.receipt_number = utils.generate_receipt_number("FPR", m.FeePayment)
+        payment.save(update_fields=["receipt_number"])
+        FeeService.allocate_payment(payment)
+        return payment
+        
+        
+    @staticmethod
     def dashboard_summary():
         invoices_due = m.Invoice.objects.filter(is_active=True).aggregate(t=Sum("amount_due"))["t"] or 0
         collected = m.InvoiceAllocation.objects.filter(

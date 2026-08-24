@@ -400,6 +400,10 @@ export const financeApi = {
  
   bankWebhook: (payload) => api.post("/integrations/bank-payment/", payload),
   dashboard: () => api.get("/finance/dashboard/"),
+
+  feeStructureStudents: (id) => api.get(`/fee-structures/${id}/students/`),
+  raiseFeeStructureInvoice: (id, studentId) => api.post(`/fee-structures/${id}/raise-invoice/`, { student: studentId }),
+  recordFeeStructurePayment: (id, payload) => api.post(`/fee-structures/${id}/record-payment/`, payload),
 };
 
 // ---------------------------------------------------------------------
