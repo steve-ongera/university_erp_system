@@ -88,6 +88,7 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/resultsmanagement" , label:'Results Manager' , icon:"bi bi-arrow-bar-up"},
         { to: "/unitallocations" , label: "Unit Allocation" , icon:"bi bi-arrow-right"},
+        { to: "/reportings", label: "Semester Reportings", icon: "bi-check2-square" },
         { to: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle" },
         { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
         { to: "/clearances", label: "Clearances", icon: "bi-file-earmark-check" },

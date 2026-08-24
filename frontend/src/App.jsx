@@ -4,6 +4,8 @@ import Dashboard from "./layout/Dashboard";
 import Login from "./pages/Login";
 import RoleDashboard from "./pages/RoleDashboard";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import UnderDevelopment from "./pages/UnderDevelopment";
+import { PAGES } from "./config/rbac";
 
 // Student Pages
 import StudentDashboard from "./pages/students/StudentDashboard";
@@ -39,8 +41,8 @@ import Examinations from "./pages/admin/Examinations";
 import ClearancesManagement from "./pages/admin/ClearancesManagement";
 import Reports from "./pages/admin/Reports";
 import ResultsManager from "./pages/admin/ResultsManagement";
-import UnitAllocations from "./pages/admin/UnitAllocations";  
-
+import UnitAllocations from "./pages/admin/UnitAllocations";
+import AdminReportings from "./pages/admin/AdminReportings";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -73,8 +75,6 @@ function FullScreenLoader() {
     </div>
   );
 }
-
-const ADMIN_ROLES = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.EXAM_OFFICE, ROLES.STAFF];
 
 export default function App() {
   return (
@@ -113,33 +113,59 @@ export default function App() {
             <Route path="/grading" element={<ProtectedRoute allow={[ROLES.LECTURER]}><EnterMarks /></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute allow={[ROLES.LECTURER]}><QRAttendance /></ProtectedRoute>} />
 
-            {/* ===== HOSTEL WARDEN PAGES ===== */}
+            {/* ===== HOSTEL WARDEN PAGES (unchanged — already correctly scoped) ===== */}
             <Route path="/hostel/dashboard" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelWardenDashboard /></ProtectedRoute>} />
             <Route path="/hostel-management" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelsRooms /></ProtectedRoute>} />
             <Route path="/hostel-bookings" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelBookings /></ProtectedRoute>} />
 
-            {/* ===== FINANCE PAGES ===== */}
+            {/* ===== FINANCE PAGES (unchanged — already correctly scoped) ===== */}
             <Route path="/finance/dashboard" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><FinanceDashboard /></ProtectedRoute>} />
             <Route path="/fee-structures" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><FeeStructures /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><PaymentsReconciliation /></ProtectedRoute>} />
             <Route path="/awards" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><HelbBursaries /></ProtectedRoute>} />
 
-            {/* ===== ADMIN PAGES ===== */}
-            <Route path="/admin/dashboard" element={<ProtectedRoute allow={ADMIN_ROLES}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/faculties" element={<ProtectedRoute allow={ADMIN_ROLES}><FacultiesDepartments /></ProtectedRoute>} />
-            <Route path="/programmes" element={<ProtectedRoute allow={ADMIN_ROLES}><Programmes /></ProtectedRoute>} />
-            <Route path="/courses" element={<ProtectedRoute allow={ADMIN_ROLES}><CoursesCurriculum /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute allow={ADMIN_ROLES}><AcademicCalendar /></ProtectedRoute>} />
-            <Route path="/students" element={<ProtectedRoute allow={ADMIN_ROLES}><StudentsManagement /></ProtectedRoute>} />
-            <Route path="/lecturers" element={<ProtectedRoute allow={ADMIN_ROLES}><LecturersStaff /></ProtectedRoute>} />
-            <Route path="/deferments" element={<ProtectedRoute allow={ADMIN_ROLES}><DefermentsManagement /></ProtectedRoute>} />
-            <Route path="/promotions" element={<ProtectedRoute allow={ADMIN_ROLES}><Promotions /></ProtectedRoute>} />
-            <Route path="/examinations" element={<ProtectedRoute allow={ADMIN_ROLES}><Examinations /></ProtectedRoute>} />
-            <Route path="/clearances" element={<ProtectedRoute allow={ADMIN_ROLES}><ClearancesManagement /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute allow={ADMIN_ROLES}><Reports /></ProtectedRoute>} />
-            <Route path="/resultsmanagement" element={<ProtectedRoute allow={ADMIN_ROLES}><ResultsManager /></ProtectedRoute>} />
-            <Route path="/unitallocations" element={<ProtectedRoute allow={ADMIN_ROLES}><UnitAllocations /></ProtectedRoute>} />
+            {/* ===== STAFF — no dedicated modules yet ===== */}
+            <Route
+              path="/staff/dashboard"
+              element={
+                <ProtectedRoute allow={[ROLES.STAFF]}>
+                  <UnderDevelopment
+                    plannedFeatures={["Task/ticket assignment", "Internal announcements", "Document requests"]}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
+            {/*
+              ===== ADMIN-STYLE PAGES =====
+              Every route below is now guarded by PAGES.X.roles from
+              src/config/rbac.js instead of one shared ADMIN_ROLES bucket.
+              Only 'admin' appears on every single one; every other role
+              (registrar/dean/cod/exam_office) gets its own narrow slice.
+              See rbac.js for the full matrix + rationale.
+
+              NOTE: /reportings uses a plain [ROLES.ADMIN, ROLES.REGISTRAR]
+              array instead of PAGES.REPORTINGS.roles because that entry
+              doesn't exist in rbac.js yet. Add a REPORTINGS entry to
+              rbac.js (matching the shape of e.g. PAGES.CLEARANCES), then
+              swap this back to allow={PAGES.REPORTINGS.roles} for
+              consistency with the rest of this block.
+            */}
+            <Route path="/admin/dashboard" element={<ProtectedRoute allow={PAGES.ADMIN_DASHBOARD.roles}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/faculties" element={<ProtectedRoute allow={PAGES.FACULTIES.roles}><FacultiesDepartments /></ProtectedRoute>} />
+            <Route path="/programmes" element={<ProtectedRoute allow={PAGES.PROGRAMMES.roles}><Programmes /></ProtectedRoute>} />
+            <Route path="/courses" element={<ProtectedRoute allow={PAGES.COURSES.roles}><CoursesCurriculum /></ProtectedRoute>} />
+            <Route path="/calendar" element={<ProtectedRoute allow={PAGES.CALENDAR.roles}><AcademicCalendar /></ProtectedRoute>} />
+            <Route path="/students" element={<ProtectedRoute allow={PAGES.STUDENTS.roles}><StudentsManagement /></ProtectedRoute>} />
+            <Route path="/lecturers" element={<ProtectedRoute allow={PAGES.LECTURERS.roles}><LecturersStaff /></ProtectedRoute>} />
+            <Route path="/deferments" element={<ProtectedRoute allow={PAGES.DEFERMENTS.roles}><DefermentsManagement /></ProtectedRoute>} />
+            <Route path="/promotions" element={<ProtectedRoute allow={PAGES.PROMOTIONS.roles}><Promotions /></ProtectedRoute>} />
+            <Route path="/examinations" element={<ProtectedRoute allow={PAGES.EXAMINATIONS.roles}><Examinations /></ProtectedRoute>} />
+            <Route path="/clearances" element={<ProtectedRoute allow={PAGES.CLEARANCES.roles}><ClearancesManagement /></ProtectedRoute>} />
+            <Route path="/reportings" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR]}><AdminReportings /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute allow={PAGES.REPORTS.roles}><Reports /></ProtectedRoute>} />
+            <Route path="/resultsmanagement" element={<ProtectedRoute allow={PAGES.RESULTS_MANAGER.roles}><ResultsManager /></ProtectedRoute>} />
+            <Route path="/unitallocations" element={<ProtectedRoute allow={PAGES.UNIT_ALLOCATIONS.roles}><UnitAllocations /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

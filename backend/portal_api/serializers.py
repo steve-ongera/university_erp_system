@@ -340,7 +340,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
 class BedSerializer(serializers.ModelSerializer):
     room_detail = RoomSerializer(source="room", read_only=True)
-
+    academic_year_detail = AcademicYearSerializer(source="academic_year", read_only=True)
     class Meta:
         model = m.Bed
         fields = "__all__"
@@ -364,16 +364,15 @@ class StudentReportingSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.StudentReporting
         fields = "__all__"
-        read_only_fields = ["status", "processed_by", "reporting_date"]
-
+        read_only_fields = ["student", "status", "processed_by", "reporting_date"]
 
 class ClearanceRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.ClearanceRequest
         fields = "__all__"
-        read_only_fields = ["status", "processed_by", "processed_at", "requested_at"]
-
-
+        read_only_fields = ["student", "status", "processed_by", "processed_at", "requested_at"]
+        
+        
 # ----------------------------------------------------------------------
 # EXAMS / TIMETABLE / ATTENDANCE
 # ----------------------------------------------------------------------
@@ -609,3 +608,18 @@ class InvoiceAllocationSerializer(serializers.ModelSerializer):
         model = m.InvoiceAllocation
         fields = "__all__"
 
+
+class StudentReportingDetailSerializer(serializers.ModelSerializer):
+    """Used for staff/admin views — includes nested student/semester/processor info."""
+    student_detail = StudentSerializer(source="student", read_only=True)
+    semester_detail = SemesterSerializer(source="semester", read_only=True)
+    processed_by_detail = UserSerializer(source="processed_by", read_only=True)
+
+    class Meta:
+        model = m.StudentReporting
+        fields = "__all__"
+
+
+class BulkReportingStatusUpdateSerializer(serializers.Serializer):
+    reporting_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    status = serializers.ChoiceField(choices=m.StudentReporting.Status.choices)

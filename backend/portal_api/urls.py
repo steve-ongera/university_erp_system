@@ -42,6 +42,7 @@ router.register(r"invoices", v.InvoiceViewSet, basename="invoices")
 router.register(r"fee-payments", v.FeePaymentViewSet, basename="fee-payments")
 router.register(r"financial-awards", v.HelbBursaryAwardViewSet)
 router.register(r"invoice-allocations", v.InvoiceAllocationViewSet, basename="invoice-allocation")
+router.register(r"student-reportings", v.StudentReportingViewSet, basename="reportings")
 
 # Hostel
 router.register(r"hostels", v.HostelViewSet)
@@ -50,7 +51,7 @@ router.register(r"beds", v.BedViewSet)
 router.register(r"hostel-bookings", v.HostelBookingViewSet, basename="hostel-bookings")
 
 # Reporting / Clearance
-router.register(r"reportings", v.StudentReportingViewSet, basename="reportings")
+
 router.register(r"clearances", v.ClearanceRequestViewSet, basename="clearances")
 
 # Exams / Timetable / Attendance
@@ -110,6 +111,8 @@ urlpatterns = [
     
     path("finance/dashboard/",v.FinanceDashboardView.as_view(), name="finance-dashboard"),
     path("hostel/dashboard/", v.HostelDashboardView.as_view(), name="hostel-dashboard"),
+    path("auth/permissions/", v.MyPermissionsView.as_view(), name="my-permissions"),
+
     
 
     path("", include(router.urls)),

@@ -69,6 +69,7 @@ api.interceptors.response.use(
 export const authApi = {
   login: (username, password) => api.post("/auth/login/", { username, password }),
   verifyOtp: (username, code) => api.post("/auth/verify-otp/", { username, code }),
+  permissions: () => api.get("/auth/permissions/"),
   me: () => api.get("/auth/me/"),
   storeSession: ({ access, refresh, user }) => {
     localStorage.setItem("mu_access_token", access);
@@ -265,6 +266,13 @@ export const adminApi = {
   
   // Reports
   reports: () => api.get("/reports/"),
+
+    // Reportings
+  reportings: (params) => api.get("/student-reportings/", { params }),
+  updateReportingStatus: (id, statusValue) =>
+    api.post(`/student-reportings/${id}/update-status/`, { status: statusValue }),
+  bulkUpdateReportingStatus: (reportingIds, statusValue) =>
+    api.post("/student-reportings/bulk-update-status/", { reporting_ids: reportingIds, status: statusValue }),
 
   // Academic Years
   createAcademicYear: (payload) => api.post("/academic-years/", payload),

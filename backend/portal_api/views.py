@@ -602,9 +602,18 @@ class HostelBookingViewSet(viewsets.ModelViewSet):
 # ======================================================================
 
 class StudentReportingViewSet(viewsets.ModelViewSet):
-    queryset = m.StudentReporting.objects.all()
+    queryset = m.StudentReporting.objects.select_related(
+        "student__user", "semester__academic_year", "processed_by"
+    )
     serializer_class = s.StudentReportingSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ["status", "semester", "reporting_type", "student"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+
+    def get_serializer_class(self):
+        if self.request.user.is_authenticated and self.request.user.user_type != "student":
+            return s.StudentReportingDetailSerializer
+        return s.StudentReportingSerializer
 
     def get_queryset(self):
         user = self.request.user
@@ -615,6 +624,30 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(student=self.request.user.student_profile)
 
+    @action(detail=True, methods=["post"], url_path="update-status",
+            permission_classes=[IsStaffRole])
+    def update_status(self, request, pk=None):
+        reporting = self.get_object()
+        new_status = request.data.get("status")
+        if new_status not in m.StudentReporting.Status.values:
+            return Response({"detail": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+        reporting.status = new_status
+        reporting.processed_by = request.user
+        reporting.save(update_fields=["status", "processed_by"])
+        return Response(s.StudentReportingDetailSerializer(reporting).data)
+
+    @action(detail=False, methods=["post"], url_path="bulk-update-status",
+            permission_classes=[IsStaffRole])
+    def bulk_update_status(self, request):
+        serializer = s.BulkReportingStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ids = serializer.validated_data["reporting_ids"]
+        new_status = serializer.validated_data["status"]
+        updated = m.StudentReporting.objects.filter(id__in=ids).update(
+            status=new_status, processed_by=request.user
+        )
+        return Response({"updated": updated, "status": new_status})
+    
 
 class ClearanceRequestViewSet(viewsets.ModelViewSet):
     queryset = m.ClearanceRequest.objects.select_related("student__user")
@@ -1065,7 +1098,7 @@ class MyCatSubmissionsView(APIView):
 
 class AdminDashboardView(APIView):
     """Admin dashboard with real-time statistics and data."""
-    permission_classes = [IsRole.for_roles("admin", "registrar", "dean", "cod")]
+    permission_classes = [IsRole.for_roles("admin", "registrar", "dean", "cod", "exam_office")]
 
     def get(self, request):
         try:
@@ -1718,7 +1751,6 @@ class FinanceDashboardView(APIView):
 class HostelViewSet(viewsets.ModelViewSet):
     queryset = m.Hostel.objects.all()
     serializer_class = s.HostelSerializer
-    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
     search_fields = ["name"]
 
 
@@ -1758,3 +1790,15 @@ class HostelDashboardView(APIView):
         data["recent_bookings"] = s.HostelBookingSerializer(data["recent_bookings"], many=True).data
         return Response(data)
 
+
+class MyPermissionsView(APIView):
+    """Returns the calling user's allowed page keys. Frontend uses this to
+    double-check its own client-side RBAC config hasn't drifted — the
+    frontend's src/config/rbac.js should mirror ROLE_PAGE_PERMISSIONS above."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "role": request.user.user_type,
+            "pages": services.ROLE_PAGE_PERMISSIONS.get(request.user.user_type, []),
+        })

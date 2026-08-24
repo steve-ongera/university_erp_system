@@ -856,3 +856,19 @@ class ReportService:
                 for e in upcoming_exams
             ],
         }
+
+
+
+ROLE_PAGE_PERMISSIONS = {
+    "admin": ["faculties", "programmes", "courses", "calendar", "students", "lecturers",
+              "deferments", "resultsmanagement", "unitallocations", "promotions",
+              "examinations", "clearances", "reports"],
+    "registrar": ["faculties", "programmes", "courses", "calendar", "students",
+                  "deferments", "promotions", "examinations", "clearances", "reports"],
+    "dean": ["programmes", "courses", "clearances", "reports"],
+    "cod": ["courses", "lecturers", "unitallocations", "examinations"],
+    "exam_office": ["calendar", "resultsmanagement", "examinations", "clearances", "reports"],
+    "staff": [],
+    "finance": ["finance_dashboard", "fee_structures", "payments", "awards"],
+    "hostel_warden": ["hostel_dashboard", "hostel_management", "hostel_bookings"],
+}
