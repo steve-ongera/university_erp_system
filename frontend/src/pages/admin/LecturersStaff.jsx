@@ -1,11 +1,9 @@
 // src/pages/admin/LecturersStaff.jsx
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { adminApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import {
-  Modal, ConfirmModal, Field, TabBar, EmptyState,
-  useDebouncedValue, summarizeErrors, unwrapList,
-} from "../../components/ui/AdminUI";
+import Modal from "../../components/Modal";
 
 const PAGE_SIZE = 20;
 const GENDERS = ["male", "female", "other"];
@@ -13,6 +11,19 @@ const GENDERS = ["male", "female", "other"];
 function fullName(user) {
   if (!user) return "N/A";
   return `${user.first_name || ""} ${user.last_name || ""}`.trim() || "N/A";
+}
+
+function useDebouncedValue(value, delay = 400) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+function unwrapList(data) {
+  return Array.isArray(data) ? data : data.results || [];
 }
 
 // ----------------------------------------------------------------------
@@ -57,66 +68,75 @@ function LecturerFormModal({ mode, lecturer, departments, onClose, onSaved }) {
         onSaved(data, `Lecturer added. Employee No: ${data.employee_number}`);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || summarizeErrors(err) || "Could not save lecturer.");
+      setError(err.response?.data?.detail || "Could not save lecturer.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title={isEdit ? "Edit Lecturer" : "Add Lecturer"} onClose={onClose} width={480}>
+    <Modal isOpen={true} onClose={onClose} title={isEdit ? "Edit Lecturer" : "Add Lecturer"} size="md">
       <form onSubmit={handleSubmit}>
-        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+        {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
 
         {!isEdit && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="First Name"><input className="mu-input" required value={form.first_name} onChange={handleChange("first_name")} /></Field>
-              <Field label="Last Name"><input className="mu-input" required value={form.last_name} onChange={handleChange("last_name")} /></Field>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>First Name</label>
+                <input className="mu-input" required value={form.first_name} onChange={handleChange("first_name")} />
+              </div>
+              <div className="mu-form-group">
+                <label>Last Name</label>
+                <input className="mu-input" required value={form.last_name} onChange={handleChange("last_name")} />
+              </div>
             </div>
-            <div style={{ marginTop: 12 }}>
-              <Field label="Gender">
-                <select className="mu-input" value={form.gender} onChange={handleChange("gender")}>
-                  {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </Field>
+            <div className="mu-form-group">
+              <label>Gender</label>
+              <select className="mu-input" value={form.gender} onChange={handleChange("gender")}>
+                {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
             </div>
-            <p style={{ fontSize: 12, color: "#888", marginTop: 10 }}>
+            <div className="mu-alert mu-alert-info" style={{ marginTop: 12 }}>
+              <i className="bi bi-info-circle" />
               A login account is created automatically (username = employee number, temporary password = same, must be changed on first login).
-            </p>
+            </div>
           </>
         )}
 
-        <div style={{ marginTop: 12 }}>
-          <Field label="Department">
-            <select className="mu-input" required value={form.department} onChange={handleChange("department")}>
-              <option value="">Select department...</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </Field>
+        <div className="mu-form-group">
+          <label>Department</label>
+          <select className="mu-input" required value={form.department} onChange={handleChange("department")}>
+            <option value="">Select department...</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <Field label="Academic Rank">
-            <select className="mu-input" value={form.academic_rank} onChange={handleChange("academic_rank")}>
-              {["Assistant Lecturer", "Lecturer", "Senior Lecturer", "Associate Professor", "Professor"].map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </Field>
+        <div className="mu-form-group">
+          <label>Academic Rank</label>
+          <select className="mu-input" value={form.academic_rank} onChange={handleChange("academic_rank")}>
+            {["Assistant Lecturer", "Lecturer", "Senior Lecturer", "Associate Professor", "Professor"].map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
         </div>
 
         {isEdit && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, fontSize: 13 }}>
-            <input type="checkbox" checked={form.is_active} onChange={handleChange("is_active")} />
-            Active
-          </label>
+          <div className="mu-checkbox">
+            <input type="checkbox" checked={form.is_active} onChange={handleChange("is_active")} id="lecturer_active" />
+            <label htmlFor="lecturer_active">Active</label>
+          </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
-          <button type="button" className="mu-btn mu-btn-outline-primary" onClick={onClose}>Cancel</button>
+        <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+          <button type="button" className="mu-btn mu-btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="mu-btn mu-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : isEdit ? "Save Changes" : "Add Lecturer"}
+            {saving ? (
+              <>
+                <i className="bi bi-arrow-repeat mu-animate-spin" />
+                Saving...
+              </>
+            ) : isEdit ? "Save Changes" : "Add Lecturer"}
           </button>
         </div>
       </form>
@@ -167,30 +187,38 @@ function StaffFormModal({ mode, staffMember, departments, onClose, onSaved }) {
         onSaved(data, `Staff added. Employee No: ${data.employee_number}`);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || summarizeErrors(err) || "Could not save staff record.");
+      setError(err.response?.data?.detail || "Could not save staff record.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title={isEdit ? "Edit Staff" : "Add Staff"} onClose={onClose} width={480}>
+    <Modal isOpen={true} onClose={onClose} title={isEdit ? "Edit Staff" : "Add Staff"} size="md">
       <form onSubmit={handleSubmit}>
-        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+        {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
 
         {!isEdit && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="First Name"><input className="mu-input" required value={form.first_name} onChange={handleChange("first_name")} /></Field>
-              <Field label="Last Name"><input className="mu-input" required value={form.last_name} onChange={handleChange("last_name")} /></Field>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>First Name</label>
+                <input className="mu-input" required value={form.first_name} onChange={handleChange("first_name")} />
+              </div>
+              <div className="mu-form-group">
+                <label>Last Name</label>
+                <input className="mu-input" required value={form.last_name} onChange={handleChange("last_name")} />
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <Field label="Gender">
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>Gender</label>
                 <select className="mu-input" value={form.gender} onChange={handleChange("gender")}>
                   {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
-              </Field>
-              <Field label="Role">
+              </div>
+              <div className="mu-form-group">
+                <label>Role</label>
                 <select className="mu-input" value={form.user_type} onChange={handleChange("user_type")}>
                   <option value="staff">General Staff</option>
                   <option value="registrar">Registrar</option>
@@ -198,34 +226,39 @@ function StaffFormModal({ mode, staffMember, departments, onClose, onSaved }) {
                   <option value="exam_office">Examinations Office</option>
                   <option value="hostel_warden">Hostel Warden</option>
                 </select>
-              </Field>
+              </div>
             </div>
           </>
         )}
 
-        <div style={{ marginTop: 12 }}>
-          <Field label="Department (optional)">
-            <select className="mu-input" value={form.department} onChange={handleChange("department")}>
-              <option value="">— None —</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </Field>
+        <div className="mu-form-group">
+          <label>Department (optional)</label>
+          <select className="mu-input" value={form.department} onChange={handleChange("department")}>
+            <option value="">— None —</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
         </div>
-        <div style={{ marginTop: 12 }}>
-          <Field label="Designation"><input className="mu-input" value={form.designation} onChange={handleChange("designation")} placeholder="e.g. Senior Finance Officer" /></Field>
+        <div className="mu-form-group">
+          <label>Designation</label>
+          <input className="mu-input" value={form.designation} onChange={handleChange("designation")} placeholder="e.g. Senior Finance Officer" />
         </div>
 
         {isEdit && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, fontSize: 13 }}>
-            <input type="checkbox" checked={form.is_active} onChange={handleChange("is_active")} />
-            Active
-          </label>
+          <div className="mu-checkbox">
+            <input type="checkbox" checked={form.is_active} onChange={handleChange("is_active")} id="staff_active" />
+            <label htmlFor="staff_active">Active</label>
+          </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
-          <button type="button" className="mu-btn mu-btn-outline-primary" onClick={onClose}>Cancel</button>
+        <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+          <button type="button" className="mu-btn mu-btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="mu-btn mu-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : isEdit ? "Save Changes" : "Add Staff"}
+            {saving ? (
+              <>
+                <i className="bi bi-arrow-repeat mu-animate-spin" />
+                Saving...
+              </>
+            ) : isEdit ? "Save Changes" : "Add Staff"}
           </button>
         </div>
       </form>
@@ -248,11 +281,20 @@ function LecturerDetailModal({ lecturer, onClose }) {
   }, [lecturer.id]);
 
   return (
-    <Modal title={fullName(lecturer.user_detail)} onClose={onClose} width={600}>
-      <div style={{ display: "flex", gap: 20, marginBottom: 16, fontSize: 13 }}>
-        <Info label="Employee No" value={lecturer.employee_number} />
-        <Info label="Department" value={lecturer.department_detail?.name} />
-        <Info label="Rank" value={lecturer.academic_rank} />
+    <Modal isOpen={true} onClose={onClose} title={fullName(lecturer.user_detail)} size="lg">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div className="mu-form-group">
+          <label>Employee No</label>
+          <div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{lecturer.employee_number}</div>
+        </div>
+        <div className="mu-form-group">
+          <label>Department</label>
+          <div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{lecturer.department_detail?.name || "—"}</div>
+        </div>
+        <div className="mu-form-group">
+          <label>Rank</label>
+          <div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{lecturer.academic_rank || "—"}</div>
+        </div>
       </div>
       <h4 style={{ margin: "0 0 10px" }}>Unit Allocations</h4>
       {loading ? <LoadingSpinner text="Loading..." /> : (
@@ -260,7 +302,7 @@ function LecturerDetailModal({ lecturer, onClose }) {
           <table className="mu-table">
             <thead><tr><th>Course</th><th>Semester</th><th>Y/S</th><th>Status</th></tr></thead>
             <tbody>
-              {allocations.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", padding: 16, color: "#999" }}>No allocations.</td></tr>}
+              {allocations.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", padding: 16, color: "var(--mu-gray-400)" }}>No allocations.</td></tr>}
               {allocations.map((a) => (
                 <tr key={a.id}>
                   <td>{a.course_detail?.code}</td>
@@ -276,8 +318,64 @@ function LecturerDetailModal({ lecturer, onClose }) {
     </Modal>
   );
 }
-function Info({ label, value }) {
-  return <div><div style={{ fontSize: 11, textTransform: "uppercase", color: "#999" }}>{label}</div><div>{value ?? "—"}</div></div>;
+
+// ----------------------------------------------------------------------
+// Tab Bar
+// ----------------------------------------------------------------------
+function TabBar({ tabs, active, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--mu-border)", marginBottom: 16, flexWrap: "wrap" }}>
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onChange(t.key)}
+          style={{
+            border: "none",
+            borderBottom: active === t.key ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+            borderRadius: 0,
+            background: "transparent",
+            padding: "8px 16px",
+            cursor: "pointer",
+            color: active === t.key ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+            fontWeight: active === t.key ? 600 : 400,
+            fontSize: "var(--mu-font-size-sm)",
+            transition: "all var(--mu-transition-fast)",
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Confirm Modal
+// ----------------------------------------------------------------------
+function ConfirmModal({ title, message, onConfirm, onClose }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal isOpen={true} onClose={onClose} title={title} size="sm">
+      <p style={{ marginTop: 0 }}>{message}</p>
+      <div className="mu-modal-footer" style={{ padding: "16px 0 0 0" }}>
+        <button className="mu-btn mu-btn-secondary" onClick={onClose} type="button">Cancel</button>
+        <button
+          className="mu-btn mu-btn-danger"
+          disabled={busy}
+          type="button"
+          onClick={async () => { setBusy(true); try { await onConfirm(); } finally { setBusy(false); } }}
+        >
+          {busy ? (
+            <>
+              <i className="bi bi-arrow-repeat mu-animate-spin" />
+              Deleting...
+            </>
+          ) : "Delete"}
+        </button>
+      </div>
+    </Modal>
+  );
 }
 
 // ----------------------------------------------------------------------
@@ -349,84 +447,170 @@ export default function LecturersStaff() {
 
   return (
     <div>
+      {/* Page Header */}
       <div className="mu-page-header">
         <div>
-          <h1><i className="bi bi-person-badge" /> Lecturers &amp; Staff</h1>
-          <div className="mu-breadcrumb">Home <span className="separator">/</span> Admin <span className="separator">/</span> Lecturers &amp; Staff</div>
+          <h1>
+            <i className="bi bi-person-badge" />
+            Lecturers &amp; Staff
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Admin <span className="separator">/</span> Lecturers &amp; Staff
+          </div>
         </div>
         <div className="mu-page-header-actions">
+          <Link to="/admin/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
           <button className="mu-btn mu-btn-primary" onClick={() => setFormModal({ mode: "add" })}>
-            <i className="bi bi-plus-circle" /> Add {tab === "lecturers" ? "Lecturer" : "Staff"}
+            <i className="bi bi-plus-circle" />
+            Add {tab === "lecturers" ? "Lecturer" : "Staff"}
           </button>
         </div>
       </div>
 
-      {toast && <div className="mu-alert mu-alert-success"><i className="bi bi-check-circle" /> {toast}</div>}
-      {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
+      {toast && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {toast}
+        </div>
+      )}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
 
       <TabBar
-        tabs={[{ key: "lecturers", label: "Lecturers" }, { key: "staff", label: "Staff" }]}
+        tabs={[{ key: "lecturers", label: `Lecturers (${count || 0})` }, { key: "staff", label: "Staff" }]}
         active={tab}
         onChange={setTab}
       />
 
-      {/* Filters */}
-      <div className="mu-card" style={{ marginBottom: 16 }}>
-        <div className="mu-card-body" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 240px" }}>
-            <Field label="Search"><input className="mu-input" placeholder="Employee no. or name..." value={search} onChange={(e) => setSearch(e.target.value)} /></Field>
-          </div>
-          <div style={{ width: 200 }}>
-            <Field label="Department">
-              <select className="mu-input" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
-                <option value="">All Departments</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.code}</option>)}
-              </select>
-            </Field>
-          </div>
-          <div style={{ width: 140 }}>
-            <Field label="Status">
-              <select className="mu-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </Field>
-          </div>
-          <button className="mu-btn mu-btn-outline-primary" onClick={() => { setSearch(""); setDepartmentFilter(""); setStatusFilter(""); }}>Reset</button>
-        </div>
-      </div>
-
-      {/* Table */}
+      {/* Table with Filters Above Header */}
       <div className="mu-card">
-        <div className="mu-card-header">
-          <h4>{tab === "lecturers" ? "Lecturers" : "Staff"}</h4>
-          <span className="mu-badge mu-badge-primary">{count} total</span>
-        </div>
         <div className="mu-card-body" style={{ padding: 0 }}>
-          {loading ? (
-            <div style={{ padding: 48 }}><LoadingSpinner text="Loading..." /></div>
-          ) : items.length === 0 ? (
-            <EmptyState icon="bi-person-x" label={`No ${tab} found`} hint="Try adjusting filters or add a new record." />
-          ) : (
-            <div className="mu-table-wrapper">
-              <table className="mu-table mu-table-hover">
-                <thead>
-                  <tr>
-                    <th>Employee No</th><th>Name</th><th>Department</th>
-                    <th>{tab === "lecturers" ? "Rank" : "Designation"}</th><th>Status</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it) => (
+          <div className="mu-table-wrapper">
+            <table className="mu-table">
+              <thead>
+                {/* Filter Row */}
+                <tr style={{ background: "var(--mu-gray-50)" }}>
+                  <th colSpan={6} style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      {/* Search - First */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "1 1 220px" }}>
+                        <div style={{ position: "relative", width: "100%" }}>
+                          <i className="bi bi-search" style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--mu-gray-400)" }} />
+                          <input
+                            type="text"
+                            className="mu-input"
+                            placeholder="Search by employee no. or name..."
+                            style={{ 
+                              width: "100%", 
+                              padding: "3px 8px 3px 26px", 
+                              fontSize: "var(--mu-font-size-xs)",
+                              minHeight: "auto",
+                              height: 28
+                            }}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Department Filter */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Dept:</span>
+                        <select
+                          className="mu-select"
+                          style={{ 
+                            width: 130, 
+                            padding: "3px 8px", 
+                            fontSize: "var(--mu-font-size-xs)",
+                            minHeight: "auto",
+                            height: 28
+                          }}
+                          value={departmentFilter}
+                          onChange={(e) => setDepartmentFilter(e.target.value)}
+                        >
+                          <option value="">All</option>
+                          {departments.map((d) => <option key={d.id} value={d.id}>{d.code}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Status Filter */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Status:</span>
+                        <select
+                          className="mu-select"
+                          style={{ 
+                            width: 100, 
+                            padding: "3px 8px", 
+                            fontSize: "var(--mu-font-size-xs)",
+                            minHeight: "auto",
+                            height: 28
+                          }}
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                          <option value="">All</option>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+
+                      {/* Reset */}
+                      <button
+                        className="mu-btn mu-btn-secondary"
+                        style={{ padding: "2px 10px", fontSize: "var(--mu-font-size-xs)", height: 28, minHeight: "auto" }}
+                        onClick={() => { setSearch(""); setDepartmentFilter(""); setStatusFilter(""); }}
+                      >
+                        <i className="bi bi-arrow-counterclockwise" />
+                        Reset
+                      </button>
+
+                      {/* Results count */}
+                      <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", marginLeft: "auto" }}>
+                        {count} record(s)
+                      </span>
+                    </div>
+                  </th>
+                </tr>
+                {/* Column Headers */}
+                <tr>
+                  <th>Employee No</th>
+                  <th>Name</th>
+                  <th>Department</th>
+                  <th>{tab === "lecturers" ? "Rank" : "Designation"}</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} style={{ padding: 48, textAlign: "center" }}><LoadingSpinner text="Loading..." /></td></tr>
+                ) : items.length === 0 ? (
+                  <tr><td colSpan={6} style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                    <i className="bi bi-person-x" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+                    <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No {tab} found</h3>
+                    <p style={{ margin: "8px 0 0" }}>Try adjusting filters or add a new record.</p>
+                  </td></tr>
+                ) : (
+                  items.map((it) => (
                     <tr key={it.id}>
                       <td><strong>{it.employee_number}</strong></td>
                       <td>{fullName(it.user_detail)}</td>
                       <td>{it.department_detail?.code || departments.find((d) => d.id === it.department)?.code || "—"}</td>
                       <td>{tab === "lecturers" ? it.academic_rank : it.designation}</td>
-                      <td><span className={`mu-badge ${it.is_active ? "mu-badge-success" : "mu-badge-gray"}`}>{it.is_active ? "Active" : "Inactive"}</span></td>
                       <td>
-                        <div style={{ display: "flex", gap: 4 }}>
+                        <span className={`mu-badge ${it.is_active ? "mu-badge-success" : "mu-badge-gray"}`}>
+                          {it.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                           {tab === "lecturers" && (
                             <button className="mu-btn mu-btn-sm mu-btn-outline-primary" title="View" onClick={() => setDetailLecturer(it)}>
                               <i className="bi bi-eye" />
@@ -441,16 +625,19 @@ export default function LecturersStaff() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        {/* Pagination */}
         {!loading && items.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid #eee" }}>
-            <span style={{ fontSize: 13, color: "#777" }}>Page {page} of {totalPages} &middot; {count} records</span>
+          <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              Page {page} of {totalPages} &middot; {count} records
+            </span>
             <div style={{ display: "flex", gap: 6 }}>
               <button className="mu-btn mu-btn-sm mu-btn-outline-primary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 <i className="bi bi-chevron-left" /> Prev
@@ -463,6 +650,7 @@ export default function LecturersStaff() {
         )}
       </div>
 
+      {/* Modals */}
       {formModal && tab === "lecturers" && (
         <LecturerFormModal
           mode={formModal.mode} lecturer={formModal.item} departments={departments}

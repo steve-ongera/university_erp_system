@@ -64,6 +64,10 @@ export const PAGES = {
     key: "unitallocations", path: "/unitallocations", label: "Unit Allocation", icon: "bi-person-video3",
     roles: [ROLES.ADMIN, ROLES.COD],
   },
+  TIMETABLE_BUILDER: {
+    key: "timetablebuilder", path: "/timetable-builder", label: "Timetable Builder", icon: "bi-calendar2-week",
+    roles: [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.COD],
+  },
   PROMOTIONS: {
     key: "promotions", path: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle",
     roles: [ROLES.ADMIN, ROLES.REGISTRAR],
@@ -75,7 +79,10 @@ export const PAGES = {
   CLEARANCES: {
     key: "clearances", path: "/clearances", label: "Clearances", icon: "bi-file-earmark-check",
     roles: [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.EXAM_OFFICE],
-    REPORTINGS: { path: "/reportings", roles: [ROLES.ADMIN, ROLES.REGISTRAR] },
+  },
+  REPORTINGS: {
+    key: "reportings", path: "/reportings", label: "Semester Reportings", icon: "bi-check2-square",
+    roles: [ROLES.ADMIN, ROLES.REGISTRAR],
   },
   REPORTS: {
     key: "reports", path: "/reports", label: "Reports", icon: "bi-bar-chart",
@@ -92,8 +99,8 @@ export const NAV_SECTIONS = [
   {
     label: "Operations",
     pages: [
-      PAGES.RESULTS_MANAGER, PAGES.UNIT_ALLOCATIONS, PAGES.PROMOTIONS,
-      PAGES.EXAMINATIONS, PAGES.CLEARANCES, PAGES.REPORTS,
+      PAGES.RESULTS_MANAGER, PAGES.UNIT_ALLOCATIONS, PAGES.TIMETABLE_BUILDER, PAGES.PROMOTIONS,
+      PAGES.EXAMINATIONS, PAGES.CLEARANCES, PAGES.REPORTINGS, PAGES.REPORTS,
     ],
   },
 ];

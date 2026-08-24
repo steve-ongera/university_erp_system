@@ -43,6 +43,7 @@ import Reports from "./pages/admin/Reports";
 import ResultsManager from "./pages/admin/ResultsManagement";
 import UnitAllocations from "./pages/admin/UnitAllocations";
 import AdminReportings from "./pages/admin/AdminReportings";
+import TimetableBuilder from "./pages/admin/TimetableBuilder";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -166,6 +167,7 @@ export default function App() {
             <Route path="/reports" element={<ProtectedRoute allow={PAGES.REPORTS.roles}><Reports /></ProtectedRoute>} />
             <Route path="/resultsmanagement" element={<ProtectedRoute allow={PAGES.RESULTS_MANAGER.roles}><ResultsManager /></ProtectedRoute>} />
             <Route path="/unitallocations" element={<ProtectedRoute allow={PAGES.UNIT_ALLOCATIONS.roles}><UnitAllocations /></ProtectedRoute>} />
+            <Route path="/timetable-builder" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.COD]}><TimetableBuilder /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

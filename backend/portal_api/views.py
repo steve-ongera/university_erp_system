@@ -697,7 +697,7 @@ class ExaminationViewSet(viewsets.ModelViewSet):
 class TimetableViewSet(viewsets.ModelViewSet):
     queryset = m.Timetable.objects.select_related("course", "lecturer")
     serializer_class = s.TimetableSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsStaffRole]   # was permissions.IsAuthenticated
 
     def get_queryset(self):
         qs = super().get_queryset()

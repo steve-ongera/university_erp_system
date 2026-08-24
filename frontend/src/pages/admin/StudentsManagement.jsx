@@ -792,6 +792,10 @@ export default function StudentsManagement() {
           </div>
         </div>
         <div className="mu-page-header-actions">
+          <Link to="/admin/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
           <button className="mu-btn mu-btn-outline-primary" onClick={handleDownloadAll}>
             <i className="bi bi-download" /> Export CSV
           </button>
@@ -814,109 +818,157 @@ export default function StudentsManagement() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="mu-card" style={{ marginBottom: 16 }}>
-        <div className="mu-card-body">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-            <div style={{ flex: "1 1 220px" }}>
-              <div className="mu-form-group" style={{ marginBottom: 0 }}>
-                <label>Search</label>
-                <input
-                  className="mu-input"
-                  placeholder="Reg no, first or last name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            <div style={{ width: 200 }}>
-              <div className="mu-form-group" style={{ marginBottom: 0 }}>
-                <label>Programme</label>
-                <select className="mu-input" value={programmeFilter} onChange={(e) => setProgrammeFilter(e.target.value)}>
-                  <option value="">All Programmes</option>
-                  {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ width: 140 }}>
-              <div className="mu-form-group" style={{ marginBottom: 0 }}>
-                <label>Year</label>
-                <select className="mu-input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
-                  <option value="">All Years</option>
-                  {[1, 2, 3, 4, 5, 6].map((y) => <option key={y} value={y}>Year {y}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ width: 160 }}>
-              <div className="mu-form-group" style={{ marginBottom: 0 }}>
-                <label>Status</label>
-                <select className="mu-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="">All Statuses</option>
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-            <div>
-              <button
-                type="button"
-                className="mu-btn mu-btn-secondary"
-                onClick={() => { setSearch(""); setProgrammeFilter(""); setYearFilter(""); setStatusFilter(""); }}
-              >
-                Reset
-              </button>
-            </div>
-            <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-              <button
-                className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
-                onClick={() => setViewMode("table")}
-                type="button"
-              >
-                <i className="bi bi-table" /> Table
-              </button>
-              <button
-                className={`mu-btn mu-btn-sm ${viewMode === "cards" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
-                onClick={() => setViewMode("cards")}
-                type="button"
-              >
-                <i className="bi bi-grid-3x3-gap" /> Cards
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Results */}
+      {/* Table with Filters Above Header */}
       <div className="mu-card">
-        <div className="mu-card-header">
-          <h4>Students</h4>
-          <span className="mu-badge mu-badge-primary">{count} total</span>
-        </div>
-        <div className="mu-card-body" style={{ padding: viewMode === "table" ? 0 : 16 }}>
-          {loading ? (
-            <div style={{ padding: 48 }}><LoadingSpinner text="Loading students..." /></div>
-          ) : students.length === 0 ? (
-            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
-              <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
-              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No students found</h3>
-              <p>Try adjusting your filters, or admit a new student.</p>
-            </div>
-          ) : viewMode === "table" ? (
-            <div className="mu-table-wrapper">
-              <table className="mu-table mu-table-hover">
-                <thead>
-                  <tr>
-                    <th>Registration</th>
-                    <th>Name</th>
-                    <th>Programme</th>
-                    <th>Year/Sem</th>
-                    <th>Status</th>
-                    <th>GPA</th>
-                    <th>Admission</th>
-                    <th style={{ textAlign: "center" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student) => (
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          <div className="mu-table-wrapper">
+            <table className="mu-table">
+              <thead>
+                {/* Filter Row */}
+                <tr style={{ background: "var(--mu-gray-50)" }}>
+                  <th colSpan={8} style={{ padding: "8px 12px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      {/* Search - First */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "1 1 220px" }}>
+                        <div style={{ position: "relative", width: "100%" }}>
+                          <i className="bi bi-search" style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--mu-gray-400)" }} />
+                          <input
+                            type="text"
+                            className="mu-input"
+                            placeholder="Search by reg no. or name..."
+                            style={{ 
+                              width: "100%", 
+                              padding: "3px 8px 3px 26px", 
+                              fontSize: "var(--mu-font-size-xs)",
+                              minHeight: "auto",
+                              height: 28
+                            }}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Programme Filter */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Programme:</span>
+                        <select
+                          className="mu-select"
+                          style={{ 
+                            width: 130, 
+                            padding: "3px 8px", 
+                            fontSize: "var(--mu-font-size-xs)",
+                            minHeight: "auto",
+                            height: 28
+                          }}
+                          value={programmeFilter}
+                          onChange={(e) => setProgrammeFilter(e.target.value)}
+                        >
+                          <option value="">All</option>
+                          {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Year Filter */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Year:</span>
+                        <select
+                          className="mu-select"
+                          style={{ 
+                            width: 90, 
+                            padding: "3px 8px", 
+                            fontSize: "var(--mu-font-size-xs)",
+                            minHeight: "auto",
+                            height: 28
+                          }}
+                          value={yearFilter}
+                          onChange={(e) => setYearFilter(e.target.value)}
+                        >
+                          <option value="">All</option>
+                          {[1, 2, 3, 4, 5, 6].map((y) => <option key={y} value={y}>Y{y}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Status Filter */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Status:</span>
+                        <select
+                          className="mu-select"
+                          style={{ 
+                            width: 100, 
+                            padding: "3px 8px", 
+                            fontSize: "var(--mu-font-size-xs)",
+                            minHeight: "auto",
+                            height: 28
+                          }}
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                          <option value="">All</option>
+                          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Reset */}
+                      <button
+                        className="mu-btn mu-btn-secondary"
+                        style={{ padding: "2px 10px", fontSize: "var(--mu-font-size-xs)", height: 28, minHeight: "auto" }}
+                        onClick={() => { setSearch(""); setProgrammeFilter(""); setYearFilter(""); setStatusFilter(""); }}
+                      >
+                        <i className="bi bi-arrow-counterclockwise" />
+                        Reset
+                      </button>
+
+                      {/* Results count */}
+                      <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", marginLeft: "auto" }}>
+                        {count} student(s)
+                      </span>
+
+                      {/* View Mode Toggle */}
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                          onClick={() => setViewMode("table")}
+                          type="button"
+                          style={{ padding: "2px 8px", fontSize: "var(--mu-font-size-xs)", height: 28, minHeight: "auto" }}
+                        >
+                          <i className="bi bi-table" /> Table
+                        </button>
+                        <button
+                          className={`mu-btn mu-btn-sm ${viewMode === "cards" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                          onClick={() => setViewMode("cards")}
+                          type="button"
+                          style={{ padding: "2px 8px", fontSize: "var(--mu-font-size-xs)", height: 28, minHeight: "auto" }}
+                        >
+                          <i className="bi bi-grid-3x3-gap" /> Cards
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                </tr>
+                {/* Column Headers */}
+                <tr>
+                  <th>Registration</th>
+                  <th>Name</th>
+                  <th>Programme</th>
+                  <th>Year/Sem</th>
+                  <th>Status</th>
+                  <th>GPA</th>
+                  <th>Admission</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} style={{ padding: 48, textAlign: "center" }}><LoadingSpinner text="Loading students..." /></td></tr>
+                ) : students.length === 0 ? (
+                  <tr><td colSpan={8} style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                    <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+                    <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No students found</h3>
+                    <p>Try adjusting your filters, or admit a new student.</p>
+                  </td></tr>
+                ) : viewMode === "table" ? (
+                  students.map((student) => (
                     <tr key={student.id}>
                       <td><strong>{student.registration_number}</strong></td>
                       <td>{fullName(student.user_detail)}</td>
@@ -943,48 +995,50 @@ export default function StudentsManagement() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-              {students.map((student) => (
-                <div key={student.id} className="mu-card" style={{ margin: 0 }}>
-                  <div className="mu-card-body">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong>{student.registration_number}</strong>
-                      <span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>
-                        {student.status}
-                      </span>
+                  ))
+                ) : (
+                  <tr><td colSpan={8} style={{ padding: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                      {students.map((student) => (
+                        <div key={student.id} className="mu-card" style={{ margin: 0 }}>
+                          <div className="mu-card-body">
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <strong>{student.registration_number}</strong>
+                              <span className={`mu-badge mu-badge-${STATUS_BADGE[student.status] || "gray"}`}>
+                                {student.status}
+                              </span>
+                            </div>
+                            <div style={{ marginTop: 6, fontWeight: 500 }}>{fullName(student.user_detail)}</div>
+                            <div style={{ fontSize: 13, color: "var(--mu-gray-500)" }}>{student.programme_detail?.name}</div>
+                            <div style={{ fontSize: 13, marginTop: 6 }}>
+                              Y{student.current_year} S{student.current_semester} · GPA {student.cumulative_gpa ?? "—"}
+                            </div>
+                            <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+                              <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setDetailStudent(student)}>
+                                <i className="bi bi-eye" /> View
+                              </button>
+                              <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setFormModal({ mode: "edit", student })}>
+                                <i className="bi bi-pencil" /> Edit
+                              </button>
+                              <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setDeleteTarget(student)}>
+                                <i className="bi bi-trash" /> Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ marginTop: 6, fontWeight: 500 }}>{fullName(student.user_detail)}</div>
-                    <div style={{ fontSize: 13, color: "var(--mu-gray-500)" }}>{student.programme_detail?.name}</div>
-                    <div style={{ fontSize: 13, marginTop: 6 }}>
-                      Y{student.current_year} S{student.current_semester} · GPA {student.cumulative_gpa ?? "—"}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setDetailStudent(student)}>
-                        <i className="bi bi-eye" /> View
-                      </button>
-                      <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setFormModal({ mode: "edit", student })}>
-                        <i className="bi bi-pencil" /> Edit
-                      </button>
-                      <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setDeleteTarget(student)}>
-                        <i className="bi bi-trash" /> Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Pagination */}
         {!loading && students.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid var(--mu-border)" }}>
-            <span style={{ fontSize: 13, color: "var(--mu-gray-500)" }}>
+          <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
               Page {page} of {totalPages} &middot; {count} students
             </span>
             <div style={{ display: "flex", gap: 6 }}>

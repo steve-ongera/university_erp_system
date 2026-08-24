@@ -227,7 +227,7 @@ export const notificationsApi = {
 export const adminApi = {
   // Dashboard
   dashboard: () => api.get("/admin/dashboard/"),
-  
+
   // Academic Structure
   faculties: (params) => api.get("/faculties/", { params }),
   createFaculty: (payload) => api.post("/faculties/", payload),
@@ -240,43 +240,44 @@ export const adminApi = {
   deleteDepartment: (id) => api.delete(`/departments/${id}/`),
 
   gradingSchemes: () => api.get("/grading-schemes/"),
+
   programmes: () => api.get("/programmes/"),
-  courses: () => api.get("/courses/"),
-  curriculumVersions: () => api.get("/curriculum-versions/"),
-  
+  courses: (params) => api.get("/courses/", { params }),
+  curriculumVersions: (params) => api.get("/curriculum-versions/", { params }),
+
   // Calendar
   academicYears: () => api.get("/academic-years/"),
   semesters: () => api.get("/semesters/"),
   intakes: () => api.get("/intakes/"),
-  
+
   // People Management
   students: (params) => api.get("/students/", { params }),
   lecturers: () => api.get("/lecturers/"),
   staff: () => api.get("/staff/"),
   deferments: () => api.get("/deferments/"),
-  
+
   // Operations
   clearances: () => api.get("/clearances/"),
   examinations: () => api.get("/examinations/"),
-  
+
   // Fee Management
   feeStructures: () => api.get("/fee-structures/"),
   financialAwards: () => api.get("/financial-awards/"),
-  
+
   // Hostel
   hostels: () => api.get("/hostels/"),
   rooms: () => api.get("/rooms/"),
   beds: (params) => api.get("/beds/", { params }),
   hostelBookings: () => api.get("/hostel-bookings/"),
-  
+
   // Promotions
   runPromotion: () => api.post("/admin-ops/run-promotion/"),
   unitRegistrations: (params) => api.get("/unit-registrations/", { params }),
-  
+
   // Reports
   reports: () => api.get("/reports/"),
 
-    // Reportings
+  // Reportings
   reportings: (params) => api.get("/student-reportings/", { params }),
   updateReportingStatus: (id, statusValue) =>
     api.post(`/student-reportings/${id}/update-status/`, { status: statusValue }),
@@ -324,6 +325,12 @@ export const adminApi = {
   createLecturerAllocation: (payload) => api.post("/lecturer-allocations/", payload),
   updateLecturerAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
   deleteLecturerAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
+
+  // Timetable
+  timetableSlots: (params) => api.get("/timetable/", { params }),
+  createTimetableSlot: (payload) => api.post("/timetable/", payload),
+  updateTimetableSlot: (id, payload) => api.patch(`/timetable/${id}/`, payload),
+  deleteTimetableSlot: (id) => api.delete(`/timetable/${id}/`),
 
   // Lecturer & Staff accounts
   admitLecturer: (payload) => api.post("/lecturers/admit/", payload),
