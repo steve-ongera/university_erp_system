@@ -46,6 +46,7 @@ import AdminReportings from "./pages/admin/AdminReportings";
 import TimetableBuilder from "./pages/admin/TimetableBuilder";
 import UserManagement from "./pages/admin/UserManagement";
 import GradingSchemas from "./pages/admin/grading_schemas";
+import StudentsFeePayment from "./pages/admin/students_feepayment";  
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -166,6 +167,7 @@ export default function App() {
             <Route path="/examinations" element={<ProtectedRoute allow={PAGES.EXAMINATIONS.roles}><Examinations /></ProtectedRoute>} />
             <Route path="/clearances" element={<ProtectedRoute allow={PAGES.CLEARANCES.roles}><ClearancesManagement /></ProtectedRoute>} />
             <Route path="/reportings" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR]}><AdminReportings /></ProtectedRoute>} />
+            <Route path="/fee-payments" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.FINANCE, ROLES.REGISTRAR]}><StudentsFeePayment /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute allow={PAGES.REPORTS.roles}><Reports /></ProtectedRoute>} />
             <Route path="/resultsmanagement" element={<ProtectedRoute allow={PAGES.RESULTS_MANAGER.roles}><ResultsManager /></ProtectedRoute>} />
             <Route path="/unitallocations" element={<ProtectedRoute allow={PAGES.UNIT_ALLOCATIONS.roles}><UnitAllocations /></ProtectedRoute>} />

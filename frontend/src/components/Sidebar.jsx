@@ -60,6 +60,7 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/fee-structures", label: "Fee Structures", icon: "bi-receipt" },
         { to: "/payments", label: "Payments & Reconciliation", icon: "bi-bank" },
+        { to: "/fee-payments", label: "All Fee Payments & Receipts", icon: "bi-receipt-cutoff" }, 
         { to: "/awards", label: "HELB & Bursaries", icon: "bi-piggy-bank" },
       ],
     },
@@ -91,6 +92,7 @@ const NAV_BY_ROLE = {
         { to: "/unitallocations" , label: "Unit Allocation" , icon:"bi bi-arrow-right"},
         { to: "/timetable-builder", label: "Timetable Builder", icon: "bi-calendar2-week" },
         { to: "/reportings", label: "Semester Reportings", icon: "bi-check2-square" },
+        { to: "/fee-payments", label: "Fee Payments", icon: "bi-receipt-cutoff" },
         { to: "/grading-schemes", label: "Grading Schemes", icon: "bi-clipboard-data" },
         { to: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle" },
         { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },

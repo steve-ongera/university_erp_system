@@ -156,7 +156,7 @@ class SemesterViewSet(viewsets.ModelViewSet):
     queryset = m.Semester.objects.all()
     serializer_class = s.SemesterSerializer
     permission_classes = [permissions.IsAuthenticated]
-
+    filterset_fields = ["academic_year", "is_current"]
 
 class IntakeViewSet(viewsets.ModelViewSet):
     queryset = m.Intake.objects.all()
@@ -657,7 +657,8 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
     )
     serializer_class = s.StudentReportingSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ["status", "semester", "reporting_type", "student"]
+    filterset_fields = ["status", "semester", "reporting_type", "student",
+                         "student__programme", "semester__academic_year"]   # <-- added 2 fields
     search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
 
     def get_serializer_class(self):
@@ -697,6 +698,27 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
             status=new_status, processed_by=request.user
         )
         return Response({"updated": updated, "status": new_status})
+    
+    @action(detail=False, methods=["post"], url_path="report-for-student",
+            permission_classes=[IsStaffRole])
+    def report_for_student(self, request):
+        """Admin/registrar reports a semester on behalf of a specific student."""
+        serializer = s.AdminReportForStudentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        reporting, created = m.StudentReporting.objects.update_or_create(
+            student=data["student"], semester=data["semester"],
+            defaults={
+                "reporting_type": data["reporting_type"],
+                "status": data["status"],
+                "processed_by": request.user,
+            },
+        )
+        return Response(
+            s.StudentReportingDetailSerializer(reporting).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
     
 
 class ClearanceRequestViewSet(viewsets.ModelViewSet):

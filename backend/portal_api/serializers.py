@@ -624,7 +624,16 @@ class BulkReportingStatusUpdateSerializer(serializers.Serializer):
     reporting_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
     status = serializers.ChoiceField(choices=m.StudentReporting.Status.choices)
     
-    
+class AdminReportForStudentSerializer(serializers.Serializer):
+    """Lets staff create/override a reporting record on behalf of a student."""
+    student = serializers.PrimaryKeyRelatedField(queryset=m.Student.objects.all())
+    semester = serializers.PrimaryKeyRelatedField(queryset=m.Semester.objects.all())
+    reporting_type = serializers.ChoiceField(
+        choices=[("online", "Online"), ("physical", "Physical")], default="physical"
+    )
+    status = serializers.ChoiceField(
+        choices=m.StudentReporting.Status.choices, default=m.StudentReporting.Status.APPROVED
+    )    
     
 
 class AdminUserSerializer(serializers.ModelSerializer):

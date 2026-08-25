@@ -255,7 +255,7 @@ export const adminApi = {
 
   // Calendar
   academicYears: () => api.get("/academic-years/"),
-  semesters: () => api.get("/semesters/"),
+  semesters: (params) => api.get("/semesters/", { params }),
   intakes: () => api.get("/intakes/"),
 
   users: (params) => api.get("/users/", { params }),
@@ -299,6 +299,7 @@ export const adminApi = {
     api.post(`/student-reportings/${id}/update-status/`, { status: statusValue }),
   bulkUpdateReportingStatus: (reportingIds, statusValue) =>
     api.post("/student-reportings/bulk-update-status/", { reporting_ids: reportingIds, status: statusValue }),
+  reportForStudent: (payload) => api.post("/student-reportings/report-for-student/", payload),
 
   // Academic Years
   createAcademicYear: (payload) => api.post("/academic-years/", payload),
