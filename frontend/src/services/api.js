@@ -239,7 +239,15 @@ export const adminApi = {
   updateDepartment: (id, payload) => api.patch(`/departments/${id}/`, payload),
   deleteDepartment: (id) => api.delete(`/departments/${id}/`),
 
-  gradingSchemes: () => api.get("/grading-schemes/"),
+  gradingSchemes: (params) => api.get("/grading-schemes/", { params }),
+  createGradingScheme: (payload) => api.post("/grading-schemes/", payload),
+  updateGradingScheme: (id, payload) => api.patch(`/grading-schemes/${id}/`, payload),
+  deleteGradingScheme: (id) => api.delete(`/grading-schemes/${id}/`),
+
+  gradeBands: (params) => api.get("/grade-bands/", { params }),
+  createGradeBand: (payload) => api.post("/grade-bands/", payload),
+  updateGradeBand: (id, payload) => api.patch(`/grade-bands/${id}/`, payload),
+  deleteGradeBand: (id) => api.delete(`/grade-bands/${id}/`),
 
   programmes: () => api.get("/programmes/"),
   courses: (params) => api.get("/courses/", { params }),

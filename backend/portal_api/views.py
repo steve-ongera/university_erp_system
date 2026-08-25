@@ -1889,3 +1889,11 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         force_change = request.data.get("force_change", True)
         services.UserManagementService.set_password(user, new_password, force_change=bool(force_change))
         return Response({"detail": "Password updated."})
+    
+    
+
+class GradeBandViewSet(viewsets.ModelViewSet):
+    queryset = m.GradeBand.objects.select_related("scheme")
+    serializer_class = s.GradeBandSerializer
+    permission_classes = [IsRole.for_roles("admin", "registrar", "exam_office")]
+    filterset_fields = ["scheme", "is_supplementary_band", "is_fail_band"]

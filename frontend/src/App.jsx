@@ -45,6 +45,7 @@ import UnitAllocations from "./pages/admin/UnitAllocations";
 import AdminReportings from "./pages/admin/AdminReportings";
 import TimetableBuilder from "./pages/admin/TimetableBuilder";
 import UserManagement from "./pages/admin/UserManagement";
+import GradingSchemas from "./pages/admin/grading_schemas";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -170,6 +171,7 @@ export default function App() {
             <Route path="/unitallocations" element={<ProtectedRoute allow={PAGES.UNIT_ALLOCATIONS.roles}><UnitAllocations /></ProtectedRoute>} />
             <Route path="/timetable-builder" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.COD]}><TimetableBuilder /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute allow={[ROLES.ADMIN]}><UserManagement /></ProtectedRoute>} />
+            <Route path="/grading-schemes" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.EXAM_OFFICE]}><GradingSchemas /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

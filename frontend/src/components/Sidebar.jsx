@@ -91,6 +91,7 @@ const NAV_BY_ROLE = {
         { to: "/unitallocations" , label: "Unit Allocation" , icon:"bi bi-arrow-right"},
         { to: "/timetable-builder", label: "Timetable Builder", icon: "bi-calendar2-week" },
         { to: "/reportings", label: "Semester Reportings", icon: "bi-check2-square" },
+        { to: "/grading-schemes", label: "Grading Schemes", icon: "bi-clipboard-data" },
         { to: "/promotions", label: "Promotions", icon: "bi-arrow-up-circle" },
         { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
         { to: "/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
