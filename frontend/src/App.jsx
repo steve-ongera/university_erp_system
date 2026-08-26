@@ -154,7 +154,7 @@ export default function App() {
               path="/compose-message"
               element={
                 <ProtectedRoute
-                  allow={[ROLES.DEAN, ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN]}
+                  allow={[ROLES.DEAN, ROLES.ADMIN , ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN]}
                 >
                   <ComposeMessage />
                 </ProtectedRoute>
