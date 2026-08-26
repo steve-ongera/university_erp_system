@@ -437,6 +437,8 @@ export const lecturerApi = {
   createNote: (formData) => api.post("/lecture-notes/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
   deleteNote: (id) => api.delete(`/lecture-notes/${id}/`),
   togglePublishCat: (id, isPublished) => api.patch(`/cats/${id}/`, { is_published: isPublished }),
+  togglePublishNote: (id, isPublished) => api.patch(`/lecture-notes/${id}/`, { is_published: isPublished }),
+
 };
 
 // ---------------------------------------------------------------------

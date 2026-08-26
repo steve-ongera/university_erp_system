@@ -199,6 +199,7 @@ function NoteFormModal({ allocation, onClose, onSaved }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
+  const [isPublished, setIsPublished] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -215,6 +216,7 @@ function NoteFormModal({ allocation, onClose, onSaved }) {
       fd.append("title", title);
       fd.append("description", description);
       fd.append("file", file);
+      fd.append("is_published", isPublished);
       const { data } = await lecturerApi.createNote(fd);
       onSaved(data);
       onClose();
@@ -257,6 +259,16 @@ function NoteFormModal({ allocation, onClose, onSaved }) {
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
           <div className="mu-help-text">Upload course notes as a PDF</div>
+        </div>
+
+        <div className="mu-checkbox">
+          <input
+            type="checkbox"
+            checked={isPublished}
+            onChange={(e) => setIsPublished(e.target.checked)}
+            id="publish_note"
+          />
+          <label htmlFor="publish_note">Publish immediately (students can see and download it right away)</label>
         </div>
 
         {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
@@ -456,7 +468,22 @@ export default function LecturePage() {
       await lecturerApi.togglePublishCat(cat.id, !cat.is_published);
       loadCatsAndNotes();
     } catch (e) {
-      alert("Could not update publish status.");
+      console.error("Publish toggle failed:", e.response?.status, e.response?.data);
+      const msg =
+        e.response?.data?.detail ||
+        (typeof e.response?.data === "object" ? JSON.stringify(e.response.data) : null) ||
+        `Request failed (${e.response?.status || "network error"}).`;
+      alert(`Could not update publish status: ${msg}`);
+    }
+  };
+
+  const toggleNotePublish = async (note) => {
+    try {
+      await lecturerApi.togglePublishNote(note.id, !note.is_published);
+      loadCatsAndNotes();
+    } catch (e) {
+      console.error("Note publish toggle failed:", e.response?.status, e.response?.data);
+      alert("Could not update publish status for this note.");
     }
   };
 
@@ -477,12 +504,7 @@ export default function LecturePage() {
             Home <span className="separator">/</span> Lecturer <span className="separator">/</span> CATs & Notes
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/lecturer/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* 4x8 Layout */}
@@ -510,6 +532,7 @@ export default function LecturePage() {
                   {allocations.map((a) => {
                     const isActive = selectedAllocationId === a.id;
                     const catCount = cats.filter(c => c.lecturer_allocation === a.id).length;
+                    const noteCount = notes.filter(n => n.lecturer_allocation === a.id).length;
                     return (
                       <button
                         key={a.id}
@@ -564,6 +587,12 @@ export default function LecturePage() {
                             <span className="mu-badge mu-badge-info" style={{ fontSize: "0.6rem" }}>
                               <i className="bi bi-clipboard-check" style={{ marginRight: 2 }} />
                               {catCount} CATs
+                            </span>
+                          )}
+                          {noteCount > 0 && (
+                            <span className="mu-badge mu-badge-success" style={{ fontSize: "0.6rem" }}>
+                              <i className="bi bi-file-earmark-text" style={{ marginRight: 2 }} />
+                              {noteCount} Notes
                             </span>
                           )}
                         </div>
@@ -669,7 +698,6 @@ export default function LecturePage() {
                             </div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                            {/* Publish Toggle */}
                             <span
                               onClick={() => togglePublish(cat)}
                               title="Click to toggle"
@@ -751,6 +779,29 @@ export default function LecturePage() {
                             )}
                           </div>
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span
+                              onClick={() => toggleNotePublish(n)}
+                              title="Click to toggle"
+                              style={{
+                                cursor: "pointer",
+                                fontSize: "0.55rem",
+                                fontWeight: 600,
+                                color: n.is_published ? "var(--mu-success)" : "var(--mu-gray-400)",
+                                background: n.is_published ? "var(--mu-success-light)" : "var(--mu-gray-100)",
+                                padding: "2px 8px",
+                                borderRadius: 20,
+                                border: "1px solid transparent",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = n.is_published ? "var(--mu-success)" : "var(--mu-gray-300)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "transparent";
+                              }}
+                            >
+                              <i className={`bi ${n.is_published ? "bi-eye-fill" : "bi-eye-slash-fill"}`} style={{ marginRight: 4 }} />
+                              {n.is_published ? "Published" : "Draft"}
+                            </span>
                             <a
                               href={n.file}
                               target="_blank"

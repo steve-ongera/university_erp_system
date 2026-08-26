@@ -614,7 +614,7 @@ class LectureNoteViewSet(viewsets.ModelViewSet):
     queryset = m.LectureNote.objects.select_related("lecturer_allocation__course")
     serializer_class = s.LectureNoteSerializer
     permission_classes = [IsStaffRole]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]   # <-- add JSONParser
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["title", "lecturer_allocation__course__code", "lecturer_allocation__course__name"]
     filterset_fields = ["lecturer_allocation", "is_published"]
