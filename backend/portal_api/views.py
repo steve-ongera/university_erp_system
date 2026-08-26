@@ -45,23 +45,28 @@ class IsStaffRole(permissions.BasePermission):
 # AUTH VIEWS
 # ======================================================================
 
+def _client_ip(request):
+    return request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
+
+
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = s.LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ip = request.META.get("REMOTE_ADDR", "")
+        ip = _client_ip(request)
+        ua = request.META.get("HTTP_USER_AGENT", "")
 
         try:
             user = services.AuthService.authenticate(
-                serializer.validated_data["username"], serializer.validated_data["password"], ip
+                serializer.validated_data["username"], serializer.validated_data["password"], ip, ua
             )
         except services.AuthError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
 
         if services.AuthService.bypass_required():
-            # DEBUG=True -> skip OTP, issue tokens immediately.
+            services.AuthService.start_bypassed_session(user, ip, ua)
             return Response(self._tokens_payload(user))
 
         services.AuthService.issue_otp(user, ip)
@@ -87,7 +92,9 @@ class VerifyOtpView(APIView):
         if not user:
             return Response({"detail": "Unknown user."}, status=status.HTTP_404_NOT_FOUND)
 
-        if not services.AuthService.verify_otp(user, serializer.validated_data["code"]):
+        ip = _client_ip(request)
+        ua = request.META.get("HTTP_USER_AGENT", "")
+        if not services.AuthService.verify_otp(user, serializer.validated_data["code"], ip, ua):
             return Response({"detail": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(LoginView._tokens_payload(user))
@@ -100,6 +107,93 @@ class MeView(APIView):
         return Response(s.UserSerializer(request.user).data)
 
 
+
+class LoginSessionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Device/IP login history — read-only, admin-visible audit trail."""
+    queryset = m.LoginSession.objects.select_related("user")
+    serializer_class = s.LoginSessionSerializer
+    permission_classes = [IsRole.for_roles("admin")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["user", "ip_address", "otp_bypassed"]
+    search_fields = ["user__username", "user__first_name", "user__last_name", "ip_address", "device_label"]
+    ordering_fields = ["login_at"]
+    ordering = ["-login_at"]
+
+
+class AccountLockEventViewSet(viewsets.ReadOnlyModelViewSet):
+    """Lock/unlock audit trail — who locked/unlocked which account and why."""
+    queryset = m.AccountLockEvent.objects.select_related("user", "performed_by")
+    serializer_class = s.AccountLockEventSerializer
+    permission_classes = [IsRole.for_roles("admin")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["user", "action", "reason"]
+    search_fields = ["user__username", "user__first_name", "user__last_name"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+
+class SecurityAlertViewSet(viewsets.ReadOnlyModelViewSet):
+    """Unresolved/resolved security alerts admins need to act on."""
+    queryset = m.SecurityAlert.objects.select_related("user", "resolved_by")
+    serializer_class = s.SecurityAlertSerializer
+    permission_classes = [IsRole.for_roles("admin")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["alert_type", "is_resolved", "user"]
+    search_fields = ["user__username", "message"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    @action(detail=True, methods=["post"], url_path="resolve")
+    def resolve(self, request, pk=None):
+        alert = self.get_object()
+        alert.is_resolved = True
+        alert.resolved_by = request.user
+        alert.resolved_at = timezone.now()
+        alert.save(update_fields=["is_resolved", "resolved_by", "resolved_at"])
+        return Response(s.SecurityAlertSerializer(alert).data)
+
+
+class AdminLoginAttemptViewSet(viewsets.ReadOnlyModelViewSet):
+    """Every login attempt (success or fail) — the finest-grained audit record."""
+    queryset = m.AdminLoginAttempt.objects.all()
+    serializer_class = s.AdminLoginAttemptSerializer
+    permission_classes = [IsRole.for_roles("admin")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["success", "username", "ip_address"]
+    search_fields = ["username", "ip_address", "failure_reason"]
+    ordering_fields = ["attempt_time"]
+    ordering = ["-attempt_time"]
+
+
+class SecurityAuditDashboardView(APIView):
+    """Summary stats for the top of the Security Audit page."""
+    permission_classes = [IsRole.for_roles("admin")]
+
+    def get(self, request):
+        from django.db.models import Count
+        locked_users = m.User.objects.filter(is_locked=True)
+        recent_failed = m.AdminLoginAttempt.objects.filter(success=False).order_by("-attempt_time")[:10]
+        recent_sessions = m.LoginSession.objects.select_related("user").order_by("-login_at")[:10]
+        unresolved_alerts = m.SecurityAlert.objects.filter(is_resolved=False).select_related("user")
+
+        return Response({
+            "stats": {
+                "locked_accounts": locked_users.count(),
+                "unresolved_alerts": unresolved_alerts.count(),
+                "failed_logins_today": m.AdminLoginAttempt.objects.filter(
+                    success=False, attempt_time__date=timezone.now().date()
+                ).count(),
+                "active_sessions_today": m.LoginSession.objects.filter(
+                    login_at__date=timezone.now().date()
+                ).count(),
+            },
+            "locked_accounts": s.AdminUserSerializer(locked_users, many=True).data,
+            "recent_failed_attempts": s.AdminLoginAttemptSerializer(recent_failed, many=True).data,
+            "recent_sessions": s.LoginSessionSerializer(recent_sessions, many=True).data,
+            "unresolved_alerts": s.SecurityAlertSerializer(unresolved_alerts, many=True).data,
+        })
+        
+        
 # ======================================================================
 # ACADEMIC STRUCTURE
 # ======================================================================
@@ -2052,6 +2146,27 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         force_change = request.data.get("force_change", True)
         services.UserManagementService.set_password(user, new_password, force_change=bool(force_change))
         return Response({"detail": "Password updated."})
+    
+    
+    @action(detail=True, methods=["post"], url_path="unlock")
+    def unlock(self, request, pk=None):
+        user = self.get_object()
+        if not user.is_locked:
+            return Response({"detail": "Account is not locked."}, status=status.HTTP_400_BAD_REQUEST)
+        services.AuthService.unlock_account(user, performed_by=request.user, notes=request.data.get("notes", ""))
+        return Response(s.AdminUserSerializer(user).data)
+
+    @action(detail=True, methods=["post"], url_path="lock")
+    def lock(self, request, pk=None):
+        user = self.get_object()
+        if user == request.user:
+            return Response({"detail": "You cannot lock your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        services.AuthService.lock_account(
+            user, performed_by=request.user,
+            reason=m.AccountLockEvent.Reason.ADMIN_MANUAL,
+            notes=request.data.get("notes", ""),
+        )
+        return Response(s.AdminUserSerializer(user).data)
     
     
 

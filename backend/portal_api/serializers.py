@@ -641,11 +641,12 @@ class AdminUserSerializer(serializers.ModelSerializer):
         model = m.User
         fields = ["id", "username", "first_name", "last_name", "email", "phone", "gender",
                   "user_type", "address", "is_active", "must_change_password",
-                  "is_2fa_enrolled", "date_joined", "created_at"]
-        # user_type is intentionally read-only after creation: changing it doesn't
-        # move/create the associated Student/Lecturer/Staff profile row, so an
-        # in-place type change would silently orphan or mismatch that profile.
-        read_only_fields = ["id", "user_type", "date_joined", "created_at"]
+                  "is_2fa_enrolled", "date_joined", "created_at",
+                  "failed_login_attempts", "is_locked", "locked_at",
+                  "last_login_ip", "last_login_at"]
+        read_only_fields = ["id", "user_type", "date_joined", "created_at",
+                             "failed_login_attempts", "is_locked", "locked_at",
+                             "last_login_ip", "last_login_at"]
 
 
 class AdminCreateUserSerializer(serializers.Serializer):
@@ -657,3 +658,38 @@ class AdminCreateUserSerializer(serializers.Serializer):
     gender = serializers.ChoiceField(choices=m.User.Gender.choices, required=False, allow_blank=True)
     user_type = serializers.ChoiceField(choices=m.User.UserType.choices)
     password = serializers.CharField(required=False, allow_blank=True)
+    
+    
+    
+
+class LoginSessionSerializer(serializers.ModelSerializer):
+    user_detail = UserSerializer(source="user", read_only=True)
+
+    class Meta:
+        model = m.LoginSession
+        fields = "__all__"
+
+
+class AccountLockEventSerializer(serializers.ModelSerializer):
+    user_detail = UserSerializer(source="user", read_only=True)
+    performed_by_detail = UserSerializer(source="performed_by", read_only=True)
+
+    class Meta:
+        model = m.AccountLockEvent
+        fields = "__all__"
+
+
+class SecurityAlertSerializer(serializers.ModelSerializer):
+    user_detail = UserSerializer(source="user", read_only=True)
+    resolved_by_detail = UserSerializer(source="resolved_by", read_only=True)
+
+    class Meta:
+        model = m.SecurityAlert
+        fields = "__all__"
+        read_only_fields = ["is_resolved", "resolved_by", "resolved_at", "created_at"]
+
+
+class AdminLoginAttemptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = m.AdminLoginAttempt
+        fields = "__all__"

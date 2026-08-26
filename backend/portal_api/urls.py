@@ -66,12 +66,19 @@ router.register(r"curriculum-units", v.CurriculumUnitViewSet, basename="curricul
 # Notifications
 router.register(r"notifications", v.NotificationViewSet, basename="notifications")
 
+router.register(r"security/login-sessions", v.LoginSessionViewSet, basename="login-sessions")
+router.register(r"security/lock-events", v.AccountLockEventViewSet, basename="lock-events")
+router.register(r"security/alerts", v.SecurityAlertViewSet, basename="security-alerts")
+router.register(r"security/login-attempts", v.AdminLoginAttemptViewSet, basename="login-attempts")
+
+
 urlpatterns = [
     # Auth
     path("auth/login/", v.LoginView.as_view(), name="login"),
     path("auth/verify-otp/", v.VerifyOtpView.as_view(), name="verify-otp"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("auth/me/", v.MeView.as_view(), name="me"),
+     path("security/dashboard/", v.SecurityAuditDashboardView.as_view()),
 
     # Student self-service shortcuts
     path("me/profile/", v.MyProfileStudentView.as_view(), name="my-profile"),
