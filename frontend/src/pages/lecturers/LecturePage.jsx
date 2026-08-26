@@ -29,11 +29,6 @@ function CountdownBadge({ closesAt, opensAt }) {
   const { d, h, m, sec, isOver } = useCountdown(closesAt);
   const notYetOpen = opensAt && new Date(opensAt).getTime() > Date.now();
 
-  let color = "var(--mu-success)";
-  if (isOver) color = "var(--mu-danger)";
-  else if (d === 0 && h < 6) color = "var(--mu-warning)";
-  if (notYetOpen) color = "var(--mu-gray-500)";
-
   return (
     <span className={`mu-badge ${isOver ? "mu-badge-danger" : notYetOpen ? "mu-badge-gray" : d === 0 && h < 6 ? "mu-badge-warning" : "mu-badge-success"}`}>
       <i className={`bi ${isOver ? "bi-lock-fill" : "bi-hourglass-split"}`} style={{ marginRight: 4 }} />
@@ -57,6 +52,7 @@ function CatFormModal({ allocation, onClose, onSaved }) {
     max_marks: 30,
     opens_at: "",
     closes_at: "",
+    is_published: true,
   });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -166,6 +162,16 @@ function CatFormModal({ allocation, onClose, onSaved }) {
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
           <div className="mu-help-text">Upload the question paper as a PDF</div>
+        </div>
+
+        <div className="mu-checkbox">
+          <input
+            type="checkbox"
+            checked={form.is_published}
+            onChange={(e) => setForm({ ...form, is_published: e.target.checked })}
+            id="publish_cat"
+          />
+          <label htmlFor="publish_cat">Publish immediately (students can see and download it right away)</label>
         </div>
 
         {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
@@ -445,7 +451,16 @@ export default function LecturePage() {
     loadCatsAndNotes();
   };
 
-  // Count allocations by status
+  const togglePublish = async (cat) => {
+    try {
+      await lecturerApi.togglePublishCat(cat.id, !cat.is_published);
+      loadCatsAndNotes();
+    } catch (e) {
+      alert("Could not update publish status.");
+    }
+  };
+
+  // Count allocations
   const activeAllocations = allocations.filter(a => a.is_active);
   const totalStudents = allocations.reduce((sum, a) => sum + (a.student_count || 0), 0);
 
@@ -654,6 +669,30 @@ export default function LecturePage() {
                             </div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            {/* Publish Toggle */}
+                            <span
+                              onClick={() => togglePublish(cat)}
+                              title="Click to toggle"
+                              style={{
+                                cursor: "pointer",
+                                fontSize: "0.6rem",
+                                fontWeight: 600,
+                                color: cat.is_published ? "var(--mu-success)" : "var(--mu-gray-400)",
+                                background: cat.is_published ? "var(--mu-success-light)" : "var(--mu-gray-100)",
+                                padding: "2px 10px",
+                                borderRadius: 20,
+                                border: "1px solid transparent",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = cat.is_published ? "var(--mu-success)" : "var(--mu-gray-300)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "transparent";
+                              }}
+                            >
+                              <i className={`bi ${cat.is_published ? "bi-eye-fill" : "bi-eye-slash-fill"}`} style={{ marginRight: 4 }} />
+                              {cat.is_published ? "Published" : "Draft"}
+                            </span>
                             <CountdownBadge closesAt={cat.closes_at} opensAt={cat.opens_at} />
                             <button
                               className="mu-btn mu-btn-sm mu-btn-primary"

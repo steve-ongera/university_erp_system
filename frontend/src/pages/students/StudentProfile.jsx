@@ -66,12 +66,7 @@ export default function StudentProfile() {
             Home <span className="separator">/</span> Profile
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <button className="mu-btn mu-btn-outline">
-            <i className="bi bi-pencil" />
-            Edit Profile
-          </button>
-        </div>
+        
       </div>
 
       {/* Profile Content - 4x8 Grid */}

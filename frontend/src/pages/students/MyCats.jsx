@@ -1,7 +1,8 @@
+//src/pages/students/MyCats.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { catsApi } from "../../services/api";
+import { catsApi, studentsApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Modal from "../../components/Modal";
 
@@ -10,6 +11,8 @@ export default function MyCats() {
   const [loading, setLoading] = useState(true);
   const [cats, setCats] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedCat, setSelectedCat] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -18,18 +21,19 @@ export default function MyCats() {
   const [answerFile, setAnswerFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const fetchCatsAndSubmissions = async () => {
+    const catsRes = await catsApi.myCats();
+    setCats(catsRes.data || []);
+    const submissionsRes = await catsApi.mySubmissions();
+    setSubmissions(submissionsRes.data || []);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError("");
       try {
-        // Fetch CATs
-        const catsRes = await catsApi.myCats();
-        setCats(catsRes.data || []);
-
-        // Fetch submissions
-        const submissionsRes = await catsApi.mySubmissions();
-        setSubmissions(submissionsRes.data || []);
+        await fetchCatsAndSubmissions();
       } catch (err) {
         console.error("Error fetching CATs:", err);
         setError("Failed to load CATs. Please refresh the page.");
@@ -38,7 +42,20 @@ export default function MyCats() {
       }
     };
 
+    const fetchNotes = async () => {
+      setNotesLoading(true);
+      try {
+        const notesRes = await studentsApi.myNotes();
+        setNotes(notesRes.data || []);
+      } catch (err) {
+        console.error("Error fetching notes:", err);
+      } finally {
+        setNotesLoading(false);
+      }
+    };
+
     fetchData();
+    fetchNotes();
   }, []);
 
   const handleViewCat = (cat) => {
@@ -69,10 +86,7 @@ export default function MyCats() {
       });
 
       // Refresh data
-      const catsRes = await catsApi.myCats();
-      setCats(catsRes.data || []);
-      const submissionsRes = await catsApi.mySubmissions();
-      setSubmissions(submissionsRes.data || []);
+      await fetchCatsAndSubmissions();
 
       setSubmitModalOpen(false);
       setAnswerText("");
@@ -107,7 +121,7 @@ export default function MyCats() {
         <div>
           <h1>
             <i className="bi bi-pencil-square" />
-            CATs & Assignments
+            CATs & Course Notes
           </h1>
           <div className="mu-breadcrumb">
             Home <span className="separator">/</span> Academics <span className="separator">/</span> CATs
@@ -153,6 +167,13 @@ export default function MyCats() {
             {cats.filter(c => c.is_open && !submissions.find(s => s.cat === c.id)).length}
           </div>
         </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon blue">
+            <i className="bi bi-file-earmark-text" />
+          </div>
+          <div className="mu-stat-label">Course Notes</div>
+          <div className="mu-stat-value">{notes.length}</div>
+        </div>
       </div>
 
       {/* CATs Table */}
@@ -181,7 +202,7 @@ export default function MyCats() {
                   {cats.map((cat) => {
                     const status = getStatusBadge(cat);
                     const submission = submissions.find(s => s.cat === cat.id);
-                    
+
                     return (
                       <tr key={cat.id}>
                         <td>
@@ -200,7 +221,7 @@ export default function MyCats() {
                               Late
                             </span>
                           )}
-                          {submission?.marks_awarded !== null && (
+                          {submission?.marks_awarded !== null && submission?.marks_awarded !== undefined && (
                             <span className="mu-badge mu-badge-primary" style={{ marginLeft: 4 }}>
                               {submission.marks_awarded}/{cat.max_marks}
                             </span>
@@ -208,16 +229,43 @@ export default function MyCats() {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <button 
+                            <button
                               className="mu-btn mu-btn-sm mu-btn-outline-primary"
                               onClick={() => handleViewCat(cat)}
+                              title="View details"
                             >
                               <i className="bi bi-eye" />
                             </button>
+
+                            {cat.cat_file && (
+                              <a
+                                href={cat.cat_file}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                                title="Download question paper"
+                              >
+                                <i className="bi bi-file-earmark-pdf" />
+                              </a>
+                            )}
+
+                            {submission?.answer_file && (
+                              <a
+                                href={submission.answer_file}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                                title="Download my submitted answer"
+                              >
+                                <i className="bi bi-download" />
+                              </a>
+                            )}
+
                             {cat.is_open && !submission && (
-                              <button 
+                              <button
                                 className="mu-btn mu-btn-sm mu-btn-primary"
                                 onClick={() => handleOpenSubmit(cat)}
+                                title="Submit your answer"
                               >
                                 <i className="bi bi-upload" />
                               </button>
@@ -235,6 +283,68 @@ export default function MyCats() {
               <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
               <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No CATs Available</h3>
               <p style={{ margin: "8px 0 0" }}>Your CATs will appear here once they are published.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Course Notes */}
+      <div className="mu-card" style={{ marginTop: 24 }}>
+        <div className="mu-card-header">
+          <h4>Course Notes</h4>
+          <span className="mu-badge mu-badge-primary">
+            {notes.length} files
+          </span>
+        </div>
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          {notesLoading ? (
+            <div style={{ padding: 24 }}>
+              <LoadingSpinner text="Loading notes..." />
+            </div>
+          ) : notes.length > 0 ? (
+            <div className="mu-table-wrapper">
+              <table className="mu-table mu-table-hover">
+                <thead>
+                  <tr>
+                    <th>Course</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Uploaded</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {notes.map((note) => (
+                    <tr key={note.id}>
+                      <td>
+                        <strong>{note.course_code}</strong>
+                      </td>
+                      <td>{note.title}</td>
+                      <td style={{ color: "var(--mu-gray-500)" }}>
+                        {note.description || "—"}
+                      </td>
+                      <td>{new Date(note.uploaded_at).toLocaleDateString()}</td>
+                      <td>
+                        <a
+                          href={note.file}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                        >
+                          <i className="bi bi-download" style={{ marginRight: 4 }} />
+                          Download
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              <i className="bi bi-file-earmark-text" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Notes Yet</h3>
+              <p style={{ margin: "8px 0 0" }}>Your lecturers haven't uploaded any notes yet.</p>
             </div>
           )}
         </div>
@@ -262,6 +372,21 @@ export default function MyCats() {
                 {selectedCat.instructions || "No instructions provided."}
               </div>
             </div>
+            {selectedCat.cat_file && (
+              <div className="mu-form-group">
+                <label>Question Paper</label>
+                <a
+                  href={selectedCat.cat_file}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mu-btn mu-btn-outline-primary"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <i className="bi bi-file-earmark-pdf" style={{ marginRight: 6 }} />
+                  Download question paper (PDF)
+                </a>
+              </div>
+            )}
             <div className="mu-dashboard-grid-3" style={{ marginBottom: 0 }}>
               <div className="mu-form-group">
                 <label>Max Marks</label>
@@ -292,6 +417,38 @@ export default function MyCats() {
                 )}
               </div>
             </div>
+            {(() => {
+              const submission = submissions.find(s => s.cat === selectedCat.id);
+              if (!submission) return null;
+              return (
+                <div className="mu-form-group">
+                  <label>My Submission</label>
+                  <div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>
+                    Submitted {new Date(submission.submitted_at).toLocaleString()}
+                    {submission.is_late && (
+                      <span className="mu-badge mu-badge-warning" style={{ marginLeft: 8 }}>Late</span>
+                    )}
+                    {submission.marks_awarded !== null && submission.marks_awarded !== undefined && (
+                      <span className="mu-badge mu-badge-primary" style={{ marginLeft: 8 }}>
+                        {submission.marks_awarded}/{selectedCat.max_marks}
+                      </span>
+                    )}
+                  </div>
+                  {submission.answer_file && (
+                    <a
+                      href={submission.answer_file}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mu-btn mu-btn-outline-primary"
+                      style={{ width: "100%", justifyContent: "center", marginTop: 8 }}
+                    >
+                      <i className="bi bi-download" style={{ marginRight: 6 }} />
+                      Download my submitted answer
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </Modal>
@@ -314,6 +471,20 @@ export default function MyCats() {
                 {selectedCat.title}
               </div>
             </div>
+            {selectedCat.cat_file && (
+              <div className="mu-form-group">
+                <a
+                  href={selectedCat.cat_file}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mu-btn mu-btn-outline-primary"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <i className="bi bi-file-earmark-pdf" style={{ marginRight: 6 }} />
+                  Download question paper first
+                </a>
+              </div>
+            )}
             <div className="mu-form-group">
               <label>Your Answer (Text)</label>
               <textarea
@@ -343,46 +514,6 @@ export default function MyCats() {
           </div>
         )}
       </Modal>
-
-      {/* Quick Actions */}
-      <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-journal-bookmark" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>My Units</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your registered units
-            </p>
-            <Link to="/units" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Units
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-award" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Results</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Check your grades
-            </p>
-            <Link to="/grades" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Results
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-calendar3" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Timetable</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your schedule
-            </p>
-            <Link to="/timetable" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Timetable
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

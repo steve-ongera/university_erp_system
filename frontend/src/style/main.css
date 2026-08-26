@@ -3564,3 +3564,274 @@ hr {
     transform: rotate(360deg);
   }
 }
+
+/* ==========================================================================
+   TIMETABLE GRID - HORIZONTAL (Time on top, Days on left)
+   ========================================================================== */
+
+.mu-timetable-grid-horizontal {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--mu-font-size-sm);
+  table-layout: fixed;
+}
+
+.mu-timetable-grid-horizontal th,
+.mu-timetable-grid-horizontal td {
+  border: 1px solid var(--mu-border);
+  padding: 0;
+  vertical-align: top;
+  min-width: 60px;
+}
+
+/* Corner Cell */
+.mu-timetable-corner {
+  background: var(--mu-gray-50);
+  color: var(--mu-gray-500);
+  font-weight: var(--mu-font-weight-semibold);
+  font-size: var(--mu-font-size-xs);
+  text-transform: uppercase;
+  padding: 8px 10px;
+  text-align: center;
+  min-width: 80px;
+  width: 80px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+/* Time Header (Top Row) */
+.mu-timetable-time-header-h {
+  background: var(--mu-primary-50);
+  color: var(--mu-primary-700);
+  font-weight: var(--mu-font-weight-semibold);
+  font-size: var(--mu-font-size-xs);
+  padding: 6px 8px;
+  text-align: center;
+  min-width: 80px;
+  width: 80px;
+}
+
+/* Day Header (Left Column) */
+.mu-timetable-day-header-v {
+  background: var(--mu-gray-50);
+  color: var(--mu-gray-700);
+  font-weight: var(--mu-font-weight-semibold);
+  padding: 8px 10px;
+  text-align: center;
+  min-width: 80px;
+  width: 80px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.mu-day-short {
+  font-size: var(--mu-font-size-base);
+  font-weight: var(--mu-font-weight-bold);
+  color: var(--mu-primary-800);
+}
+
+.mu-day-full {
+  font-size: var(--mu-font-size-xs);
+  font-weight: var(--mu-font-weight-normal);
+  color: var(--mu-gray-500);
+}
+
+/* Timetable Cell */
+.mu-timetable-cell-h {
+  height: 85px;
+  padding: 4px;
+  background: var(--mu-white);
+  transition: background var(--mu-transition-fast);
+  min-width: 80px;
+  width: 80px;
+}
+
+.mu-timetable-cell-h:hover {
+  background: var(--mu-gray-50);
+}
+
+/* Timetable Slot */
+.mu-timetable-slot-h {
+  background: var(--mu-primary-50);
+  padding: 4px 6px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--mu-font-size-xs);
+  transition: all var(--mu-transition-fast);
+  cursor: default;
+  overflow: hidden;
+}
+
+.mu-timetable-slot-h:hover {
+  box-shadow: var(--mu-shadow-sm);
+  transform: scale(1.02);
+}
+
+.mu-timetable-slot-elective-h {
+  background: var(--mu-warning-light);
+  border-left-color: var(--mu-warning);
+}
+
+.mu-slot-code {
+  font-weight: var(--mu-font-weight-bold);
+  color: var(--mu-primary-700);
+  font-size: var(--mu-font-size-xs);
+}
+
+.mu-timetable-slot-elective-h .mu-slot-code {
+  color: var(--mu-warning);
+}
+
+.mu-slot-name {
+  font-size: 0.55rem;
+  color: var(--mu-gray-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mu-slot-venue {
+  font-size: 0.5rem;
+  color: var(--mu-gray-400);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mu-slot-venue .bi {
+  font-size: 0.45rem;
+}
+
+.mu-slot-time {
+  font-size: 0.5rem;
+  color: var(--mu-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mu-slot-time .bi {
+  font-size: 0.45rem;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .mu-timetable-grid-horizontal th,
+  .mu-timetable-grid-horizontal td {
+    min-width: 50px;
+  }
+
+  .mu-timetable-time-header-h {
+    min-width: 50px;
+    width: 50px;
+    font-size: 0.6rem;
+    padding: 4px 4px;
+  }
+
+  .mu-timetable-day-header-v {
+    min-width: 60px;
+    width: 60px;
+    padding: 4px 6px;
+  }
+
+  .mu-timetable-corner {
+    min-width: 60px;
+    width: 60px;
+    font-size: 0.55rem;
+    padding: 4px 4px;
+  }
+
+  .mu-timetable-cell-h {
+    min-width: 50px;
+    width: 50px;
+    height: 70px;
+    padding: 2px;
+  }
+
+  .mu-day-short {
+    font-size: var(--mu-font-size-sm);
+  }
+
+  .mu-day-full {
+    display: none;
+  }
+
+  .mu-slot-name {
+    display: none;
+  }
+
+  .mu-slot-venue {
+    display: none;
+  }
+
+  .mu-slot-time {
+    font-size: 0.45rem;
+  }
+
+  .mu-slot-code {
+    font-size: 0.55rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .mu-timetable-grid-horizontal {
+    font-size: var(--mu-font-size-xs);
+  }
+
+  .mu-timetable-grid-horizontal th,
+  .mu-timetable-grid-horizontal td {
+    min-width: 40px;
+  }
+
+  .mu-timetable-time-header-h {
+    min-width: 40px;
+    width: 40px;
+    font-size: 0.5rem;
+    padding: 2px 2px;
+  }
+
+  .mu-timetable-day-header-v {
+    min-width: 45px;
+    width: 45px;
+    padding: 2px 4px;
+  }
+
+  .mu-timetable-corner {
+    min-width: 45px;
+    width: 45px;
+    font-size: 0.45rem;
+    padding: 2px 2px;
+  }
+
+  .mu-timetable-cell-h {
+    min-width: 40px;
+    width: 40px;
+    height: 55px;
+    padding: 1px;
+  }
+
+  .mu-day-short {
+    font-size: 0.6rem;
+  }
+
+  .mu-slot-code {
+    font-size: 0.45rem;
+  }
+
+  .mu-slot-time {
+    font-size: 0.4rem;
+  }
+
+  .mu-slot-time .bi {
+    display: none;
+  }
+
+  .mu-timetable-slot-h {
+    padding: 1px 2px;
+    gap: 0;
+  }
+}

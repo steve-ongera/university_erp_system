@@ -90,7 +90,7 @@ export default function MyAllocatedUnits() {
                           {a.course_detail?.name}
                         </div>
                       </td>
-                      <td>{a.programme}</td>
+                     <td>{a.programme_detail?.name || a.programme_detail?.code || "—"}</td>
                       <td>
                         <span className="mu-badge mu-badge-primary" style={{ marginRight: 4 }}>
                           Y{a.year}

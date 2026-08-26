@@ -72,12 +72,7 @@ export default function SemesterReporting() {
             Home <span className="separator">/</span> Campus Life <span className="separator">/</span> Semester Reporting
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Alerts */}

@@ -192,6 +192,7 @@ class LecturerUnitAllocationSerializer(serializers.ModelSerializer):
     course_detail = CourseSerializer(source="course", read_only=True)
     lecturer_detail = LecturerSerializer(source="lecturer", read_only=True)
     semester_detail = SemesterSerializer(source="semester", read_only=True)
+    programme_detail = ProgrammeSerializer(source="programme", read_only=True)   # <-- add this
     student_count = serializers.SerializerMethodField()
 
     class Meta:

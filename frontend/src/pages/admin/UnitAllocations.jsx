@@ -83,7 +83,7 @@ function AllocationFormModal({ mode, allocation, lecturers, courses, programmes,
           <Field label="Programme">
             <select className="mu-input" required value={form.programme} onChange={handleChange("programme")}>
               <option value="">Select programme...</option>
-              {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
+              {programmes.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
             </select>
           </Field>
           <Field label="Calendar Semester">
@@ -181,6 +181,8 @@ export default function UnitAllocations() {
   const [programmeFilter, setProgrammeFilter] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [progSemesterFilter, setProgSemesterFilter] = useState("");
 
   const [lecturers, setLecturers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -213,6 +215,8 @@ export default function UnitAllocations() {
       if (programmeFilter) params.programme = programmeFilter;
       if (semesterFilter) params.semester = semesterFilter;
       if (statusFilter) params.is_active = statusFilter === "active";
+      if (yearFilter) params.year = yearFilter;
+      if (progSemesterFilter) params.programme_semester = progSemesterFilter;
 
       const { data } = await adminApi.lecturerAllocations(params);
       if (Array.isArray(data)) { setAllocations(data); setCount(data.length); }
@@ -224,10 +228,10 @@ export default function UnitAllocations() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, programmeFilter, semesterFilter, statusFilter]);
+  }, [page, debouncedSearch, programmeFilter, semesterFilter, statusFilter, yearFilter, progSemesterFilter]);
 
   useEffect(() => { fetchAllocations(); }, [fetchAllocations]);
-  useEffect(() => { setPage(1); }, [debouncedSearch, programmeFilter, semesterFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, programmeFilter, semesterFilter, statusFilter, yearFilter, progSemesterFilter]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
@@ -266,11 +270,11 @@ export default function UnitAllocations() {
           <div style={{ flex: "1 1 240px" }}>
             <Field label="Search"><input className="mu-input" placeholder="Lecturer or course..." value={search} onChange={(e) => setSearch(e.target.value)} /></Field>
           </div>
-          <div style={{ width: 180 }}>
+          <div style={{ width: 220 }}>
             <Field label="Programme">
               <select className="mu-input" value={programmeFilter} onChange={(e) => setProgrammeFilter(e.target.value)}>
                 <option value="">All Programmes</option>
-                {programmes.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}
+                {programmes.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
               </select>
             </Field>
           </div>
@@ -279,6 +283,22 @@ export default function UnitAllocations() {
               <select className="mu-input" value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
                 <option value="">All Semesters</option>
                 {semesters.map((s) => <option key={s.id} value={s.id}>{s.academic_year_detail?.year} S{s.semester_number}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div style={{ width: 120 }}>
+            <Field label="Year">
+              <select className="mu-input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+                <option value="">All Years</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((y) => <option key={y} value={y}>Year {y}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div style={{ width: 140 }}>
+            <Field label="Prog. Semester">
+              <select className="mu-input" value={progSemesterFilter} onChange={(e) => setProgSemesterFilter(e.target.value)}>
+                <option value="">All</option>
+                {[1, 2, 3].map((s) => <option key={s} value={s}>Semester {s}</option>)}
               </select>
             </Field>
           </div>
@@ -291,7 +311,13 @@ export default function UnitAllocations() {
               </select>
             </Field>
           </div>
-          <button className="mu-btn mu-btn-outline-primary" onClick={() => { setSearch(""); setProgrammeFilter(""); setSemesterFilter(""); setStatusFilter(""); }}>
+          <button
+            className="mu-btn mu-btn-outline-primary"
+            onClick={() => {
+              setSearch(""); setProgrammeFilter(""); setSemesterFilter("");
+              setStatusFilter(""); setYearFilter(""); setProgSemesterFilter("");
+            }}
+          >
             Reset
           </button>
         </div>
@@ -315,30 +341,42 @@ export default function UnitAllocations() {
                   <tr><th>Lecturer</th><th>Course</th><th>Programme</th><th>Y/S</th><th>Semester</th><th>Type</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                  {allocations.map((a) => (
-                    <tr key={a.id}>
-                      <td>{lecturerName(a.lecturer_detail)}</td>
-                      <td><strong>{a.course_detail?.code}</strong> — {a.course_detail?.name}</td>
-                      <td>{programmes.find((p) => p.id === a.programme)?.code || "—"}</td>
-                      <td>Y{a.year} S{a.programme_semester}</td>
-                      <td>{a.semester_detail?.academic_year_detail?.year} S{a.semester_detail?.semester_number}</td>
-                      <td>{a.is_supplementary_offering ? <span className="mu-badge mu-badge-warning">Supp</span> : "Normal"}</td>
-                      <td><span className={`mu-badge ${a.is_active ? "mu-badge-success" : "mu-badge-gray"}`}>{a.is_active ? "Active" : "Inactive"}</span></td>
-                      <td>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button className="mu-btn mu-btn-sm mu-btn-outline-primary" title="Roster" onClick={() => setRosterAllocation(a)}>
-                            <i className="bi bi-people" />
-                          </button>
-                          <button className="mu-btn mu-btn-sm mu-btn-outline-primary" title="Edit" onClick={() => setFormModal({ mode: "edit", allocation: a })}>
-                            <i className="bi bi-pencil" />
-                          </button>
-                          <button className="mu-btn mu-btn-sm mu-btn-danger" title="Delete" onClick={() => setDeleteTarget(a)}>
-                            <i className="bi bi-trash" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {allocations.map((a) => {
+                    // programme_detail comes from the serializer fix (programme_detail = ProgrammeSerializer(source="programme")).
+                    // Fall back to the client-side lookup list in case an older API build without that field is still deployed.
+                    const programme = a.programme_detail || programmes.find((p) => p.id === a.programme);
+                    return (
+                      <tr key={a.id}>
+                        <td>{lecturerName(a.lecturer_detail)}</td>
+                        <td><strong>{a.course_detail?.code}</strong> — {a.course_detail?.name}</td>
+                        <td>
+                          <strong>{programme?.code || "—"}</strong>
+                          {programme?.name && (
+                            <div style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)" }}>
+                              {programme.name}
+                            </div>
+                          )}
+                        </td>
+                        <td>Y{a.year} S{a.programme_semester}</td>
+                        <td>{a.semester_detail?.academic_year_detail?.year} S{a.semester_detail?.semester_number}</td>
+                        <td>{a.is_supplementary_offering ? <span className="mu-badge mu-badge-warning">Supp</span> : "Normal"}</td>
+                        <td><span className={`mu-badge ${a.is_active ? "mu-badge-success" : "mu-badge-gray"}`}>{a.is_active ? "Active" : "Inactive"}</span></td>
+                        <td>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button className="mu-btn mu-btn-sm mu-btn-outline-primary" title="Roster" onClick={() => setRosterAllocation(a)}>
+                              <i className="bi bi-people" />
+                            </button>
+                            <button className="mu-btn mu-btn-sm mu-btn-outline-primary" title="Edit" onClick={() => setFormModal({ mode: "edit", allocation: a })}>
+                              <i className="bi bi-pencil" />
+                            </button>
+                            <button className="mu-btn mu-btn-sm mu-btn-danger" title="Delete" onClick={() => setDeleteTarget(a)}>
+                              <i className="bi bi-trash" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

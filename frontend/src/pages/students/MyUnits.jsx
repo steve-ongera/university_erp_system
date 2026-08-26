@@ -291,7 +291,7 @@ export default function MyUnits() {
                     <th>Type</th>
                     <th>Credit Hours</th>
                     <th>Status</th>
-                    <th>Action</th>
+                   
                   </tr>
                 </thead>
                 <tbody>
@@ -310,12 +310,7 @@ export default function MyUnits() {
                             {statusBadge.label}
                           </span>
                         </td>
-                        <td>
-                          <Link to={`/unit/${reg.course_detail?.id}`} className="mu-btn mu-btn-sm mu-btn-outline-primary">
-                            <i className="bi bi-eye" />
-                            View
-                          </Link>
-                        </td>
+                        
                       </tr>
                     );
                   })}

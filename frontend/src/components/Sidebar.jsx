@@ -14,7 +14,7 @@ const NAV_BY_ROLE = {
       section: "Academics",
       links: [
         { to: "/units", label: "My Units", icon: "bi-journal-bookmark" },
-        { to: "/cats", label: "CATs", icon: "bi-pencil-square" },
+        { to: "/cats", label: "CATs & Notes", icon: "bi-pencil-square" },
         { to: "/grades", label: "Results & Transcript", icon: "bi-award" },
         { to: "/supplementary", label: "Supplementary", icon: "bi-arrow-repeat" },
         { to: "/timetable", label: "Timetable", icon: "bi-calendar3" },

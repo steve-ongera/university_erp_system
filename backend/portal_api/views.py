@@ -534,12 +534,13 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
 # CATS / GRADES
 # ======================================================================
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 class CatSubmissionViewSet(viewsets.ModelViewSet):
     queryset = m.CatSubmission.objects.select_related("lecturer_allocation")
     serializer_class = s.CatSubmissionDetailSerializer
     permission_classes = [IsStaffRole]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["title", "lecturer_allocation__course__code", "lecturer_allocation__course__name"]
     filterset_fields = ["lecturer_allocation", "cat_number", "is_published"]
@@ -639,16 +640,27 @@ class MyNotesView(APIView):
         if not student:
             return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
 
-        allocation_ids = m.Enrollment.objects.filter(
+        enrollments = m.Enrollment.objects.filter(
             student=student, is_active=True
-        ).values_list("lecturer_allocation_id", flat=True)
+        ).select_related("course", "semester")
+
+        note_ids = []
+        for enrollment in enrollments:
+            allocations = m.LecturerUnitAllocation.objects.filter(
+                course=enrollment.course, semester=enrollment.semester, is_active=True
+            )
+            notes = m.LectureNote.objects.filter(
+                lecturer_allocation__in=allocations, is_published=True
+            )
+            note_ids.extend(notes.values_list("id", flat=True))
 
         notes = m.LectureNote.objects.filter(
-            lecturer_allocation_id__in=allocation_ids, is_published=True
+            id__in=note_ids
         ).select_related("lecturer_allocation__course").order_by("-uploaded_at")
 
         return Response(s.LectureNoteSerializer(notes, many=True).data)
-
+    
+    
 class GradeViewSet(viewsets.ModelViewSet):
     queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")
     serializer_class = s.GradeSerializer
