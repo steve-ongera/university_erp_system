@@ -249,14 +249,14 @@ export const adminApi = {
   updateGradeBand: (id, payload) => api.patch(`/grade-bands/${id}/`, payload),
   deleteGradeBand: (id) => api.delete(`/grade-bands/${id}/`),
 
-  programmes: () => api.get("/programmes/"),
+  programmes: (params) => api.get("/programmes/", { params }),
   courses: (params) => api.get("/courses/", { params }),
   curriculumVersions: (params) => api.get("/curriculum-versions/", { params }),
 
   // Calendar
-  academicYears: () => api.get("/academic-years/"),
+  academicYears: (params) => api.get("/academic-years/", { params }),
   semesters: (params) => api.get("/semesters/", { params }),
-  intakes: () => api.get("/intakes/"),
+  intakes: (params) => api.get("/intakes/", { params }),
 
   users: (params) => api.get("/users/", { params }),
   getUser: (id) => api.get(`/users/${id}/`),
@@ -268,23 +268,23 @@ export const adminApi = {
 
   // People Management
   students: (params) => api.get("/students/", { params }),
-  lecturers: () => api.get("/lecturers/"),
-  staff: () => api.get("/staff/"),
-  deferments: () => api.get("/deferments/"),
+  lecturers: (params) => api.get("/lecturers/", { params }),
+  staff: (params) => api.get("/staff/", { params }),
+  deferments: (params) => api.get("/deferments/", { params }),
 
   // Operations
-  clearances: () => api.get("/clearances/"),
-  examinations: () => api.get("/examinations/"),
+  clearances: (params) => api.get("/clearances/", { params }),
+  examinations: (params) => api.get("/examinations/", { params }),
 
   // Fee Management
-  feeStructures: () => api.get("/fee-structures/"),
-  financialAwards: () => api.get("/financial-awards/"),
+  feeStructures: (params) => api.get("/fee-structures/", { params }),
+  financialAwards: (params) => api.get("/financial-awards/", { params }),
 
   // Hostel
-  hostels: () => api.get("/hostels/"),
-  rooms: () => api.get("/rooms/"),
+  hostels: (params) => api.get("/hostels/", { params }),
+  rooms: (params) => api.get("/rooms/", { params }),
   beds: (params) => api.get("/beds/", { params }),
-  hostelBookings: () => api.get("/hostel-bookings/"),
+  hostelBookings: (params) => api.get("/hostel-bookings/", { params }),
 
   // Promotions
   runPromotion: () => api.post("/admin-ops/run-promotion/"),
@@ -373,7 +373,6 @@ export const adminApi = {
   rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
 
 };
-
 
 
 // ---------------------------------------------------------------------

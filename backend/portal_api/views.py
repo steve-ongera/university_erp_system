@@ -11,9 +11,9 @@ from . import models as m
 from . import serializers as s
 from . import services
 
-from django.db.models import Q  # <-- Add this import
-from django_filters.rest_framework import DjangoFilterBackend  # <-- Add this import
-from rest_framework.filters import SearchFilter, OrderingFilter  # <-- Add this import
+from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 
 # ======================================================================
@@ -108,41 +108,63 @@ class FacultyViewSet(viewsets.ModelViewSet):
     queryset = m.Faculty.objects.all()
     serializer_class = s.FacultySerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["name", "code"]
+    ordering_fields = ["name", "code"]
+    ordering = ["name"]
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = m.Department.objects.all()
     serializer_class = s.DepartmentSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["name", "code"]
+    filterset_fields = ["faculty", "is_active"]
+    ordering_fields = ["name", "code"]
+    ordering = ["name"]
 
 
 class GradingSchemeViewSet(viewsets.ModelViewSet):
     queryset = m.GradingScheme.objects.all()
     serializer_class = s.GradingSchemeSerializer
     permission_classes = [IsRole.for_roles("admin", "registrar", "exam_office")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name"]
+    ordering = ["name"]
 
 
 class ProgrammeViewSet(viewsets.ModelViewSet):
     queryset = m.Programme.objects.all()
     serializer_class = s.ProgrammeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "code"]
     filterset_fields = ["faculty", "department", "programme_type", "is_active"]
+    ordering_fields = ["name", "code", "duration_years"]
+    ordering = ["name"]
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = m.Course.objects.all()
     serializer_class = s.CourseSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name", "code"]
     filterset_fields = ["department", "course_type", "is_active"]
+    ordering_fields = ["name", "code", "credit_hours"]
+    ordering = ["name"]
 
 
 class CurriculumVersionViewSet(viewsets.ModelViewSet):
     queryset = m.CurriculumVersion.objects.all()
     serializer_class = s.CurriculumVersionSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["programme", "effective_academic_year", "is_active"]
+    ordering_fields = ["effective_academic_year"]
+    ordering = ["-effective_academic_year"]
 
 
 
@@ -154,18 +176,30 @@ class AcademicYearViewSet(viewsets.ModelViewSet):
     queryset = m.AcademicYear.objects.all()
     serializer_class = s.AcademicYearSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["year"]
+    ordering_fields = ["year", "start_date"]
+    ordering = ["-start_date"]
 
 
 class SemesterViewSet(viewsets.ModelViewSet):
     queryset = m.Semester.objects.all()
     serializer_class = s.SemesterSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["academic_year", "is_current"]
+    ordering_fields = ["academic_year", "semester_number", "start_date"]
+    ordering = ["academic_year", "semester_number"]
 
 class IntakeViewSet(viewsets.ModelViewSet):
     queryset = m.Intake.objects.all()
     serializer_class = s.IntakeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["name"]
+    filterset_fields = ["academic_year", "is_active"]
+    ordering_fields = ["name"]
+    ordering = ["-id"]
 
 
 # ======================================================================
@@ -234,8 +268,11 @@ class LecturerViewSet(viewsets.ModelViewSet):
     queryset = m.Lecturer.objects.select_related("user", "department")
     serializer_class = s.LecturerSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["department", "is_active"]
     search_fields = ["employee_number", "user__first_name", "user__last_name"]
+    ordering_fields = ["employee_number", "joining_date"]
+    ordering = ["-joining_date"]
 
     @action(detail=False, methods=["post"], url_path="admit")
     def admit(self, request):
@@ -248,8 +285,11 @@ class StaffViewSet(viewsets.ModelViewSet):
     queryset = m.Staff.objects.select_related("user")
     serializer_class = s.StaffSerializer
     permission_classes = [IsRole.for_roles("admin", "registrar")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["department", "is_active"]
     search_fields = ["employee_number", "user__first_name", "user__last_name"]
+    ordering_fields = ["employee_number"]
+    ordering = ["-id"]
 
     @action(detail=False, methods=["post"], url_path="admit")
     def admit(self, request):
@@ -263,8 +303,11 @@ class StudentDefermentViewSet(viewsets.ModelViewSet):
     queryset = m.StudentDeferment.objects.select_related("student__user")
     serializer_class = s.StudentDefermentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "student"]
     search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    ordering_fields = ["applied_at"]
+    ordering = ["-applied_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -306,7 +349,10 @@ class CurriculumUnitViewSet(viewsets.ModelViewSet):
     queryset = m.CurriculumUnit.objects.select_related("course", "curriculum_version")
     serializer_class = s.CurriculumUnitSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["curriculum_version", "course", "year", "semester"]
+    ordering_fields = ["year", "semester"]
+    ordering = ["year", "semester"]
     
 # ======================================================================
 # UNIT REGISTRATION / ALLOCATION
@@ -316,7 +362,11 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
     queryset = m.LecturerUnitAllocation.objects.select_related("lecturer", "course")
     serializer_class = s.LecturerUnitAllocationSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["course", "programme", "year", "programme_semester", "semester", "lecturer", "is_active"]
+    search_fields = ["course__code", "course__name", "lecturer__user__first_name", "lecturer__user__last_name"]
+    ordering_fields = ["assigned_date"]
+    ordering = ["-assigned_date"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -352,7 +402,11 @@ class UnitRegistrationViewSet(viewsets.ModelViewSet):
     queryset = m.UnitRegistration.objects.select_related("course", "student")
     serializer_class = s.UnitRegistrationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["student", "semester", "course", "registration_type", "is_active"]
+    search_fields = ["student__registration_number", "course__code", "course__name"]
+    ordering_fields = ["registered_at"]
+    ordering = ["-registered_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -376,7 +430,11 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = m.Enrollment.objects.select_related("student", "course")
     serializer_class = s.EnrollmentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["student", "course", "semester"]
+    search_fields = ["student__registration_number", "course__code", "course__name"]
+    ordering_fields = ["id"]
+    ordering = ["-id"]
 
 # ======================================================================
 # CATS / GRADES
@@ -386,6 +444,11 @@ class CatSubmissionViewSet(viewsets.ModelViewSet):
     queryset = m.CatSubmission.objects.select_related("lecturer_allocation")
     serializer_class = s.CatSubmissionSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["title", "lecturer_allocation__course__code", "lecturer_allocation__course__name"]
+    filterset_fields = ["lecturer_allocation", "cat_number", "is_published"]
+    ordering_fields = ["opens_at", "closes_at"]
+    ordering = ["-opens_at"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -398,6 +461,11 @@ class CatAnswerSubmissionViewSet(viewsets.ModelViewSet):
     queryset = m.CatAnswerSubmission.objects.all()
     serializer_class = s.CatAnswerSubmissionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    filterset_fields = ["cat", "student", "is_late"]
+    ordering_fields = ["submitted_at"]
+    ordering = ["-submitted_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -416,7 +484,11 @@ class GradeViewSet(viewsets.ModelViewSet):
     queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")
     serializer_class = s.GradeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["enrollment", "enrollment__student", "enrollment__course", "enrollment__semester"]
+    search_fields = ["enrollment__student__registration_number", "enrollment__course__code", "enrollment__course__name"]
+    ordering_fields = ["published_at", "exam_date"]
+    ordering = ["-published_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -490,7 +562,11 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
     queryset = m.FeeStructure.objects.select_related("programme", "academic_year")
     serializer_class = s.FeeStructureSerializer
     permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["programme", "academic_year", "year", "semester"]
+    search_fields = ["programme__name", "programme__code"]
+    ordering_fields = ["year", "semester", "tuition_fee"]
+    ordering = ["-id"]
     
     @action(detail=True, methods=["get"], url_path="students",
             permission_classes=[IsRole.for_roles("admin", "finance", "registrar")])
@@ -547,6 +623,11 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = m.Invoice.objects.all()
     serializer_class = s.InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["student__registration_number", "description"]
+    filterset_fields = ["student", "invoice_type", "semester", "is_active"]
+    ordering_fields = ["created_at", "amount_due"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -596,15 +677,15 @@ class MyFeeSummaryView(APIView):
 # ======================================================================
 
 
-
-
-
 class HostelBookingViewSet(viewsets.ModelViewSet):
     queryset = m.HostelBooking.objects.select_related("bed__room__hostel", "student__user")
     serializer_class = s.HostelBookingSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["academic_year", "status", "bed__room__hostel", "student"]
-    search_fields = ["student__registration_number"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    ordering_fields = ["booked_at"]
+    ordering = ["-booked_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -736,8 +817,11 @@ class ClearanceRequestViewSet(viewsets.ModelViewSet):
     queryset = m.ClearanceRequest.objects.select_related("student__user")
     serializer_class = s.ClearanceRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["clearance_type", "status", "student"]
-    search_fields = ["student__registration_number"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    ordering_fields = ["requested_at"]
+    ordering = ["-requested_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -772,8 +856,11 @@ class ExaminationViewSet(viewsets.ModelViewSet):
     queryset = m.Examination.objects.select_related("course", "semester")
     serializer_class = s.ExaminationSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["course", "semester", "exam_type", "is_published"]
     search_fields = ["course__code", "course__name", "venue"]
+    ordering_fields = ["exam_date", "start_time"]
+    ordering = ["exam_date", "start_time"]
 
 
 
@@ -781,6 +868,11 @@ class TimetableViewSet(viewsets.ModelViewSet):
     queryset = m.Timetable.objects.select_related("course", "lecturer")
     serializer_class = s.TimetableSerializer
     permission_classes = [IsStaffRole]   # was permissions.IsAuthenticated
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["course", "lecturer", "semester", "programme", "day_of_week", "is_active"]
+    search_fields = ["course__code", "course__name", "lecturer__user__first_name", "lecturer__user__last_name", "venue"]
+    ordering_fields = ["day_of_week", "start_time"]
+    ordering = ["day_of_week", "start_time"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -793,12 +885,21 @@ class AttendanceSessionViewSet(viewsets.ModelViewSet):
     queryset = m.AttendanceSession.objects.all()
     serializer_class = s.AttendanceSessionSerializer
     permission_classes = [IsRole.for_roles("lecturer", "admin")]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["timetable_slot", "is_active", "session_date"]
+    ordering_fields = ["session_date"]
+    ordering = ["-session_date"]
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = m.Attendance.objects.all()
     serializer_class = s.AttendanceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["student", "attendance_session", "status"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    ordering_fields = ["marked_at"]
+    ordering = ["-marked_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -817,6 +918,11 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = s.NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["notification_type", "is_read"]
+    search_fields = ["title", "message"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         return m.Notification.objects.filter(recipient=self.request.user)
@@ -1756,7 +1862,10 @@ class InvoiceAllocationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = m.InvoiceAllocation.objects.select_related("invoice", "payment")
     serializer_class = s.InvoiceAllocationSerializer
     permission_classes = [IsRole.for_roles("admin", "finance")]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["payment", "invoice"]
+    ordering_fields = ["allocated_at"]
+    ordering = ["-allocated_at"]
 
 
 
@@ -1765,8 +1874,11 @@ class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = m.FeePayment.objects.select_related("student__user")
     serializer_class = s.FeePaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["method", "is_reconciled", "student"]
     search_fields = ["registration_number_on_slip", "payer_name_on_slip", "bank_reference", "receipt_number"]
+    ordering_fields = ["received_at", "payment_date", "amount"]
+    ordering = ["-received_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -1806,8 +1918,11 @@ class HelbBursaryAwardViewSet(viewsets.ModelViewSet):
     queryset = m.HelbBursaryAward.objects.select_related("student__user")
     serializer_class = s.HelbBursaryAwardSerializer
     permission_classes = [IsRole.for_roles("admin", "finance", "registrar")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["source", "academic_year", "disbursed", "student"]
-    search_fields = ["student__registration_number"]
+    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+    ordering_fields = ["disbursed_date", "amount_awarded"]
+    ordering = ["-id"]
 
     @action(detail=True, methods=["post"], url_path="mark-disbursed")
     def mark_disbursed(self, request, pk=None):
@@ -1834,21 +1949,33 @@ class FinanceDashboardView(APIView):
 class HostelViewSet(viewsets.ModelViewSet):
     queryset = m.Hostel.objects.all()
     serializer_class = s.HostelSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["name"]
+    filterset_fields = ["hostel_type", "is_active"]
+    ordering_fields = ["name"]
+    ordering = ["name"]
 
 
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = m.Room.objects.select_related("hostel")
     serializer_class = s.RoomSerializer
     permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["hostel", "is_active"]
     search_fields = ["room_number"]
+    ordering_fields = ["room_number"]
+    ordering = ["room_number"]
 
 class BedViewSet(viewsets.ModelViewSet):
     queryset = m.Bed.objects.all()
     serializer_class = s.BedSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["room", "academic_year", "is_available"]
+    search_fields = ["bed_number", "room__room_number"]
+    ordering_fields = ["bed_number"]
+    ordering = ["bed_number"]
 
     def get_queryset(self):
         qs = m.Bed.objects.select_related("room__hostel")
@@ -1899,8 +2026,11 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = m.User.objects.all().order_by("-created_at")
     serializer_class = s.AdminUserSerializer
     permission_classes = [IsRole.for_roles("admin")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["user_type", "is_active", "gender"]
     search_fields = ["username", "first_name", "last_name", "email", "phone"]
+    ordering_fields = ["created_at", "date_joined", "username"]
+    ordering = ["-created_at"]
 
     def create(self, request, *args, **kwargs):
         serializer = s.AdminCreateUserSerializer(data=request.data)
@@ -1929,4 +2059,7 @@ class GradeBandViewSet(viewsets.ModelViewSet):
     queryset = m.GradeBand.objects.select_related("scheme")
     serializer_class = s.GradeBandSerializer
     permission_classes = [IsRole.for_roles("admin", "registrar", "exam_office")]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["scheme", "is_supplementary_band", "is_fail_band"]
+    ordering_fields = ["min_score"]
+    ordering = ["-min_score"]
