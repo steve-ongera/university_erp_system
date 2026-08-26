@@ -31,6 +31,8 @@ from django.utils import timezone
 
 from portal_api import models as m
 from . import models as cm
+from notifications.services import NotificationService
+from notifications.constants import NotificationType
 
 
 # ======================================================================
@@ -259,11 +261,10 @@ class CommunicationService:
 
         # Also drop a plain in-app Notification so it surfaces in the
         # existing bell-icon notification list, not only the Inbox.
-        m.Notification.objects.bulk_create([
-            m.Notification(recipient=user, title=message.title, message=message.body,
-                            notification_type="communication")
-            for user in recipients
-        ])
+        NotificationService.bulk_notify(
+            recipients, title=message.title, message=message.body,
+            notification_type=NotificationType.COMMUNICATION,
+        )
         return message
 
     @staticmethod
@@ -399,11 +400,10 @@ class ConversationService:
         people -= set(exclude)
         if not people or not latest:
             return
-        m.Notification.objects.bulk_create([
-            m.Notification(recipient=u, title=f"{title_prefix}: {conversation.subject}",
-                            message=latest.body[:200], notification_type="conversation")
-            for u in people
-        ])
+        NotificationService.bulk_notify(
+            people, title=f"{title_prefix}: {conversation.subject}", message=latest.body[:200],
+            notification_type=NotificationType.CONVERSATION,
+        )
 
     @staticmethod
     def visible_to(user):

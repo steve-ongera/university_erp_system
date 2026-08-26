@@ -14,6 +14,9 @@ urlpatterns = [
 
     # Communication API
     path("api/v1/", include("communication.urls")),
+
+    # Notifications API
+    path("api/v1/", include("notifications.urls")),
 ]
 
 
