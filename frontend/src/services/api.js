@@ -103,6 +103,7 @@ export const studentsApi = {
   myFeeSummary: () => api.get("/me/fee-summary/"),
   mySupplementary: () => api.get("/me/supplementary/"),
   myDashboard: () => api.get("/me/dashboard/"),
+  myNotes: () => api.get("/me/notes/"),
 };
 
 // ---------------------------------------------------------------------
@@ -425,6 +426,16 @@ export const lecturerApi = {
     api.post("/attendance/start/", { timetable_slot: timetableSlotId, duration_minutes: durationMinutes }),
   attendanceSessionLive: (sessionId) => api.get(`/attendance/${sessionId}/live/`),
   closeAttendanceSession: (sessionId) => api.post(`/attendance/${sessionId}/close/`),
+
+  createCat: (formData) => api.post("/cats/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
+  updateCat: (id, formData) => api.patch(`/cats/${id}/`, formData, { headers: { "Content-Type": "multipart/form-data" } }),
+  deleteCat: (id) => api.delete(`/cats/${id}/`),
+  catSubmissions: (catId) => api.get(`/cats/${catId}/submissions/`),
+  gradeSubmission: (submissionId, marks) => api.post(`/cat-answers/${submissionId}/grade/`, { marks_awarded: marks }),
+
+  notes: (params) => api.get("/lecture-notes/", { params }),
+  createNote: (formData) => api.post("/lecture-notes/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
+  deleteNote: (id) => api.delete(`/lecture-notes/${id}/`),
 };
 
 // ---------------------------------------------------------------------

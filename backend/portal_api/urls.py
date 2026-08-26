@@ -36,6 +36,9 @@ router.register(r"cats", v.CatSubmissionViewSet, basename="cats")
 router.register(r"cat-submissions", v.CatAnswerSubmissionViewSet, basename="cat-submissions")
 router.register(r"grades", v.GradeViewSet, basename="grades")
 
+# Lecture notes  (NEW)
+router.register(r"lecture-notes", v.LectureNoteViewSet, basename="lecture-notes")
+
 # Fees
 router.register(r"fee-structures", v.FeeStructureViewSet)
 router.register(r"invoices", v.InvoiceViewSet, basename="invoices")
@@ -53,7 +56,6 @@ router.register(r"users", v.AdminUserViewSet, basename="admin-users")
 router.register(r"grade-bands", v.GradeBandViewSet, basename="grade-bands")
 
 # Reporting / Clearance
-
 router.register(r"clearances", v.ClearanceRequestViewSet, basename="clearances")
 
 # Exams / Timetable / Attendance
@@ -76,7 +78,7 @@ urlpatterns = [
     path("auth/verify-otp/", v.VerifyOtpView.as_view(), name="verify-otp"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("auth/me/", v.MeView.as_view(), name="me"),
-     path("security/dashboard/", v.SecurityAuditDashboardView.as_view()),
+    path("security/dashboard/", v.SecurityAuditDashboardView.as_view()),
 
     # Student self-service shortcuts
     path("me/profile/", v.MyProfileStudentView.as_view(), name="my-profile"),
@@ -84,19 +86,19 @@ urlpatterns = [
     path("me/fee-summary/", v.MyFeeSummaryView.as_view(), name="my-fee-summary"),
     path("me/supplementary/", v.SupplementaryView.as_view(), name="my-supplementary"),
     path("me/dashboard/", v.MyDashboardView.as_view(), name="my-dashboard"),
-    
+
     # Student Unit endpoints
     path("me/units/", v.MyUnitsView.as_view(), name="my-units"),
     path("me/units/auto-register/", v.AutoRegisterUnitsView.as_view(), name="auto-register-units"),
     path("me/current-semester/", v.CurrentSemesterView.as_view(), name="current-semester"),
     path("me/units/available/", v.MyCurriculumUnitsView.as_view(), name="my-available-units"),
     path("me/units/register-selected/", v.RegisterSelectedUnitsView.as_view(), name="register-selected-units"),
-    
+
     path("me/timetable/", v.MyTimetableView.as_view(), name="my-timetable"),
     path("me/hostel-status/", v.MyHostelStatusView.as_view(), name="my-hostel-status"),
     path("me/reporting-status/", v.MyReportingStatusView.as_view(), name="my-reporting-status"),
     path("me/clearance-status/", v.MyClearanceStatusView.as_view(), name="my-clearance-status"),
-    
+
     path("lecturer/dashboard/", v.LecturerDashboardView.as_view(), name="lecturer-dashboard"),
 
     path("attendance/mine/", v.MyAttendanceSessionsView.as_view(), name="my-attendance-sessions"),
@@ -104,23 +106,24 @@ urlpatterns = [
     path("attendance/<int:session_id>/live/", v.AttendanceSessionLiveView.as_view(), name="attendance-session-live"),
     path("attendance/<int:session_id>/close/", v.CloseAttendanceSessionView.as_view(), name="close-attendance-session"),
     path("reports/", v.ReportsView.as_view(), name="reports"),
-            
+
     # Student CAT endpoints
     path("me/cats/", v.MyCatsView.as_view(), name="my-cats"),
     path("me/cats/submit/", v.SubmitCatAnswerView.as_view(), name="submit-cat-answer"),
     path("me/cat-submissions/", v.MyCatSubmissionsView.as_view(), name="my-cat-submissions"),
 
+    # Student notes endpoint  (NEW)
+    path("me/notes/", v.MyNotesView.as_view(), name="my-notes"),
+
     # Integrations / admin ops
     path("integrations/bank-payment/", v.BankPaymentWebhookView.as_view(), name="bank-payment-webhook"),
     path("admin-ops/run-promotion/", v.RunPromotionView.as_view(), name="run-promotion"),
-    
+
     path("admin/dashboard/", v.AdminDashboardView.as_view(), name="admin-dashboard"),
-    
-    path("finance/dashboard/",v.FinanceDashboardView.as_view(), name="finance-dashboard"),
+
+    path("finance/dashboard/", v.FinanceDashboardView.as_view(), name="finance-dashboard"),
     path("hostel/dashboard/", v.HostelDashboardView.as_view(), name="hostel-dashboard"),
     path("auth/permissions/", v.MyPermissionsView.as_view(), name="my-permissions"),
-
-    
 
     path("", include(router.urls)),
 ]

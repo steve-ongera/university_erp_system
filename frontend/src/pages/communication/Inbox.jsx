@@ -64,10 +64,7 @@ export default function Inbox() {
           </div>
         </div>
         <div className="mu-page-header-actions">
-          <Link to="/messages/compose" className="mu-btn mu-btn-primary">
-            <i className="bi bi-pencil-square" />
-            Compose Message
-          </Link>
+       
           <button className="mu-btn mu-btn-outline-primary" onClick={load}>
             <i className="bi bi-arrow-repeat" />
             Refresh
@@ -202,48 +199,7 @@ export default function Inbox() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-pencil-square" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Compose</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Write a new message
-            </p>
-            <Link to="/messages/compose" className="mu-btn mu-btn-sm mu-btn-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-arrow-right" />
-              Compose
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-envelope-paper" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Sent</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View sent messages
-            </p>
-            <Link to="/messages/sent" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-arrow-right" />
-              View Sent
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-bell" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Notifications</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your notifications
-            </p>
-            <Link to="/notifications" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-arrow-right" />
-              View Notifications
-            </Link>
-          </div>
-        </div>
-      </div>
+     
 
       {/* Message Detail Modal */}
       <Modal

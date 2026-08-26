@@ -44,7 +44,7 @@ const NAV_BY_ROLE = {
       section: "Teaching",
       links: [
         { to: "/my-units", label: "My Allocated Units", icon: "bi-journal-bookmark" },
-        { to: "/cats", label: "CATs & Assignments", icon: "bi-pencil-square" },
+        { to: "/lecturer/cats-notes", label: "CATs & Notes", icon: "bi-pencil-square" },
         { to: "/grading", label: "Enter Marks", icon: "bi-check2-circle" },
         { to: "/attendance", label: "Attendance (QR)", icon: "bi-qr-code" },
       ],

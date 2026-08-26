@@ -334,44 +334,6 @@ export default function MyUnits() {
         </div>
       </div>
 
-      <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-calendar3" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Timetable</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your class schedule
-            </p>
-            <Link to="/timetable" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Timetable
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-award" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Results</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Check your grades and transcripts
-            </p>
-            <Link to="/grades" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Results
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-cash-coin" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Fees</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your fee statement
-            </p>
-            <Link to="/fees" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Fees
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

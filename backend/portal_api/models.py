@@ -619,16 +619,15 @@ class Enrollment(models.Model):
 # CATS / ASSESSMENTS / MARKS
 # ======================================================================
 
+
 class CatSubmission(models.Model):
-    """
-    A CAT (1/2/3) window opened by a lecturer for a unit. Students submit
-    online; lecturer later uploads/enters marks against each submission.
-    """
     lecturer_allocation = models.ForeignKey(LecturerUnitAllocation, on_delete=models.CASCADE,
                                              related_name="cat_windows")
     cat_number = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(3)])
     title = models.CharField(max_length=200)
     instructions = models.TextField(blank=True)
+    cat_file = models.FileField(upload_to="cat_papers/", null=True, blank=True,
+                                 help_text="The CAT question paper (PDF) students download.")
     max_marks = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("30.00"))
     opens_at = models.DateTimeField()
     closes_at = models.DateTimeField()
@@ -644,6 +643,13 @@ class CatSubmission(models.Model):
     def is_open(self):
         now = timezone.now()
         return self.opens_at <= now <= self.closes_at
+
+    @property
+    def seconds_remaining(self):
+        delta = self.closes_at - timezone.now()
+        return max(int(delta.total_seconds()), 0)
+
+
 
 
 class CatAnswerSubmission(models.Model):
@@ -1069,3 +1075,22 @@ class ActivityLog(models.Model):
     class Meta:
         ordering = ["-timestamp"]
         indexes = [models.Index(fields=["user", "timestamp"]), models.Index(fields=["action", "timestamp"])]
+
+
+class LectureNote(models.Model):
+    """PDF course notes a lecturer publishes for a specific unit offering."""
+    lecturer_allocation = models.ForeignKey(LecturerUnitAllocation, on_delete=models.CASCADE,
+                                             related_name="lecture_notes")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    file = models.FileField(upload_to="lecture_notes/")
+    is_published = models.BooleanField(default=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="uploaded_notes")
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.lecturer_allocation.course.code} - {self.title}"

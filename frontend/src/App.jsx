@@ -34,6 +34,8 @@ import LecturerDashboard from "./pages/lecturers/LecturerDashboard";
 import MyAllocatedUnits from "./pages/lecturers/MyAllocatedUnits";
 import EnterMarks from "./pages/lecturers/EnterMarks";
 import QRAttendance from "./pages/lecturers/QRAttendance";
+import LecturePage from "./pages/lecturers/LecturePage";
+
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -125,6 +127,7 @@ export default function App() {
             <Route path="/my-units" element={<ProtectedRoute allow={[ROLES.LECTURER]}><MyAllocatedUnits /></ProtectedRoute>} />
             <Route path="/grading" element={<ProtectedRoute allow={[ROLES.LECTURER]}><EnterMarks /></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute allow={[ROLES.LECTURER]}><QRAttendance /></ProtectedRoute>} />
+            <Route path="/lecturer/cats-notes" element={<ProtectedRoute allow={[ROLES.LECTURER]}><LecturePage /></ProtectedRoute>} />
 
             {/* ===== HOSTEL WARDEN PAGES (unchanged — already correctly scoped) ===== */}
             <Route path="/hostel/dashboard" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelWardenDashboard /></ProtectedRoute>} />

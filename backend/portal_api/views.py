@@ -533,11 +533,13 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
 # ======================================================================
 # CATS / GRADES
 # ======================================================================
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class CatSubmissionViewSet(viewsets.ModelViewSet):
     queryset = m.CatSubmission.objects.select_related("lecturer_allocation")
-    serializer_class = s.CatSubmissionSerializer
+    serializer_class = s.CatSubmissionDetailSerializer
     permission_classes = [IsStaffRole]
+    parser_classes = [MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["title", "lecturer_allocation__course__code", "lecturer_allocation__course__name"]
     filterset_fields = ["lecturer_allocation", "cat_number", "is_published"]
@@ -550,11 +552,22 @@ class CatSubmissionViewSet(viewsets.ModelViewSet):
             return qs.filter(lecturer_allocation__lecturer__user=self.request.user)
         return qs
 
+    @action(detail=True, methods=["get"], url_path="submissions")
+    def submissions(self, request, pk=None):
+        """All student answer submissions for this CAT — the grading queue."""
+        cat = self.get_object()
+        if request.user.user_type == "lecturer" and cat.lecturer_allocation.lecturer.user != request.user:
+            return Response({"detail": "Not your CAT."}, status=status.HTTP_403_FORBIDDEN)
+
+        submissions = cat.student_submissions.select_related("student__user").order_by("-submitted_at")
+        return Response(s.CatAnswerSubmissionDetailSerializer(submissions, many=True).data)
+
 
 class CatAnswerSubmissionViewSet(viewsets.ModelViewSet):
     queryset = m.CatAnswerSubmission.objects.all()
-    serializer_class = s.CatAnswerSubmissionSerializer
+    serializer_class = s.CatAnswerSubmissionDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
     filterset_fields = ["cat", "student", "is_late"]
@@ -565,14 +578,76 @@ class CatAnswerSubmissionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.user_type == "student":
             return m.CatAnswerSubmission.objects.filter(student__user=user)
+        if user.user_type == "lecturer":
+            return m.CatAnswerSubmission.objects.filter(cat__lecturer_allocation__lecturer__user=user)
         return super().get_queryset()
 
     def perform_create(self, serializer):
         cat = serializer.validated_data["cat"]
-        from django.utils import timezone
         serializer.save(student=self.request.user.student_profile,
                          is_late=timezone.now() > cat.closes_at)
 
+    @action(detail=True, methods=["post"], url_path="grade",
+            permission_classes=[IsRole.for_roles("lecturer", "admin", "exam_office")])
+    def grade(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.user_type == "lecturer" and \
+           submission.cat.lecturer_allocation.lecturer.user != request.user:
+            return Response({"detail": "Not your student's submission."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = s.GradeCatAnswerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        marks = serializer.validated_data["marks_awarded"]
+        if marks > submission.cat.max_marks:
+            return Response({"detail": f"Marks cannot exceed {submission.cat.max_marks}."},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        submission.marks_awarded = marks
+        submission.graded_at = timezone.now()
+        submission.graded_by = request.user
+        submission.save(update_fields=["marks_awarded", "graded_at", "graded_by"])
+        return Response(s.CatAnswerSubmissionDetailSerializer(submission).data)
+
+
+class LectureNoteViewSet(viewsets.ModelViewSet):
+    queryset = m.LectureNote.objects.select_related("lecturer_allocation__course")
+    serializer_class = s.LectureNoteSerializer
+    permission_classes = [IsStaffRole]
+    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["title", "lecturer_allocation__course__code", "lecturer_allocation__course__name"]
+    filterset_fields = ["lecturer_allocation", "is_published"]
+    ordering_fields = ["uploaded_at"]
+    ordering = ["-uploaded_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "lecturer":
+            return qs.filter(lecturer_allocation__lecturer__user=self.request.user)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+
+
+class MyNotesView(APIView):
+    """Published lecture notes for units the logged-in student is enrolled in this semester."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
+        allocation_ids = m.Enrollment.objects.filter(
+            student=student, is_active=True
+        ).values_list("lecturer_allocation_id", flat=True)
+
+        notes = m.LectureNote.objects.filter(
+            lecturer_allocation_id__in=allocation_ids, is_published=True
+        ).select_related("lecturer_allocation__course").order_by("-uploaded_at")
+
+        return Response(s.LectureNoteSerializer(notes, many=True).data)
 
 class GradeViewSet(viewsets.ModelViewSet):
     queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")

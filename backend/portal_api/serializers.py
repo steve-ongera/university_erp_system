@@ -497,35 +497,56 @@ class AutoRegisterUnitsSerializer(serializers.Serializer):
 # ----------------------------------------------------------------------
 # CATS / ASSESSMENTS (Enhanced)
 # ----------------------------------------------------------------------
-
 class CatSubmissionDetailSerializer(serializers.ModelSerializer):
-    """Detailed CAT submission with course and lecturer info."""
     course_code = serializers.CharField(source="lecturer_allocation.course.code", read_only=True)
     course_name = serializers.CharField(source="lecturer_allocation.course.name", read_only=True)
     lecturer_name = serializers.SerializerMethodField()
     is_open = serializers.ReadOnlyField()
-    
+    seconds_remaining = serializers.ReadOnlyField()
+    submission_count = serializers.SerializerMethodField()
+    graded_count = serializers.SerializerMethodField()
+
     class Meta:
         model = m.CatSubmission
         fields = "__all__"
-    
+
     def get_lecturer_name(self, obj):
         return f"{obj.lecturer_allocation.lecturer.user.first_name} {obj.lecturer_allocation.lecturer.user.last_name}"
 
+    def get_submission_count(self, obj):
+        return obj.student_submissions.count()
+
+    def get_graded_count(self, obj):
+        return obj.student_submissions.filter(marks_awarded__isnull=False).count()
+
 
 class CatAnswerSubmissionDetailSerializer(serializers.ModelSerializer):
-    """Detailed student CAT answer submission."""
     student_name = serializers.SerializerMethodField()
+    registration_number = serializers.CharField(source="student.registration_number", read_only=True)
     cat_title = serializers.CharField(source="cat.title", read_only=True)
-    
+    max_marks = serializers.DecimalField(source="cat.max_marks", max_digits=5, decimal_places=2, read_only=True)
+
     class Meta:
         model = m.CatAnswerSubmission
         fields = "__all__"
-        read_only_fields = ["submitted_at", "is_late", "marks_awarded", "graded_at", "graded_by"]
-    
+        read_only_fields = ["submitted_at", "is_late", "graded_at", "graded_by"]
+
     def get_student_name(self, obj):
         return f"{obj.student.user.first_name} {obj.student.user.last_name}"
-    
+
+
+class GradeCatAnswerSerializer(serializers.Serializer):
+    marks_awarded = serializers.DecimalField(max_digits=5, decimal_places=2)
+
+
+class LectureNoteSerializer(serializers.ModelSerializer):
+    course_code = serializers.CharField(source="lecturer_allocation.course.code", read_only=True)
+    course_name = serializers.CharField(source="lecturer_allocation.course.name", read_only=True)
+
+    class Meta:
+        model = m.LectureNote
+        fields = "__all__"
+        read_only_fields = ["uploaded_at", "uploaded_by"]
     
     
     
