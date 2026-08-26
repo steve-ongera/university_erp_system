@@ -217,8 +217,10 @@ export const clearanceApi = {
 // Notifications APIs
 // ---------------------------------------------------------------------
 export const notificationsApi = {
-  list: () => api.get("/notifications/"),
+  summary: () => api.get("/notifications/summary/"),
+  list: (params) => api.get("/notifications/", { params }),
   markRead: (id) => api.post(`/notifications/${id}/mark-read/`),
+  markAllRead: () => api.post("/notifications/mark-all-read/"),
 };
 
 // ---------------------------------------------------------------------

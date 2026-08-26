@@ -86,7 +86,7 @@ export default function CommunicationCenter() {
     try {
       const payload = { ...form, scheduled_at: form.scheduled_at || null };
       await communicationApi.compose(payload);
-      setFeedback("✅ Message sent successfully.");
+      setFeedback(" Message sent successfully.");
       setForm(EMPTY_FORM);
       setConfirmModalOpen(false);
       loadMessages();
@@ -133,8 +133,8 @@ export default function CommunicationCenter() {
 
       {/* Feedback Alert */}
       {feedback && (
-        <div className={`mu-alert ${feedback.includes("✅") ? "mu-alert-success" : "mu-alert-danger"}`}>
-          <i className={`bi ${feedback.includes("✅") ? "bi-check-circle" : "bi-exclamation-triangle"}`} />
+        <div className={`mu-alert ${feedback.includes("") ? "mu-alert-success" : "mu-alert-danger"}`}>
+          <i className={`bi ${feedback.includes("") ? "bi-check-circle" : "bi-exclamation-triangle"}`} />
           {feedback}
         </div>
       )}

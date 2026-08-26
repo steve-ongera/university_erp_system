@@ -63,8 +63,6 @@ router.register(r"attendance-sessions", v.AttendanceSessionViewSet)
 router.register(r"attendance", v.AttendanceViewSet, basename="attendance")
 router.register(r"curriculum-units", v.CurriculumUnitViewSet, basename="curriculum-unit"),
 
-# Notifications
-router.register(r"notifications", v.NotificationViewSet, basename="notifications")
 
 router.register(r"security/login-sessions", v.LoginSessionViewSet, basename="login-sessions")
 router.register(r"security/lock-events", v.AccountLockEventViewSet, basename="lock-events")

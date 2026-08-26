@@ -2,6 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import muLogo from "../assets/mut_logo.png"; // Adjust path as needed
+import { useNotificationCenter } from "../hooks/useNotificationCenter"; // adjust path to match your project
+
+function timeAgo(isoString) {
+  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
@@ -10,6 +22,8 @@ export default function Navbar({ onToggleSidebar }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
+
+  const { notifications, unreadCount, inboxUnreadCount, markRead, markAllRead } = useNotificationCenter();
 
   const initials = user
     ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || user.username[0].toUpperCase()
@@ -42,31 +56,30 @@ export default function Navbar({ onToggleSidebar }) {
     navigate("/me/profile");
   };
 
-  // Sample notifications - replace with real data from API
-  const notifications = [
-    { id: 1, title: "Grade Published", text: "Your CAT 2 results for BSC 101 are now available.", time: "2 min ago", unread: true },
-    { id: 2, title: "Fee Reminder", text: "Semester fees are due by October 15th.", time: "1 hour ago", unread: true },
-    { id: 3, title: "Hostel Booking", text: "Your hostel booking has been confirmed.", time: "3 hours ago", unread: false },
-  ];
+  const handleNotificationClick = (notif) => {
+    if (!notif.is_read) markRead(notif.id);
+  };
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const handleOpenMessages = () => {
+    navigate("/inbox"); // adjust to whatever route renders Inbox.jsx / CommunicationCenter.jsx in your router
+  };
 
   return (
     <header className="mu-navbar">
       {/* Left Section */}
       <div className="mu-navbar-left">
-        <button 
-          className="mu-navbar-toggle" 
-          onClick={onToggleSidebar} 
+        <button
+          className="mu-navbar-toggle"
+          onClick={onToggleSidebar}
           aria-label="Toggle menu"
         >
           <i className="bi bi-list" />
         </button>
-        
+
         <div className="mu-navbar-brand">
-          <img 
-            src={muLogo} 
-            alt="Muranga University" 
+          <img
+            src={muLogo}
+            alt="Muranga University"
             className="mu-navbar-logo"
           />
           <span>Muranga Portal</span>
@@ -77,9 +90,9 @@ export default function Navbar({ onToggleSidebar }) {
       <div className="mu-navbar-center">
         <div className="mu-search-bar">
           <i className="bi bi-search" />
-          <input 
-            type="text" 
-            placeholder="Search students, courses, units..." 
+          <input
+            type="text"
+            placeholder="Search students, courses, units..."
             aria-label="Search"
           />
         </div>
@@ -89,8 +102,8 @@ export default function Navbar({ onToggleSidebar }) {
       <div className="mu-navbar-actions">
         {/* Notifications */}
         <div ref={notifRef} style={{ position: "relative" }}>
-          <button 
-            className="mu-navbar-action-btn" 
+          <button
+            className="mu-navbar-action-btn"
             aria-label="Notifications"
             onClick={() => setNotifOpen(!notifOpen)}
           >
@@ -104,23 +117,28 @@ export default function Navbar({ onToggleSidebar }) {
             <div className="mu-notifications-dropdown">
               <div className="mu-notifications-header">
                 <h4>Notifications</h4>
-                <button className="mu-mark-all">Mark all as read</button>
+                {unreadCount > 0 && (
+                  <button className="mu-mark-all" onClick={markAllRead}>
+                    Mark all as read
+                  </button>
+                )}
               </div>
               <div>
                 {notifications.map((notif) => (
-                  <div 
-                    key={notif.id} 
-                    className={`mu-notification-item ${notif.unread ? "unread" : ""}`}
+                  <div
+                    key={notif.id}
+                    className={`mu-notification-item ${!notif.is_read ? "unread" : ""}`}
+                    onClick={() => handleNotificationClick(notif)}
                   >
                     <div className="mu-notif-icon">
                       <i className="bi bi-bell" />
                     </div>
                     <div className="mu-notif-content">
                       <div className="mu-notif-title">{notif.title}</div>
-                      <div className="mu-notif-text">{notif.text}</div>
-                      <div className="mu-notif-time">{notif.time}</div>
+                      <div className="mu-notif-text">{notif.message}</div>
+                      <div className="mu-notif-time">{timeAgo(notif.created_at)}</div>
                     </div>
-                    {notif.unread && <div className="mu-notif-dot" />}
+                    {!notif.is_read && <div className="mu-notif-dot" />}
                   </div>
                 ))}
                 {notifications.length === 0 && (
@@ -135,14 +153,17 @@ export default function Navbar({ onToggleSidebar }) {
         </div>
 
         {/* Messages */}
-        <button className="mu-navbar-action-btn" aria-label="Messages">
+        <button className="mu-navbar-action-btn" aria-label="Messages" onClick={handleOpenMessages}>
           <i className="bi bi-envelope" />
+          {inboxUnreadCount > 0 && (
+            <span className="mu-badge-count">{inboxUnreadCount}</span>
+          )}
         </button>
 
         {/* User Menu */}
         <div ref={userMenuRef} style={{ position: "relative" }}>
-          <div 
-            className={`mu-user-chip ${userMenuOpen ? "open" : ""}`} 
+          <div
+            className={`mu-user-chip ${userMenuOpen ? "open" : ""}`}
             onClick={() => setUserMenuOpen(!userMenuOpen)}
           >
             <div className="mu-avatar">{initials}</div>

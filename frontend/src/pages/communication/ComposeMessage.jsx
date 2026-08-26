@@ -68,7 +68,7 @@ export default function ComposeMessage() {
     setFeedback("");
     try {
       await communicationApi.compose(form);
-      setFeedback("✅ Message sent successfully.");
+      setFeedback(" Message sent successfully.");
       setForm((f) => ({ ...f, title: "", body: "" }));
       const { data } = await communicationApi.sentMessages();
       setHistory(data.results || data);
@@ -116,8 +116,8 @@ export default function ComposeMessage() {
 
       {/* Feedback Alert */}
       {feedback && (
-        <div className={`mu-alert ${feedback.includes("✅") ? "mu-alert-success" : "mu-alert-danger"}`}>
-          <i className={`bi ${feedback.includes("✅") ? "bi-check-circle" : "bi-exclamation-triangle"}`} />
+        <div className={`mu-alert ${feedback.includes("") ? "mu-alert-success" : "mu-alert-danger"}`}>
+          <i className={`bi ${feedback.includes("") ? "bi-check-circle" : "bi-exclamation-triangle"}`} />
           {feedback}
         </div>
       )}
