@@ -21,6 +21,14 @@ import GraduationClearance from "./pages/students/GraduationClearance";
 import Deferment from "./pages/students/Deferment";
 import StudentProfile from "./pages/students/StudentProfile";
 
+import Inbox from "./pages/communication/Inbox";
+import ComposeMessage from "./pages/communication/ComposeMessage";
+import Conversations from "./pages/communication/Conversations";
+import ConversationDetail from "./pages/communication/ConversationDetail";
+import CommunicationCenter from "./pages/admin/CommunicationCenter";
+import ContactSupport from "./pages/students/ContactSupport";
+ 
+
 // Lecturer Pages
 import LecturerDashboard from "./pages/lecturers/LecturerDashboard";
 import MyAllocatedUnits from "./pages/lecturers/MyAllocatedUnits";
@@ -47,6 +55,7 @@ import TimetableBuilder from "./pages/admin/TimetableBuilder";
 import UserManagement from "./pages/admin/UserManagement";
 import GradingSchemas from "./pages/admin/grading_schemas";
 import StudentsFeePayment from "./pages/admin/students_feepayment";  
+import SecurityAudit from "./pages/admin/SecurityAudit";
 
 // Finance Pages
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
@@ -174,6 +183,7 @@ export default function App() {
             <Route path="/timetable-builder" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.COD]}><TimetableBuilder /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute allow={[ROLES.ADMIN]}><UserManagement /></ProtectedRoute>} />
             <Route path="/grading-schemes" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.EXAM_OFFICE]}><GradingSchemas /></ProtectedRoute>} />
+            <Route path="/security-audits" element={<ProtectedRoute allow={[ROLES.ADMIN]}><SecurityAudit/></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

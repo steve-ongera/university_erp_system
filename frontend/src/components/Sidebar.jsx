@@ -98,6 +98,7 @@ const NAV_BY_ROLE = {
         { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
         { to: "/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
         { to: "/reports", label: "Reports", icon: "bi-bar-chart" },
+        {to: "/security-audits", label: "Security Audits" , icon: "bi bi-shield"},
       ],
     },
   ],

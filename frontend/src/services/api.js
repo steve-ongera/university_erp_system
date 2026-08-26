@@ -372,8 +372,39 @@ export const adminApi = {
   approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
   rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
 
+  // Security Audit
+  loginSessions: (params) => api.get("/security/login-sessions/", { params }),
+  lockEvents: (params) => api.get("/security/lock-events/", { params }),
+  securityAlerts: (params) => api.get("/security/alerts/", { params }),
+  resolveAlert: (id) => api.post(`/security/alerts/${id}/resolve/`),
+  loginAttempts: (params) => api.get("/security/login-attempts/", { params }),
+  securityDashboard: () => api.get("/security/dashboard/"),
+  unlockUser: (id, notes) => api.post(`/users/${id}/unlock/`, { notes }),
+  lockUser: (id, notes) => api.post(`/users/${id}/lock/`, { notes }),
+
 };
 
+
+export const communicationApi = {
+  // ---- Broadcasts (Announcements) ----
+  audienceOptions: () => api.get("/messages/audience-options/"),
+  compose: (payload) => api.post("/messages/compose/", payload),
+  sentMessages: (params) => api.get("/messages/", { params }),
+  messageRecipients: (id) => api.get(`/messages/${id}/recipients/`),
+ 
+  // ---- Inbox (received announcements) ----
+  inbox: () => api.get("/me/inbox/"),
+  markMessageRead: (id) => api.post(`/me/inbox/${id}/mark-read/`),
+ 
+  // ---- Conversations (two-way threads: enquiries/complaints/support) ----
+  conversationTargets: () => api.get("/me/conversation-targets/"),
+  conversations: (params) => api.get("/conversations/", { params }),
+  conversation: (id) => api.get(`/conversations/${id}/`),
+  openConversation: (payload) => api.post("/conversations/", payload),
+  replyConversation: (id, body) => api.post(`/conversations/${id}/reply/`, { body }),
+  assignConversation: (id) => api.post(`/conversations/${id}/assign/`),
+  setConversationStatus: (id, statusValue) => api.post(`/conversations/${id}/set-status/`, { status: statusValue }),
+};
 
 // ---------------------------------------------------------------------
 // Lecturer APIs
