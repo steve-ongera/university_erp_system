@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
@@ -171,13 +171,36 @@ export default function AdminReportings() {
     }
   }, [baseFilterParams]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadCounts(); }, [loadCounts]);
+  // ---------------------------------------------------------------
+  // Fetch orchestration
+  // ---------------------------------------------------------------
+  // A filter change must never let `load()` fire with a stale `page`
+  // value — DRF's PageNumberPagination 404s if the requested page no
+  // longer exists for the new, narrower result set (e.g. staying on
+  // page 2 while typing a search that only matches 1 page of results).
+  // We track the filter "scope" as a single key: whenever it changes
+  // we reset the page and skip this run's fetch; the page-state change
+  // then re-triggers this same effect (via `load`'s dependency on
+  // `page`), and on that run the scope key matches so we fetch for
+  // real with page already at 1.
+  const filterScopeKey = [
+    debouncedSearch, statusFilter, semesterFilter, academicYearFilter, programmeFilter,
+  ].join("|");
+  const prevFilterScopeKey = useRef(filterScopeKey);
 
-  // Any change to the filter scope should snap the user back to page 1.
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter, semesterFilter, academicYearFilter, programmeFilter]);
+    if (prevFilterScopeKey.current !== filterScopeKey) {
+      prevFilterScopeKey.current = filterScopeKey;
+      if (page !== 1) {
+        setPage(1);
+        return; // wait for the page reset to re-trigger this effect
+      }
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load, filterScopeKey]);
+
+  useEffect(() => { loadCounts(); }, [loadCounts]);
 
   const resetFilters = () => {
     setStatusFilter("");

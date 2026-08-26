@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { getRoleHomePath } from "./RoleDashboard";
 import muLogo from "../assets/mut_logo.png"; // Make sure this path is correct
 
 export default function Login() {
@@ -15,6 +16,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const goToRoleHome = (data) => {
+    loginWithSession(data);
+    navigate(data.user ? getRoleHomePath(data.user.user_type) : "/dashboard");
+  };
+
   const handleCredentials = async (e) => {
     e.preventDefault();
     setError("");
@@ -24,8 +30,7 @@ export default function Login() {
       if (data.otp_required) {
         setStep("otp");
       } else {
-        loginWithSession(data);
-        navigate("/dashboard");
+        goToRoleHome(data);
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Login failed. Check your credentials.");
@@ -40,8 +45,7 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await authApi.verifyOtp(username, code);
-      loginWithSession(data);
-      navigate("/dashboard");
+      goToRoleHome(data);
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid code.");
     } finally {
