@@ -16,71 +16,219 @@ from django.utils import timezone
 from . import models as m
 from . import utils
 
+import re
+from django.conf import settings
+from django.core.mail import send_mail
+from django.utils import timezone
+from django.contrib.auth import authenticate as django_authenticate
+
+from . import models as m
+
+MAX_LOGIN_ATTEMPTS = 3
+OTP_EXPIRY_MINUTES = 5
+
 
 # ======================================================================
 # AUTH / 2FA
 # ======================================================================
+
+
 
 class AuthError(Exception):
     pass
 
 
 class AuthService:
-    """
-    Login flow:
-      1. authenticate(username/reg-no, password) -> User | raises AuthError
-      2. if user.requires_2fa (i.e. settings.DEBUG is False):
-             issue_otp(user) -> emails/SMS a 6-digit code, caller returns
-             a "2fa_required" response holding a short-lived challenge id
-         else:
-             caller issues JWT/session immediately (DEBUG bypass)
-      3. verify_otp(user, code) -> True/False, then caller issues tokens
-    """
 
     @staticmethod
-    def authenticate(username: str, password: str, ip_address: str = "") -> m.User:
-        from django.contrib.auth import authenticate as django_authenticate
+    def bypass_required():
+        """DEBUG=True skips OTP entirely — see User.requires_2fa."""
+        return settings.DEBUG
 
-        user = django_authenticate(username=username, password=password)
+    # ------------------------------------------------------------------
+    # Step 1: username + password
+    # ------------------------------------------------------------------
+    @staticmethod
+    def authenticate(username, password, ip_address, user_agent=""):
+        try:
+            user = m.User.objects.get(username=username)
+        except m.User.DoesNotExist:
+            m.AdminLoginAttempt.objects.create(
+                username=username, ip_address=ip_address, user_agent=user_agent,
+                success=False, failure_reason="Unknown username",
+            )
+            raise AuthError("Invalid username or password.")
+
+        if user.is_locked:
+            m.AdminLoginAttempt.objects.create(
+                username=username, ip_address=ip_address, user_agent=user_agent,
+                success=False, failure_reason="Account locked",
+            )
+            raise AuthError("This account is locked. Contact an administrator to unlock it.")
+
+        if not user.check_password(password) or not user.is_active:
+            AuthService._record_failed_attempt(user, ip_address, user_agent)
+            remaining = max(0, MAX_LOGIN_ATTEMPTS - user.failed_login_attempts)
+            if remaining == 0:
+                raise AuthError("Invalid username or password. This account has now been locked.")
+            raise AuthError(f"Invalid username or password. {remaining} attempt(s) remaining before lockout.")
+
+        # Successful password check — reset the counter.
+        if user.failed_login_attempts:
+            user.failed_login_attempts = 0
+            user.save(update_fields=["failed_login_attempts"])
+
         m.AdminLoginAttempt.objects.create(
-            username=username, ip_address=ip_address or "0.0.0.0",
-            success=bool(user), failure_reason="" if user else "invalid_credentials",
+            username=username, ip_address=ip_address, user_agent=user_agent, success=True,
         )
-        if not user:
-            raise AuthError("Invalid registration/employee number or password.")
-        if not user.is_active:
-            raise AuthError("Account is inactive. Contact the registrar.")
         return user
 
     @staticmethod
-    def issue_otp(user: m.User, ip_address: str = "") -> m.TwoFactorCode:
-        code = utils.generate_otp_code()
-        otp = m.TwoFactorCode.objects.create(
-            user=user, code=code, expires_at=utils.otp_expiry(), ip_address=ip_address
+    def _record_failed_attempt(user, ip_address, user_agent):
+        user.failed_login_attempts += 1
+        lock_now = user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS
+
+        if lock_now:
+            user.is_locked = True
+            user.locked_at = timezone.now()
+        user.save(update_fields=["failed_login_attempts", "is_locked", "locked_at"])
+
+        m.AdminLoginAttempt.objects.create(
+            username=user.username, ip_address=ip_address, user_agent=user_agent,
+            success=False, failure_reason="Incorrect password",
         )
-        # NOTE: wire this to your SMS/email provider.
-        # send_sms(user.phone, f"Your Muranga Portal code is {code}")
-        return otp
+
+        if lock_now:
+            m.AccountLockEvent.objects.create(
+                user=user, action=m.AccountLockEvent.Action.LOCKED,
+                reason=m.AccountLockEvent.Reason.FAILED_LOGIN, ip_address=ip_address,
+                notes=f"Locked automatically after {MAX_LOGIN_ATTEMPTS} failed login attempts.",
+            )
+            alert = m.SecurityAlert.objects.create(
+                user=user, alert_type=m.SecurityAlert.AlertType.ACCOUNT_LOCKED,
+                ip_address=ip_address,
+                message=f"{user.username} ({user.get_full_name()}) was locked out after "
+                        f"{MAX_LOGIN_ATTEMPTS} failed login attempts from {ip_address}.",
+            )
+            AuthService._notify_admins_of_lockout(user, ip_address, alert)
 
     @staticmethod
-    def verify_otp(user: m.User, code: str) -> bool:
-        otp = (
-            m.TwoFactorCode.objects.filter(user=user, code=code, is_used=False)
-            .order_by("-created_at")
-            .first()
+    def _notify_admins_of_lockout(user, ip_address, alert):
+        admin_emails = list(
+            m.User.objects.filter(user_type="admin", is_active=True)
+            .exclude(email="").values_list("email", flat=True)
         )
+        if not admin_emails:
+            return
+        try:
+            send_mail(
+                subject=f"[Security Alert] Account locked: {user.username}",
+                message=(
+                    f"{user.get_full_name()} ({user.username}, role: {user.user_type}) has been "
+                    f"locked out after {MAX_LOGIN_ATTEMPTS} failed login attempts.\n\n"
+                    f"IP address: {ip_address}\nTime: {alert.created_at}\n\n"
+                    f"Unlock or investigate this from the Security Audit page."
+                ),
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@muranga.ac.ke"),
+                recipient_list=admin_emails,
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # email failure should never block the lockout itself
+
+    # ------------------------------------------------------------------
+    # Step 2: OTP issue + verify
+    # ------------------------------------------------------------------
+    @staticmethod
+    def issue_otp(user, ip_address):
+        code = f"{int.from_bytes(__import__('os').urandom(3), 'big') % 1000000:06d}"
+        m.TwoFactorCode.objects.create(
+            user=user, code=code,
+            expires_at=timezone.now() + timezone.timedelta(minutes=OTP_EXPIRY_MINUTES),
+            ip_address=ip_address,
+        )
+        try:
+            send_mail(
+                subject="Your Murang'a University login code",
+                message=f"Your one-time login code is {code}. It expires in {OTP_EXPIRY_MINUTES} minutes.",
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@muranga.ac.ke"),
+                recipient_list=[user.email] if user.email else [],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    def verify_otp(user, code, ip_address="", user_agent=""):
+        otp = (m.TwoFactorCode.objects
+               .filter(user=user, code=code, is_used=False)
+               .order_by("-created_at").first())
         if not otp or not otp.is_valid:
             return False
         otp.is_used = True
         otp.save(update_fields=["is_used"])
-        user.is_2fa_enrolled = True
-        user.save(update_fields=["is_2fa_enrolled"])
+        AuthService._start_session(user, ip_address, user_agent, otp_bypassed=False)
         return True
 
     @staticmethod
-    def bypass_required() -> bool:
-        """DEBUG=True => skip OTP entirely (dev convenience only)."""
-        return settings.DEBUG
+    def start_bypassed_session(user, ip_address, user_agent=""):
+        """Called instead of issue_otp/verify_otp when bypass_required() is True."""
+        AuthService._start_session(user, ip_address, user_agent, otp_bypassed=True)
+
+    @staticmethod
+    def _start_session(user, ip_address, user_agent, otp_bypassed):
+        m.LoginSession.objects.create(
+            user=user, ip_address=ip_address, user_agent=user_agent,
+            device_label=AuthService._parse_device_label(user_agent),
+            otp_bypassed=otp_bypassed,
+        )
+        is_new_device = not m.LoginSession.objects.filter(
+            user=user, ip_address=ip_address
+        ).exclude(login_at=None).exists()
+        user.last_login_ip = ip_address
+        user.last_login_at = timezone.now()
+        user.save(update_fields=["last_login_ip", "last_login_at"])
+
+        if is_new_device and user.login_sessions.count() > 1:
+            m.SecurityAlert.objects.create(
+                user=user, alert_type=m.SecurityAlert.AlertType.NEW_DEVICE,
+                ip_address=ip_address,
+                message=f"{user.username} logged in from a new IP address: {ip_address}.",
+            )
+
+    @staticmethod
+    def _parse_device_label(user_agent):
+        if not user_agent:
+            return "Unknown device"
+        ua = user_agent.lower()
+        browser = next((b for b in ["edg", "chrome", "firefox", "safari", "opera"] if b in ua), "Browser")
+        osys = next((o for o in ["windows", "mac os", "android", "iphone", "linux"] if o in ua), "Unknown OS")
+        return f"{browser.title()} on {osys.title()}"
+
+    # ------------------------------------------------------------------
+    # Admin actions
+    # ------------------------------------------------------------------
+    @staticmethod
+    def unlock_account(user, performed_by, notes=""):
+        user.is_locked = False
+        user.locked_at = None
+        user.failed_login_attempts = 0
+        user.save(update_fields=["is_locked", "locked_at", "failed_login_attempts"])
+        m.AccountLockEvent.objects.create(
+            user=user, action=m.AccountLockEvent.Action.UNLOCKED,
+            reason=m.AccountLockEvent.Reason.ADMIN_MANUAL,
+            performed_by=performed_by, notes=notes or "Unlocked by admin.",
+        )
+
+    @staticmethod
+    def lock_account(user, performed_by, reason=m.AccountLockEvent.Reason.ADMIN_MANUAL, notes=""):
+        user.is_locked = True
+        user.locked_at = timezone.now()
+        user.save(update_fields=["is_locked", "locked_at"])
+        m.AccountLockEvent.objects.create(
+            user=user, action=m.AccountLockEvent.Action.LOCKED, reason=reason,
+            performed_by=performed_by, notes=notes,
+        )
 
 
 # ======================================================================

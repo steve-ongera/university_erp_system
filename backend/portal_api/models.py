@@ -73,6 +73,13 @@ class User(AbstractUser):
     is_2fa_enrolled = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # --- Security / lockout tracking (ADD THESE) ---
+    failed_login_attempts = models.PositiveSmallIntegerField(default=0)
+    is_locked = models.BooleanField(default=False)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def requires_2fa(self) -> bool:
@@ -118,6 +125,91 @@ class TwoFactorCode(models.Model):
     def is_valid(self):
         return not self.is_used and timezone.now() <= self.expires_at
 
+
+# ======================================================================
+# SECURITY AUDIT
+# ======================================================================
+
+class LoginSession(models.Model):
+    """
+    One successful login — the device/IP audit trail admins review.
+    Created only after 2FA succeeds (or immediately in DEBUG bypass).
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_sessions")
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField(blank=True)
+    device_label = models.CharField(max_length=255, blank=True,
+                                     help_text="Parsed browser/OS summary, e.g. 'Chrome on Windows'.")
+    otp_bypassed = models.BooleanField(default=False,
+                                        help_text="True if this login skipped 2FA because settings.DEBUG=True.")
+    login_at = models.DateTimeField(auto_now_add=True)
+    logged_out_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-login_at"]
+        indexes = [models.Index(fields=["user", "login_at"]), models.Index(fields=["ip_address"])]
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.ip_address} ({self.login_at:%Y-%m-%d %H:%M})"
+
+
+class AccountLockEvent(models.Model):
+    """
+    Every lock/unlock action, automatic or admin-initiated — the audit
+    record behind 'why is this account locked / who unlocked it'.
+    """
+    class Reason(models.TextChoices):
+        FAILED_LOGIN = "failed_login", "Too Many Failed Login Attempts"
+        ADMIN_MANUAL = "admin_manual", "Manually Locked by Admin"
+        SUSPICIOUS = "suspicious", "Suspicious Activity"
+
+    class Action(models.TextChoices):
+        LOCKED = "locked", "Locked"
+        UNLOCKED = "unlocked", "Unlocked"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lock_events")
+    action = models.CharField(max_length=10, choices=Action.choices)
+    reason = models.CharField(max_length=20, choices=Reason.choices, default=Reason.FAILED_LOGIN)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="performed_lock_actions",
+                                      help_text="Admin who locked/unlocked; null means the system did it automatically.")
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} — {self.action} ({self.reason})"
+
+
+class SecurityAlert(models.Model):
+    """
+    Surfaced to admins on the security dashboard — created automatically
+    when something needs their attention (a lockout, a login from an
+    unrecognized device, etc).
+    """
+    class AlertType(models.TextChoices):
+        ACCOUNT_LOCKED = "account_locked", "Account Locked"
+        SUSPICIOUS_LOGIN = "suspicious_login", "Suspicious Login"
+        NEW_DEVICE = "new_device", "New Device Login"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="security_alerts")
+    alert_type = models.CharField(max_length=30, choices=AlertType.choices)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    message = models.TextField()
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="resolved_alerts")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_alert_type_display()} — {self.user.username}"
 
 # ======================================================================
 # ACADEMIC STRUCTURE
