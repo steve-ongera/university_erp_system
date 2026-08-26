@@ -11,6 +11,10 @@ from . import models as m
 from . import serializers as s
 from . import services
 
+from django.db.models import Q  # <-- Add this import
+from django_filters.rest_framework import DjangoFilterBackend  # <-- Add this import
+from rest_framework.filters import SearchFilter, OrderingFilter  # <-- Add this import
+
 
 # ======================================================================
 # PERMISSIONS
@@ -172,8 +176,11 @@ class StudentViewSet(viewsets.ModelViewSet):
     queryset = m.Student.objects.select_related("user", "programme")
     serializer_class = s.StudentSerializer
     permission_classes = [IsStaffRole]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["registration_number", "user__first_name", "user__last_name", "user__email"]
     filterset_fields = ["programme", "current_year", "status"]
+    ordering_fields = ["registration_number", "admission_date", "current_year", "current_semester"]
+    ordering = ["-admission_date"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -657,9 +664,13 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
     )
     serializer_class = s.StudentReportingSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["status", "semester", "reporting_type", "student",
-                         "student__programme", "semester__academic_year"]   # <-- added 2 fields
-    search_fields = ["student__registration_number", "student__user__first_name", "student__user__last_name"]
+                         "student__programme", "semester__academic_year"]
+    search_fields = ["student__registration_number", "student__user__first_name", 
+                     "student__user__last_name", "student__user__email"]
+    ordering_fields = ["reporting_date", "status"]
+    ordering = ["-reporting_date"]
 
     def get_serializer_class(self):
         if self.request.user.is_authenticated and self.request.user.user_type != "student":

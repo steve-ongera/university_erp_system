@@ -733,8 +733,33 @@ export default function StudentsManagement() {
     }
   }, [page, debouncedSearch, programmeFilter, yearFilter, statusFilter]);
 
-  useEffect(() => { fetchStudents(); }, [fetchStudents]);
-  useEffect(() => { setPage(1); }, [debouncedSearch, programmeFilter, yearFilter, statusFilter]);
+  // ---------------------------------------------------------------
+  // Fetch orchestration
+  // ---------------------------------------------------------------
+  // Same fix as AdminReportings: a filter change must never let
+  // `fetchStudents()` fire with a stale `page` value, or DRF's
+  // PageNumberPagination 404s once the narrower result set no longer
+  // has that many pages (e.g. staying on page 3 while typing a search
+  // that only matches 1 page of students). We key the filter "scope"
+  // as a single string; whenever it changes we reset the page and
+  // skip this run's fetch — the page-state change then re-triggers
+  // this same effect (via `fetchStudents`'s dependency on `page`),
+  // and on that run the scope key matches so we fetch for real with
+  // page already reset to 1.
+  const filterScopeKey = [debouncedSearch, programmeFilter, yearFilter, statusFilter].join("|");
+  const prevFilterScopeKey = useRef(filterScopeKey);
+
+  useEffect(() => {
+    if (prevFilterScopeKey.current !== filterScopeKey) {
+      prevFilterScopeKey.current = filterScopeKey;
+      if (page !== 1) {
+        setPage(1);
+        return; // wait for the page reset to re-trigger this effect
+      }
+    }
+    fetchStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchStudents, filterScopeKey]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
