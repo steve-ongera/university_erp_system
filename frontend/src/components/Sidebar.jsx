@@ -30,6 +30,13 @@ const NAV_BY_ROLE = {
         { to: "/deferment", label: "Deferment", icon: "bi-pause-circle" },
       ],
     },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/contact-support", label: "Contact Support", icon: "bi-headset" },
+      ],
+    },
   ],
   [ROLES.LECTURER]: [
     { section: "Overview", links: [{ to: "/lecturer/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
@@ -42,6 +49,14 @@ const NAV_BY_ROLE = {
         { to: "/attendance", label: "Attendance (QR)", icon: "bi-qr-code" },
       ],
     },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
+    },
   ],
   [ROLES.HOSTEL_WARDEN]: [
     { section: "Overview", links: [{ to: "/hostel/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
@@ -50,6 +65,14 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/hostel-management", label: "Hostels & Rooms", icon: "bi-building" },
         { to: "/hostel-bookings", label: "Bookings", icon: "bi-door-open" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
       ],
     },
   ],
@@ -62,6 +85,14 @@ const NAV_BY_ROLE = {
         { to: "/payments", label: "Payments & Reconciliation", icon: "bi-bank" },
         { to: "/fee-payments", label: "All Fee Payments & Receipts", icon: "bi-receipt-cutoff" }, 
         { to: "/awards", label: "HELB & Bursaries", icon: "bi-piggy-bank" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
       ],
     },
   ],
@@ -83,6 +114,15 @@ const NAV_BY_ROLE = {
         { to: "/lecturers", label: "Lecturers & Staff", icon: "bi-person-badge" },
         { to: "/deferments", label: "Deferments", icon: "bi-pause-circle" },
         { to: "/user-management", label: "User Management", icon: "bi-person-gear" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/communication-center", label: "Communication Center", icon: "bi-megaphone" },
       ],
     },
     {

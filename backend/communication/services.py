@@ -1,3 +1,4 @@
+#communication/services.py
 """
 Communication module — business logic.
 
@@ -21,13 +22,14 @@ ConversationService
 """
 from decimal import Decimal
 
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-from . import models as m
+from portal_api import models as m
 from . import models as cm
 
 

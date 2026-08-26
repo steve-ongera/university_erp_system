@@ -1,7 +1,7 @@
 // Adjust import paths below to match your project structure.
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { communicationApi } from "../../api/api";
+import { communicationApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 
 export default function ConversationDetail() {

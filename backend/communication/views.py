@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from . import models as m
+from portal_api import models as m
 from . import models as cm
 from . import serializers as cs
 from . import services as csvc

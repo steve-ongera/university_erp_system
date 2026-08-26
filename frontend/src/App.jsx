@@ -137,6 +137,52 @@ export default function App() {
             <Route path="/payments" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><PaymentsReconciliation /></ProtectedRoute>} />
             <Route path="/awards" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><HelbBursaries /></ProtectedRoute>} />
 
+            {/* ===== COMMUNICATION — shared by every authenticated role ===== */}
+            <Route path="/inbox" element={<Inbox />} />
+            <Route path="/communication/:id" element={<ConversationDetail />} />
+            
+            {/* Student: contact support / open + track enquiries and complaints */}
+            <Route
+              path="/contact-support"
+              element={<ProtectedRoute allow={[ROLES.STUDENT]}><ContactSupport /></ProtectedRoute>}
+            />
+            
+            {/* Dean / HOD / Lecturer / Finance / Exam Office / Hostel Warden: scoped compose
+                (server pins each role's reach — Dean to their faculty, HOD to their
+                department, Lecturer to a class they teach) */}
+            <Route
+              path="/compose-message"
+              element={
+                <ProtectedRoute
+                  allow={[ROLES.DEAN, ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN]}
+                >
+                  <ComposeMessage />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Staff-side conversation queue (whoever can be a Conversation target) */}
+            <Route
+              path="/conversations"
+              element={
+                <ProtectedRoute
+                  allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.FINANCE, ROLES.HOSTEL_WARDEN, ROLES.LECTURER]}
+                >
+                  <Conversations />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Admin/Registrar: full Communication Center (any audience, any scope) */}
+            <Route
+              path="/communication-center"
+              element={
+                <ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR]}>
+                  <CommunicationCenter />
+                </ProtectedRoute>
+              }
+            />
+
             {/* ===== STAFF — no dedicated modules yet ===== */}
             <Route
               path="/staff/dashboard"

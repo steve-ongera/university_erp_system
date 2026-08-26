@@ -1,3 +1,4 @@
+#portal_api/models.py
 """
 Muranga University Student Portal — core data models.
 

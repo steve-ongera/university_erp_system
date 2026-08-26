@@ -13,7 +13,7 @@ urlpatterns = [
     path("api/v1/", include("portal_api.urls")),
 
     # Communication API
-    path("api/v1/communication/", include("communication.urls")),
+    path("api/v1/", include("communication.urls")),
 ]
 
 
