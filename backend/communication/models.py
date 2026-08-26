@@ -27,8 +27,7 @@ import uuid
 
 from django.db import models
 
-from .models import User, Student, Lecturer, Staff, Faculty, Department
-
+from portal_api.models import User, Student, Lecturer, Staff, Faculty, Department
 
 # ======================================================================
 # BROADCASTS / ANNOUNCEMENTS  (one sender -> many recipients)

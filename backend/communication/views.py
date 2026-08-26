@@ -9,8 +9,7 @@ from . import models as m
 from . import models as cm
 from . import serializers as cs
 from . import services as csvc
-from .views import IsStaffRole  # reuse the existing staff-role permission from views.py
-
+from portal_api.views import IsStaffRole
 
 # ======================================================================
 # BROADCASTS

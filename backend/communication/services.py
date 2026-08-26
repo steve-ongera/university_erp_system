@@ -28,7 +28,7 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 
 from . import models as m
-from . import communication_models as cm
+from . import models as cm
 
 
 # ======================================================================

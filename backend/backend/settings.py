@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django_filters",
     
     "portal_api",
+    "communication",
 ]
 
 
