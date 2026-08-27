@@ -8,6 +8,16 @@ import secrets
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncMonth
 
+
+from django.utils import timezone
+from django.db.models import Count
+
+from .models import (
+    Faculty, Department, Lecturer, Student, ClearanceRequest,
+    StudentDeferment, StudentReporting, Examination, Grade,
+    UnitRegistration, Course, AcademicYear, Semester,
+)
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
@@ -1234,113 +1244,183 @@ class CodReportService:
 from . import models as m
 
 
+
 def get_dean_faculty(user):
-    """Faculty this user heads, or None. Mirrors get_cod_department's contract."""
-    return m.Faculty.objects.filter(dean=user).first()
+    """A Dean heads exactly one Faculty (Faculty.dean FK). None if unassigned."""
+    return Faculty.objects.filter(dean=user).first()
 
 
 class DeanReportService:
+    """Faculty-wide summary for the Dean dashboard/reports page."""
+
     @staticmethod
-    def faculty_summary(faculty):
-        departments = m.Department.objects.filter(faculty=faculty)
-        programmes = m.Programme.objects.filter(faculty=faculty)
-        students = m.Student.objects.filter(programme__faculty=faculty)
-        lecturers = m.Lecturer.objects.filter(department__in=departments)
+    def faculty_summary(faculty: "Faculty") -> dict:
+        departments = Department.objects.filter(faculty=faculty)
+        department_ids = list(departments.values_list("id", flat=True))
 
-        pending_clearances = m.ClearanceRequest.objects.filter(
-            student__programme__faculty=faculty,
-            status=m.ClearanceRequest.Status.PENDING,
-        ).count()
+        students = Student.objects.filter(programme__department_id__in=department_ids)
+        lecturers = Lecturer.objects.filter(department_id__in=department_ids)
 
-        department_rows = []
+        clearances = ClearanceRequest.objects.filter(
+            student__programme__department_id__in=department_ids
+        )
+        pending_clearances = clearances.filter(status=ClearanceRequest.Status.PENDING)
+
+        department_stats = []
         for dept in departments:
-            department_rows.append({
+            department_stats.append({
                 "id": dept.id,
                 "name": dept.name,
                 "code": dept.code,
-                "head_of_department": dept.head_of_department.get_full_name() if dept.head_of_department else None,
+                "head_of_department": dept.head_of_department.get_full_name()
+                    if dept.head_of_department else None,
                 "student_count": students.filter(programme__department=dept).count(),
-                "programme_count": programmes.filter(department=dept).count(),
+                "lecturer_count": lecturers.filter(department=dept).count(),
             })
+        department_stats.sort(key=lambda x: x["student_count"], reverse=True)
+
+        recent_clearances = clearances.select_related(
+            "student__user", "student__programme"
+        ).order_by("-requested_at")[:10]
 
         return {
             "faculty": {"id": faculty.id, "name": faculty.name, "code": faculty.code},
             "stats": {
-                "departments": departments.count(),
-                "programmes": programmes.count(),
-                "students": students.count(),
-                "lecturers": lecturers.count(),
-                "active_students": students.filter(status=m.Student.Status.ACTIVE).count(),
-                "pending_clearances": pending_clearances,
+                "total_departments": departments.count(),
+                "total_lecturers": lecturers.count(),
+                "total_students": students.count(),
+                "active_students": students.filter(status=Student.Status.ACTIVE).count(),
+                "pending_clearances": pending_clearances.count(),
             },
-            "departments": department_rows,
+            "department_stats": department_stats,
+            "recent_clearances": [
+                {
+                    "id": c.id,
+                    "student": c.student.registration_number,
+                    "student_name": c.student.user.get_full_name(),
+                    "clearance_type": c.clearance_type,
+                    "status": c.status,
+                    "requested_at": c.requested_at,
+                }
+                for c in recent_clearances
+            ],
         }
 
 
+
+
+
 class RegistrarReportService:
+    """Institution-wide records summary for the Registrar dashboard."""
+
     @staticmethod
-    def summary():
-        students = m.Student.objects.all()
-        recent_students = students.select_related("user", "programme").order_by("-admission_date")[:10]
+    def summary() -> dict:
+        students = Student.objects.all()
+        deferments = StudentDeferment.objects.all()
+        clearances = ClearanceRequest.objects.all()
+        current_semester = Semester.objects.filter(is_current=True).first()
+
+        pending_reportings = 0
+        if current_semester:
+            pending_reportings = StudentReporting.objects.filter(
+                semester=current_semester, status=StudentReporting.Status.PENDING
+            ).count()
+
+        recent_deferments = deferments.filter(
+            status=StudentDeferment.Status.PENDING
+        ).select_related("student__user").order_by("-applied_at")[:10]
+
+        recent_clearances = clearances.filter(
+            status=ClearanceRequest.Status.PENDING
+        ).select_related("student__user").order_by("-requested_at")[:10]
 
         return {
             "stats": {
                 "total_students": students.count(),
-                "active_students": students.filter(status=m.Student.Status.ACTIVE).count(),
-                "graduated_students": students.filter(status=m.Student.Status.GRADUATED).count(),
-                "deferred_students": students.filter(status=m.Student.Status.DEFERRED).count(),
-                "pending_deferments": m.StudentDeferment.objects.filter(
-                    status=m.StudentDeferment.Status.PENDING
-                ).count(),
-                "pending_reportings": m.StudentReporting.objects.filter(
-                    status=m.StudentReporting.Status.PENDING
-                ).count(),
-                "pending_clearances": m.ClearanceRequest.objects.filter(
-                    status=m.ClearanceRequest.Status.PENDING
-                ).count(),
+                "active_students": students.filter(status=Student.Status.ACTIVE).count(),
+                "deferred_students": students.filter(status=Student.Status.DEFERRED).count(),
+                "graduated_students": students.filter(status=Student.Status.GRADUATED).count(),
+                "pending_deferments": deferments.filter(status=StudentDeferment.Status.PENDING).count(),
+                "pending_clearances": clearances.filter(status=ClearanceRequest.Status.PENDING).count(),
+                "pending_reportings": pending_reportings,
             },
-            "recent_admissions": [
+            "current_semester": current_semester.id if current_semester else None,
+            "recent_deferments": [
                 {
-                    "id": str(st.id),
-                    "registration_number": st.registration_number,
-                    "full_name": st.user.get_full_name(),
-                    "programme": st.programme.code,
-                    "admission_date": st.admission_date.isoformat() if st.admission_date else None,
+                    "id": d.id,
+                    "student": d.student.registration_number,
+                    "student_name": d.student.user.get_full_name(),
+                    "reason": d.reason,
+                    "applied_at": d.applied_at,
                 }
-                for st in recent_students
+                for d in recent_deferments
+            ],
+            "recent_clearances": [
+                {
+                    "id": c.id,
+                    "student": c.student.registration_number,
+                    "student_name": c.student.user.get_full_name(),
+                    "clearance_type": c.clearance_type,
+                    "requested_at": c.requested_at,
+                }
+                for c in recent_clearances
             ],
         }
 
 
+
+
+# ======================================================================
+# EXAM OFFICE (institution-wide)
+# ======================================================================
+
 class ExamOfficeReportService:
+    """Institution-wide examinations overview for the Exam Office dashboard."""
+
     @staticmethod
-    def summary():
+    def summary() -> dict:
         today = timezone.now().date()
-        upcoming_exams = m.Examination.objects.filter(
-            exam_date__gte=today
+
+        upcoming_exams = Examination.objects.filter(
+            exam_date__gte=today, is_published=True
         ).select_related("course", "semester").order_by("exam_date", "start_time")[:10]
+
+        unpublished_exams = Examination.objects.filter(is_published=False).count()
+
+        pending_verification = Grade.objects.filter(
+            published_at__isnull=False, is_verified=False
+        ).count()
+
+        outstanding_supplementary = UnitRegistration.objects.filter(
+            registration_type=UnitRegistration.RegType.SUPPLEMENTARY, is_active=True
+        ).count()
+
+        unpaid_supplementary = UnitRegistration.objects.filter(
+            registration_type=UnitRegistration.RegType.SUPPLEMENTARY,
+            is_active=True,
+            supplementary_invoice__isnull=False,
+        ).count()
 
         return {
             "stats": {
-                "upcoming_exams": m.Examination.objects.filter(exam_date__gte=today).count(),
-                "unpublished_exams": m.Examination.objects.filter(is_published=False).count(),
-                "pending_grade_verifications": m.Grade.objects.filter(
-                    published_at__isnull=False, is_verified=False
-                ).count(),
-                "outstanding_supplementary_registrations": m.UnitRegistration.objects.filter(
-                    registration_type=m.UnitRegistration.RegType.SUPPLEMENTARY, is_active=True
-                ).count(),
+                "upcoming_exams": upcoming_exams.count(),
+                "unpublished_exams": unpublished_exams,
+                "pending_grade_verifications": pending_verification,
+                "outstanding_supplementary": outstanding_supplementary,
+                "unpaid_supplementary_invoices": unpaid_supplementary,
             },
             "upcoming_exams": [
                 {
-                    "id": exam.id,
-                    "course": f"{exam.course.code} - {exam.course.name}",
-                    "exam_type": exam.exam_type,
-                    "exam_date": exam.exam_date.isoformat(),
-                    "start_time": str(exam.start_time),
-                    "venue": exam.venue,
-                    "is_published": exam.is_published,
+                    "id": e.id,
+                    "course": e.course.code,
+                    "course_name": e.course.name,
+                    "exam_type": e.exam_type,
+                    "exam_date": e.exam_date,
+                    "start_time": e.start_time,
+                    "venue": e.venue,
                 }
-                for exam in upcoming_exams
+                for e in upcoming_exams
             ],
         }
+        
+        

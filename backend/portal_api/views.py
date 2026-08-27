@@ -101,11 +101,20 @@ class VerifyOtpView(APIView):
         return Response(LoginView._tokens_payload(user))
 
 
+
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(s.UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = s.UserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
 
 
 
@@ -209,6 +218,7 @@ class FacultyViewSet(viewsets.ModelViewSet):
     ordering = ["name"]
 
 
+
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = m.Department.objects.all()
     serializer_class = s.DepartmentSerializer
@@ -218,6 +228,24 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     filterset_fields = ["faculty", "is_active"]
     ordering_fields = ["name", "code"]
     ordering = ["name"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "dean":
+            faculty = services.get_dean_faculty(self.request.user)
+            return qs.filter(faculty=faculty) if faculty else qs.none()
+        return qs
+
+    def perform_create(self, serializer):
+        if self.request.user.user_type == "dean":
+            raise serializers.ValidationError("Deans have read-only access to departments.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if self.request.user.user_type == "dean":
+            raise serializers.ValidationError("Deans have read-only access to departments.")
+        serializer.save()
+
 
 
 class GradingSchemeViewSet(viewsets.ModelViewSet):
@@ -381,6 +409,7 @@ class MyProfileStudentView(APIView):
         return Response(s.StudentSerializer(profile).data)
 
 
+
 class LecturerViewSet(viewsets.ModelViewSet):
     queryset = m.Lecturer.objects.select_related("user", "department")
     serializer_class = s.LecturerSerializer
@@ -396,14 +425,26 @@ class LecturerViewSet(viewsets.ModelViewSet):
         if self.request.user.user_type == "cod":
             department = services.get_cod_department(self.request.user)
             return qs.filter(department=department) if department else qs.none()
+        if self.request.user.user_type == "dean":
+            faculty = services.get_dean_faculty(self.request.user)
+            return qs.filter(department__faculty=faculty) if faculty else qs.none()
         return qs
+
+    def perform_update(self, serializer):
+        if self.request.user.user_type == "dean":
+            raise serializers.ValidationError("Deans have read-only access to lecturer records.")
+        serializer.save()
 
     @action(detail=False, methods=["post"], url_path="admit")
     def admit(self, request):
+        if request.user.user_type == "dean":
+            return Response({"detail": "Deans cannot admit lecturers."}, status=status.HTTP_403_FORBIDDEN)
         serializer = s.AdmitLecturerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lecturer = serializer.save()
         return Response(s.LecturerSerializer(lecturer).data, status=status.HTTP_201_CREATED)
+
+
 
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = m.Staff.objects.select_related("user")
@@ -1112,6 +1153,7 @@ class StudentReportingViewSet(viewsets.ModelViewSet):
         )
     
 
+
 class ClearanceRequestViewSet(viewsets.ModelViewSet):
     queryset = m.ClearanceRequest.objects.select_related("student__user")
     serializer_class = s.ClearanceRequestSerializer
@@ -1124,9 +1166,13 @@ class ClearanceRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        qs = super().get_queryset()
         if user.user_type == "student":
             return m.ClearanceRequest.objects.filter(student__user=user)
-        return super().get_queryset()
+        if user.user_type == "dean":
+            faculty = services.get_dean_faculty(user)
+            return qs.filter(student__programme__faculty=faculty) if faculty else qs.none()
+        return qs
 
     def create(self, request, *args, **kwargs):
         student = request.user.student_profile
@@ -1135,16 +1181,30 @@ class ClearanceRequestViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(s.ClearanceRequestSerializer(clearance).data, status=status.HTTP_201_CREATED)
-    
+
     @action(detail=True, methods=["post"], url_path="approve", permission_classes=[IsStaffRole])
     def approve(self, request, pk=None):
-        clearance = services.ClearanceService.approve(self.get_object(), request.user, request.data.get("remarks", ""))
+        clearance = self.get_object()
+        if request.user.user_type == "dean" and clearance.clearance_type not in (
+            m.ClearanceRequest.ClearanceType.DEPARTMENT, m.ClearanceRequest.ClearanceType.GRADUATION
+        ):
+            return Response({"detail": "Deans can only act on department/graduation clearances."},
+                             status=status.HTTP_403_FORBIDDEN)
+        clearance = services.ClearanceService.approve(clearance, request.user, request.data.get("remarks", ""))
         return Response(s.ClearanceRequestSerializer(clearance).data)
 
     @action(detail=True, methods=["post"], url_path="reject", permission_classes=[IsStaffRole])
     def reject(self, request, pk=None):
-        clearance = services.ClearanceService.reject(self.get_object(), request.user, request.data.get("remarks", ""))
+        clearance = self.get_object()
+        if request.user.user_type == "dean" and clearance.clearance_type not in (
+            m.ClearanceRequest.ClearanceType.DEPARTMENT, m.ClearanceRequest.ClearanceType.GRADUATION
+        ):
+            return Response({"detail": "Deans can only act on department/graduation clearances."},
+                             status=status.HTTP_403_FORBIDDEN)
+        clearance = services.ClearanceService.reject(clearance, request.user, request.data.get("remarks", ""))
         return Response(s.ClearanceRequestSerializer(clearance).data)
+
+
 
 
 # ======================================================================
@@ -2473,3 +2533,5 @@ class ExamOfficeDashboardView(APIView):
 
     def get(self, request):
         return Response(services.ExamOfficeReportService.summary())
+    
+    

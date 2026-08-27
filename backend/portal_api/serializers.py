@@ -99,10 +99,22 @@ class AcademicYearSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+
 class DepartmentSerializer(serializers.ModelSerializer):
+    head_of_department_detail = serializers.SerializerMethodField()
+    faculty_detail = serializers.SerializerMethodField()
+
     class Meta:
         model = m.Department
         fields = "__all__"
+
+    def get_head_of_department_detail(self, obj):
+        return obj.head_of_department.get_full_name() if obj.head_of_department else None
+
+    def get_faculty_detail(self, obj):
+        return {"id": obj.faculty.id, "name": obj.faculty.name, "code": obj.faculty.code} if obj.faculty else None
+
+
 
 
 class ProgrammeSerializer(serializers.ModelSerializer):
@@ -410,18 +422,25 @@ class StudentReportingSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["student", "status", "processed_by", "reporting_date"]
 
+
 class ClearanceRequestSerializer(serializers.ModelSerializer):
+    student_detail = StudentSerializer(source="student", read_only=True)
+
     class Meta:
         model = m.ClearanceRequest
         fields = "__all__"
         read_only_fields = ["student", "status", "processed_by", "processed_at", "requested_at"]
-        
+
+ 
         
 # ----------------------------------------------------------------------
 # EXAMS / TIMETABLE / ATTENDANCE
 # ----------------------------------------------------------------------
 
 class ExaminationSerializer(serializers.ModelSerializer):
+    course_detail = CourseSerializer(source="course", read_only=True)
+    semester_detail = SemesterSerializer(source="semester", read_only=True)
+
     class Meta:
         model = m.Examination
         fields = "__all__"
@@ -784,3 +803,5 @@ class AdminLoginAttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.AdminLoginAttempt
         fields = "__all__"
+        
+  
