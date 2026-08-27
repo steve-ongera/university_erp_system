@@ -1,9 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { gradesApi, studentsApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Modal from "../../components/Modal";
+
+const groupGradesByYearSemester = (gradesList) => {
+  const groups = {};
+  gradesList.forEach((grade) => {
+    const py = grade.enrollment?.programme_year;
+    const ps = grade.enrollment?.programme_semester;
+    const key = py && ps ? `Y${py}S${ps}` : "unassigned";
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        year: py || 999,
+        semester: ps || 999,
+        label: py && ps ? `Year ${py} · Sem ${ps}` : "Unassigned",
+        grades: [],
+      };
+    }
+    groups[key].grades.push(grade);
+  });
+  return Object.values(groups).sort((a, b) => a.year - b.year || a.semester - b.semester);
+};
 
 export default function MyGrades() {
   const { user } = useAuth();
@@ -14,7 +34,7 @@ export default function MyGrades() {
   const [error, setError] = useState("");
   const [selectedGrade, setSelectedGrade] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
+  const [activeTabKey, setActiveTabKey] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     passed: 0,
@@ -37,7 +57,6 @@ export default function MyGrades() {
         try {
           const gradesRes = await gradesApi.myGrades();
           gradesData = gradesRes.data || [];
-          // Ensure it's an array
           if (!Array.isArray(gradesData)) {
             gradesData = [];
           }
@@ -85,19 +104,34 @@ export default function MyGrades() {
     fetchData();
   }, []);
 
+  // Group grades into horizontal Year/Sem tabs
+  const gradeGroups = useMemo(() => groupGradesByYearSemester(grades), [grades]);
+
+  useEffect(() => {
+    if (gradeGroups.length > 0) {
+      const stillExists = gradeGroups.some(g => g.key === activeTabKey);
+      if (!stillExists) {
+        setActiveTabKey(gradeGroups[gradeGroups.length - 1].key); // default: most recent
+      }
+    } else {
+      setActiveTabKey(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradeGroups]);
+
+  const activeGroup = gradeGroups.find(g => g.key === activeTabKey) || gradeGroups[0];
+
   const handleViewGrade = (grade) => {
     setSelectedGrade(grade);
     setModalOpen(true);
   };
 
-  const handleViewTranscript = () => {
-    setTranscriptModalOpen(true);
-  };
-
-  // Get semester display name
+  // Get semester display name for a transcript entry.
+  // NOTE: entry.academic_year / entry.course are raw FK ids from the serializer's
+  // "__all__" fields — the actual objects live in academic_year_detail / course_detail.
   const getSemesterDisplay = (entry) => {
-    if (entry.academic_year) {
-      return `${entry.academic_year.year} S${entry.semester_number}`;
+    if (entry.academic_year_detail?.year) {
+      return `${entry.academic_year_detail.year} S${entry.semester_number}`;
     }
     return `Y${entry.programme_year} S${entry.semester_number}`;
   };
@@ -159,12 +193,6 @@ export default function MyGrades() {
           </div>
         </div>
         <div className="mu-page-header-actions">
-          {transcript && transcript.length > 0 && (
-            <button className="mu-btn mu-btn-primary" onClick={handleViewTranscript}>
-              <i className="bi bi-file-text" />
-              View Full Transcript
-            </button>
-          )}
           <button className="mu-btn mu-btn-outline-primary">
             <i className="bi bi-download" />
             Download Transcript
@@ -222,14 +250,14 @@ export default function MyGrades() {
               </span>
             </div>
             <div style={{ height: 8, background: "var(--mu-gray-200)", borderRadius: 4, overflow: "hidden" }}>
-              <div 
-                style={{ 
-                  height: "100%", 
+              <div
+                style={{
+                  height: "100%",
                   width: `${Math.min((stats.gpa / 4.0) * 100, 100)}%`,
                   background: stats.gpa >= 3.0 ? "var(--mu-success)" : stats.gpa >= 2.0 ? "var(--mu-warning)" : "var(--mu-danger)",
                   borderRadius: 4,
                   transition: "width 1s ease"
-                }} 
+                }}
               />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
@@ -240,16 +268,43 @@ export default function MyGrades() {
         </div>
       )}
 
-      {/* Grades Table */}
-      <div className="mu-card">
+      {/* Grades — horizontal Year/Sem tabs */}
+      <div className="mu-card" style={{ marginBottom: 24 }}>
         <div className="mu-card-header">
           <h4>Semester Results</h4>
           <span className="mu-badge mu-badge-primary">
             {grades.length} Results
           </span>
         </div>
+
+        {gradeGroups.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              padding: "12px 16px",
+              borderBottom: "1px solid var(--mu-gray-200)",
+            }}
+          >
+            {gradeGroups.map((group) => (
+              <button
+                key={group.key}
+                onClick={() => setActiveTabKey(group.key)}
+                className={`mu-btn mu-btn-sm ${activeTabKey === group.key ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                {group.label}
+                <span style={{ marginLeft: 6, fontSize: "var(--mu-font-size-xs)", opacity: 0.8 }}>
+                  ({group.grades.length})
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="mu-card-body" style={{ padding: 0 }}>
-          {grades && grades.length > 0 ? (
+          {activeGroup && activeGroup.grades.length > 0 ? (
             <div className="mu-table-wrapper">
               <table className="mu-table mu-table-hover">
                 <thead>
@@ -260,11 +315,12 @@ export default function MyGrades() {
                     <th>Grade</th>
                     <th>Points</th>
                     <th>Status</th>
+                    <th>Publication</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {grades.map((grade) => (
+                  {activeGroup.grades.map((grade) => (
                     <tr key={grade.id || Math.random()}>
                       <td>
                         <strong>{grade.enrollment?.course?.code || "N/A"}</strong>
@@ -298,7 +354,14 @@ export default function MyGrades() {
                         )}
                       </td>
                       <td>
-                        <button 
+                        {grade.published_at ? (
+                          <span className="mu-badge mu-badge-success">Published</span>
+                        ) : (
+                          <span className="mu-badge mu-badge-warning">Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
                           className="mu-btn mu-btn-sm mu-btn-outline-primary"
                           onClick={() => handleViewGrade(grade)}
                         >
@@ -315,13 +378,90 @@ export default function MyGrades() {
             <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
               <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
               <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Results Yet</h3>
-              <p style={{ margin: "8px 0 0" }}>Your grades will appear here once they are published.</p>
+              <p style={{ margin: "8px 0 0" }}>Your grades will appear here once they are entered.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Grade Detail Modal */}
+      {/* Full Academic Transcript — shown inline on the page, not a modal */}
+      <div className="mu-card">
+        <div className="mu-card-header">
+          <h4>Full Academic Transcript</h4>
+          {transcript && transcript.length > 0 && (
+            <span className="mu-badge mu-badge-primary">
+              {transcript.length} Entries
+            </span>
+          )}
+        </div>
+        <div className="mu-card-body">
+          {transcript && transcript.length > 0 ? (
+            <div>
+              {Object.keys(transcriptGroups).map((semesterKey) => {
+                const entries = transcriptGroups[semesterKey];
+                const semesterGPA = calculateSemesterGPA(entries);
+                return (
+                  <div key={semesterKey} style={{ marginBottom: 24 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <h4 style={{ margin: 0, color: "var(--mu-primary-700)" }}>{semesterKey}</h4>
+                      {semesterGPA !== null && (
+                        <span className="mu-badge mu-badge-primary">
+                          GPA: {semesterGPA.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mu-table-wrapper">
+                      <table className="mu-table">
+                        <thead>
+                          <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Grade</th>
+                            <th>Points</th>
+                            <th>Credit Hrs</th>
+                            <th>Quality Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {entries.map((entry, index) => (
+                            <tr key={index}>
+                              <td>{entry.course_detail?.code || "N/A"}</td>
+                              <td>{entry.course_detail?.name || "Unknown"}</td>
+                              <td>
+                                <span className="mu-badge mu-badge-primary">
+                                  {entry.letter_grade || "N/A"}
+                                </span>
+                              </td>
+                              <td>{safeToFixed(entry.grade_points)}</td>
+                              <td>{entry.credit_hours || "N/A"}</td>
+                              <td>{safeToFixed(entry.quality_points)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ marginTop: 16, padding: 16, background: "var(--mu-primary-50)", borderRadius: "var(--mu-radius-md)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: "var(--mu-font-weight-semibold)" }}>Overall CGPA</span>
+                  <span style={{ fontSize: "var(--mu-font-size-xl)", fontWeight: "var(--mu-font-weight-bold)", color: "var(--mu-primary-600)" }}>
+                    {stats.gpa !== null ? stats.gpa.toFixed(2) : "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: 24, color: "var(--mu-gray-400)" }}>
+              <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+              <p>No transcript entries available.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Grade Detail Modal (kept as a modal — this one's fine as a popup) */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -388,131 +528,20 @@ export default function MyGrades() {
                   <span className="mu-badge mu-badge-info">Yes</span>
                 </div>
               )}
-              {selectedGrade.published_at && (
-                <div className="mu-grade-detail-status-item">
-                  <span className="label">Published</span>
+              <div className="mu-grade-detail-status-item">
+                <span className="label">Publication</span>
+                {selectedGrade.published_at ? (
                   <span className="value" style={{ fontSize: "var(--mu-font-size-sm)" }}>
                     {new Date(selectedGrade.published_at).toLocaleDateString()}
                   </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Transcript Modal */}
-      <Modal
-        isOpen={transcriptModalOpen}
-        onClose={() => setTranscriptModalOpen(false)}
-        title="Full Academic Transcript"
-        size="lg"
-        showFooter={false}
-      >
-        {transcript && transcript.length > 0 ? (
-          <div>
-            {Object.keys(transcriptGroups).map((semesterKey) => {
-              const entries = transcriptGroups[semesterKey];
-              const semesterGPA = calculateSemesterGPA(entries);
-              return (
-                <div key={semesterKey} style={{ marginBottom: 24 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <h4 style={{ margin: 0, color: "var(--mu-primary-700)" }}>{semesterKey}</h4>
-                    {semesterGPA !== null && (
-                      <span className="mu-badge mu-badge-primary">
-                        GPA: {semesterGPA.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mu-table-wrapper">
-                    <table className="mu-table">
-                      <thead>
-                        <tr>
-                          <th>Course Code</th>
-                          <th>Course Name</th>
-                          <th>Grade</th>
-                          <th>Points</th>
-                          <th>Credit Hrs</th>
-                          <th>Quality Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {entries.map((entry, index) => (
-                          <tr key={index}>
-                            <td>{entry.course?.code || "N/A"}</td>
-                            <td>{entry.course?.name || "Unknown"}</td>
-                            <td>
-                              <span className="mu-badge mu-badge-primary">
-                                {entry.letter_grade || "N/A"}
-                              </span>
-                            </td>
-                            <td>{safeToFixed(entry.grade_points)}</td>
-                            <td>{entry.credit_hours || "N/A"}</td>
-                            <td>{safeToFixed(entry.quality_points)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ marginTop: 16, padding: 16, background: "var(--mu-primary-50)", borderRadius: "var(--mu-radius-md)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: "var(--mu-font-weight-semibold)" }}>Overall CGPA</span>
-                <span style={{ fontSize: "var(--mu-font-size-xl)", fontWeight: "var(--mu-font-weight-bold)", color: "var(--mu-primary-600)" }}>
-                  {stats.gpa !== null ? stats.gpa.toFixed(2) : "N/A"}
-                </span>
+                ) : (
+                  <span className="mu-badge mu-badge-warning">Pending Publication</span>
+                )}
               </div>
             </div>
           </div>
-        ) : (
-          <div style={{ textAlign: "center", padding: 24, color: "var(--mu-gray-400)" }}>
-            <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
-            <p>No transcript entries available.</p>
-          </div>
         )}
       </Modal>
-
-      {/* Quick Actions */}
-      <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-journal-bookmark" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>My Units</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your registered units
-            </p>
-            <Link to="/units" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Units
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-arrow-repeat" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Supplementary</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Manage supplementary units
-            </p>
-            <Link to="/supplementary" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Supplementaries
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-calendar3" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Timetable</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              View your class schedule
-            </p>
-            <Link to="/timetable" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              View Timetable
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

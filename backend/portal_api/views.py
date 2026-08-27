@@ -662,7 +662,12 @@ class MyNotesView(APIView):
     
     
 class GradeViewSet(viewsets.ModelViewSet):
-    queryset = m.Grade.objects.select_related("enrollment__student", "enrollment__course")
+    queryset = m.Grade.objects.select_related(
+        "enrollment__student",
+        "enrollment__course",
+        "enrollment__semester__academic_year",
+        "enrollment__lecturer_allocation",
+    )
     serializer_class = s.GradeSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -674,7 +679,8 @@ class GradeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.user_type == "student":
-            return m.Grade.objects.filter(enrollment__student__user=user, published_at__isnull=False)
+            # Show all of the student's own results — published or not.
+            return m.Grade.objects.filter(enrollment__student__user=user)
         if user.user_type == "lecturer":
             return m.Grade.objects.filter(enrollment__lecturer_allocation__lecturer__user=user)
         return super().get_queryset()
