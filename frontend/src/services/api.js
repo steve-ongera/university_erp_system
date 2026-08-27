@@ -405,6 +405,71 @@ export const hostelWardenApi = {
   dashboard: (academicYearId) => api.get("/hostel/dashboard/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
 };
 
+
+// ---------------------------------------------------------------------
+// Library — add this block to src/services/api.js (or wherever the
+// other *Api exports live), using the same `api` axios instance
+// already configured at the top of that file.
+// ---------------------------------------------------------------------
+
+export const libraryApi = {
+  // Catalog — categories
+  categories: (params) => api.get("/library/categories/", { params }),
+  createCategory: (payload) => api.post("/library/categories/", payload),
+  updateCategory: (id, payload) => api.patch(`/library/categories/${id}/`, payload),
+  deleteCategory: (id) => api.delete(`/library/categories/${id}/`),
+
+  // Catalog — books
+  books: (params) => api.get("/library/books/", { params }),
+  getBook: (id) => api.get(`/library/books/${id}/`),
+  createBook: (payload) => api.post("/library/books/", payload),
+  updateBook: (id, payload) => api.patch(`/library/books/${id}/`, payload),
+  deleteBook: (id) => api.delete(`/library/books/${id}/`),
+  bookAvailability: (id) => api.get(`/library/books/${id}/availability/`),
+
+  // Catalog — copies
+  copies: (params) => api.get("/library/copies/", { params }),
+  createCopy: (payload) => api.post("/library/copies/", payload),
+  updateCopy: (id, payload) => api.patch(`/library/copies/${id}/`, payload),
+  deleteCopy: (id) => api.delete(`/library/copies/${id}/`),
+
+  // Loan policies (per-role limits)
+  policies: (params) => api.get("/library/policies/", { params }),
+  createPolicy: (payload) => api.post("/library/policies/", payload),
+  updatePolicy: (id, payload) => api.patch(`/library/policies/${id}/`, payload),
+  deletePolicy: (id) => api.delete(`/library/policies/${id}/`),
+
+  // Membership
+  members: (params) => api.get("/library/members/", { params }),
+  memberLookup: (username) => api.get("/library/members/lookup/", { params: { username } }),
+  suspendMember: (id, reason) => api.post(`/library/members/${id}/suspend/`, { reason }),
+  reinstateMember: (id) => api.post(`/library/members/${id}/reinstate/`),
+
+  // Circulation
+  loans: (params) => api.get("/library/loans/", { params }),
+  issueLoan: (member, copy) => api.post("/library/loans/", { member, copy }),
+  returnLoan: (id, payload = {}) => api.post(`/library/loans/${id}/return/`, payload),
+  renewLoan: (id) => api.post(`/library/loans/${id}/renew/`),
+  overdueLoans: () => api.get("/library/loans/overdue/"),
+
+  // Reservations
+  reservations: (params) => api.get("/library/reservations/", { params }),
+  reserve: (book) => api.post("/library/reservations/", { book }),
+  cancelReservation: (id) => api.post(`/library/reservations/${id}/cancel/`),
+
+  // Fines
+  fines: (params) => api.get("/library/fines/", { params }),
+  payFines: (fineIds) => api.post("/library/fines/pay/", { fine_ids: fineIds }),
+  waiveFine: (id, reason) => api.post(`/library/fines/${id}/waive/`, { reason }),
+
+  // Staff dashboard
+  dashboard: () => api.get("/library/dashboard/"),
+
+  // Self-service (any authenticated user — student, lecturer, staff, etc.)
+  myProfile: () => api.get("/library/me/profile/"),
+  myLoans: () => api.get("/library/me/loans/"),
+};
+
 // ---------------------------------------------------------------------
 // Registrar APIs (institution-wide — no faculty/department scoping)
 // ---------------------------------------------------------------------

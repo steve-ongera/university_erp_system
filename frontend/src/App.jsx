@@ -97,10 +97,28 @@ import ExamOfficeGradeVerification from "./pages/examoffice/ExamOfficeGradeVerif
 import ExamOfficeSupplementary from "./pages/examoffice/ExamOfficeSupplementary";
 import ExamOfficeProfile from "./pages/examoffice/ExamOfficeProfile";
 
+import MyLibrary from "./pages/library/MyLibrary";
+ 
+// Library — staff desk
+import LibraryDashboard from "./pages/library/LibraryDashboard";
+import LibrarianDashboard from "./pages/library/LibrarianDashboard";
+import LibraryCatalog from "./pages/library/LibraryCatalog";
+import LibraryCirculation from "./pages/library/LibraryCirculation";
+import LibraryMembers from "./pages/library/LibraryMembers";
+import LibraryReservations from "./pages/library/LibraryReservations";
+import LibraryFines from "./pages/library/LibraryFines";
+ 
+
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./style/main.css";
 
 const ALL_ROLES = Object.values(ROLES);
+
+// Staff who can run the library desk (issue/return books, manage the catalog,
+// suspend members, waive fines). Kept as one array so every /library-management/*
+// route below stays in sync — mirrors library/views.py's IsLibraryStaff, which now
+// also allows the "librarian" user_type (see BACKEND_CHANGES.md).
+const LIBRARY_STAFF_ROLES = [ROLES.ADMIN, ROLES.LIBRARIAN, ROLES.STAFF, ROLES.REGISTRAR];
 
 function ProtectedRoute({ children, allow = ALL_ROLES }) {
   const { user, loading } = useAuth();
@@ -177,14 +195,14 @@ export default function App() {
               element={<ProtectedRoute allow={[ROLES.STUDENT]}><ContactSupport /></ProtectedRoute>}
             />
             
-            {/* Dean / HOD / Lecturer / Finance / Exam Office / Hostel Warden: scoped compose
-                (server pins each role's reach — Dean to their faculty, HOD to their
-                department, Lecturer to a class they teach) */}
+            {/* Dean / HOD / Lecturer / Finance / Exam Office / Hostel Warden / Librarian: scoped
+                compose (server pins each role's reach — Dean to their faculty, HOD to their
+                department, Lecturer to a class they teach, Librarian to library matters) */}
             <Route
               path="/compose-message"
               element={
                 <ProtectedRoute
-                  allow={[ROLES.DEAN, ROLES.ADMIN , ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN]}
+                  allow={[ROLES.DEAN, ROLES.ADMIN , ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN, ROLES.LIBRARIAN]}
                 >
                   <ComposeMessage />
                 </ProtectedRoute>
@@ -196,7 +214,7 @@ export default function App() {
               path="/conversations"
               element={
                 <ProtectedRoute
-                  allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.FINANCE, ROLES.HOSTEL_WARDEN, ROLES.LECTURER]}
+                  allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.FINANCE, ROLES.HOSTEL_WARDEN, ROLES.LECTURER, ROLES.LIBRARIAN]}
                 >
                   <Conversations />
                 </ProtectedRoute>
@@ -262,6 +280,50 @@ export default function App() {
             <Route path="/exam-office/grade-verification" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeGradeVerification /></ProtectedRoute>} />
             <Route path="/exam-office/supplementary" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeSupplementary /></ProtectedRoute>} />
             <Route path="/exam-office/profile" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeProfile /></ProtectedRoute>} />
+
+            {/* ===== LIBRARY — self-service, every authenticated role ===== */}
+            <Route path="/library" element={<MyLibrary />} />
+
+            {/* ===== LIBRARIAN =====
+                New dedicated role landing page, same pattern as Dean/Registrar/COD
+                dashboards below. Renders the same component as
+                /library-management/dashboard (see LibrarianDashboard.jsx /
+                LibraryDashboard.jsx) so there's a single implementation. */}
+            <Route
+              path="/librarian/dashboard"
+              element={<ProtectedRoute allow={[ROLES.LIBRARIAN, ROLES.ADMIN]}><LibrarianDashboard /></ProtectedRoute>}
+            />
+
+            {/* ===== LIBRARY MANAGEMENT — staff desk =====
+                Now scoped with LIBRARY_STAFF_ROLES (Admin, Librarian, Staff, Registrar)
+                instead of the old ad-hoc [ROLES.ADMIN, ROLES.STAFF, ROLES.REGISTRAR]
+                array, mirroring the backend's IsLibraryStaff.STAFF_ROLES (see
+                BACKEND_CHANGES.md — Staff/Registrar are kept for backwards
+                compatibility; swap them out here once Librarian fully replaces them). */}
+            <Route
+              path="/library-management/dashboard"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryDashboard /></ProtectedRoute>}
+            />
+            <Route
+              path="/library-management/catalog"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryCatalog /></ProtectedRoute>}
+            />
+            <Route
+              path="/library-management/circulation"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryCirculation /></ProtectedRoute>}
+            />
+            <Route
+              path="/library-management/members"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryMembers /></ProtectedRoute>}
+            />
+            <Route
+              path="/library-management/reservations"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryReservations /></ProtectedRoute>}
+            />
+            <Route
+              path="/library-management/fines"
+              element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryFines /></ProtectedRoute>}
+            />
 
             {/*
               ===== ADMIN-STYLE PAGES =====

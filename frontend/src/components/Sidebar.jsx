@@ -25,6 +25,7 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/fees", label: "Fees & Payments", icon: "bi-cash-coin" },
         { to: "/hostel", label: "Hostel Booking", icon: "bi-building" },
+        { to: "/library", label: "My Library", icon: "bi-book-half" },
         { to: "/reporting", label: "Reporting", icon: "bi-check2-square" },
         { to: "/clearance", label: "Clearance", icon: "bi-file-earmark-check" },
         { to: "/deferment", label: "Deferment", icon: "bi-pause-circle" },
@@ -50,6 +51,10 @@ const NAV_BY_ROLE = {
       ],
     },
     {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
+    },
+    {
       section: "Communication",
       links: [
         { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
@@ -66,6 +71,10 @@ const NAV_BY_ROLE = {
         { to: "/hostel-management", label: "Hostels & Rooms", icon: "bi-building" },
         { to: "/hostel-bookings", label: "Bookings", icon: "bi-door-open" },
       ],
+    },
+    {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
     },
     {
       section: "Communication",
@@ -86,6 +95,10 @@ const NAV_BY_ROLE = {
         { to: "/fee-payments", label: "All Fee Payments & Receipts", icon: "bi-receipt-cutoff" }, 
         { to: "/awards", label: "HELB & Bursaries", icon: "bi-piggy-bank" },
       ],
+    },
+    {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
     },
     {
       section: "Communication",
@@ -115,6 +128,10 @@ const NAV_BY_ROLE = {
       ],
     },
     {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
+    },
+    {
       section: "Communication",
       links: [
         { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
@@ -138,6 +155,10 @@ const NAV_BY_ROLE = {
       ],
     },
     {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
+    },
+    {
       section: "Communication",
       links: [
         { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
@@ -159,6 +180,10 @@ const NAV_BY_ROLE = {
         { to: "/dean/lecturers", label: "Lecturers", icon: "bi-person-video3" },
         { to: "/dean/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
       ],
+    },
+    {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
     },
     {
       section: "Communication",
@@ -185,6 +210,10 @@ const NAV_BY_ROLE = {
       ],
     },
     {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
+    },
+    {
       // NOTE: /conversations currently does NOT list ROLES.EXAM_OFFICE in
       // its allow[] in App.jsx (compose-message does). Left out here to
       // avoid a dead link — add both together if you want it enabled.
@@ -197,6 +226,31 @@ const NAV_BY_ROLE = {
     {
       section: "Account",
       links: [{ to: "/exam-office/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
+  // ===== LIBRARIAN =====
+  // Dedicated nav tree, same pattern as COD/Registrar/Dean/Exam Office above.
+  // No /librarian/profile page exists yet, so there's no "Account" section —
+  // add one (mirroring e.g. cod/profile) once that page is built.
+  [ROLES.LIBRARIAN]: [
+    { section: "Overview", links: [{ to: "/librarian/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Library Desk",
+      links: [
+        { to: "/library-management/circulation", label: "Circulation", icon: "bi-arrow-left-right" },
+        { to: "/library-management/catalog", label: "Catalog", icon: "bi-journal-bookmark" },
+        { to: "/library-management/members", label: "Members", icon: "bi-people" },
+        { to: "/library-management/reservations", label: "Reservations", icon: "bi-bookmark-star" },
+        { to: "/library-management/fines", label: "Fines", icon: "bi-cash-coin" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
     },
   ],
   DEFAULT_ADMIN: [
@@ -217,6 +271,15 @@ const NAV_BY_ROLE = {
         { to: "/lecturers", label: "Lecturers & Staff", icon: "bi-person-badge" },
         { to: "/deferments", label: "Deferments", icon: "bi-pause-circle" },
         { to: "/user-management", label: "User Management", icon: "bi-person-gear" },
+      ],
+    },
+    {
+      // Admin gets both the self-service page and the staff desk — admin is
+      // in IsLibraryStaff.STAFF_ROLES on the backend, same as Librarian.
+      section: "Library",
+      links: [
+        { to: "/library", label: "My Library", icon: "bi-book-half" },
+        { to: "/library-management/dashboard", label: "Library Desk", icon: "bi-book" },
       ],
     },
     {
@@ -249,8 +312,8 @@ const NAV_BY_ROLE = {
 
 // Roles that reuse the generic admin-style menu (each still sees only what
 // their backend permissions allow when they hit the API). COD, Registrar,
-// Dean and Exam Office all have their own dedicated nav trees above and are
-// intentionally NOT in this list.
+// Dean, Exam Office and Librarian all have their own dedicated nav trees
+// above and are intentionally NOT in this list.
 const ADMIN_LIKE = [ROLES.ADMIN, ROLES.STAFF];
 
 export default function Sidebar({ mobileOpen, onClose }) {

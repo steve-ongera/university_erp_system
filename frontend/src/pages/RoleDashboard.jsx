@@ -26,6 +26,8 @@ export function getRoleHomePath(userType) {
       return "/registrar/dashboard";
     case ROLES.EXAM_OFFICE:
       return "/exam-office/dashboard";
+    case ROLES.LIBRARIAN:
+      return '/librarian/dashboard';
     default:
       // admin (and anything unmapped) shares the admin-style shell
       return "/admin/dashboard";

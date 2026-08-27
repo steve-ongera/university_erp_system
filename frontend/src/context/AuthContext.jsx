@@ -18,6 +18,7 @@ export const ROLES = {
   HOSTEL_WARDEN: "hostel_warden",
   FINANCE: "finance",
   EXAM_OFFICE: "exam_office",
+  LIBRARIAN: "librarian",
 };
 
 export function AuthProvider({ children }) {
