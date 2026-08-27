@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "portal_api",
     "communication",
     "notifications",
+    "library",
 ]
 
 

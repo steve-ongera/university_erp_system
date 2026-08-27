@@ -8,15 +8,10 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-
-    # Portal API
     path("api/v1/", include("portal_api.urls")),
-
-    # Communication API
     path("api/v1/", include("communication.urls")),
-
-    # Notifications API
     path("api/v1/", include("notifications.urls")),
+    path("api/v1", include("library.urls")),
 ]
 
 
