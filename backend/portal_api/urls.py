@@ -124,9 +124,17 @@ urlpatterns = [
     path("finance/dashboard/", v.FinanceDashboardView.as_view(), name="finance-dashboard"),
     path("hostel/dashboard/", v.HostelDashboardView.as_view(), name="hostel-dashboard"),
     path("auth/permissions/", v.MyPermissionsView.as_view(), name="my-permissions"),
-    
+
     path("cod/dashboard/", v.CodDashboardView.as_view(), name="cod-dashboard"),
     path("cod/reports/", v.CodDepartmentReportsView.as_view(), name="cod-reports"),
+
+    # Registrar / Dean / Exam Office dashboards (NEW)
+    # Requires RegistrarDashboardView / DeanDashboardView / ExamOfficeDashboardView
+    # in views.py (see views_additions.py) and the matching service functions
+    # in services.py (see services_additions.py).
+    path("registrar/dashboard/", v.RegistrarDashboardView.as_view(), name="registrar-dashboard"),
+    path("dean/dashboard/", v.DeanDashboardView.as_view(), name="dean-dashboard"),
+    path("exam-office/dashboard/", v.ExamOfficeDashboardView.as_view(), name="exam-office-dashboard"),
 
     path("", include(router.urls)),
 ]

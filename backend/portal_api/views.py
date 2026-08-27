@@ -2423,3 +2423,53 @@ class CodDepartmentReportsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         return Response(services.CodReportService.department_summary(department))
+    
+    
+# ======================================================================
+# REGISTRAR / DEAN / EXAM OFFICE DASHBOARDS
+# Paste these into views.py, near CodDashboardView / CodDepartmentReportsView.
+# Each depends on a service you'll need to add to services.py — see the
+# companion file `services_additions.py` for the exact functions expected:
+#   - services.get_dean_faculty(user)
+#   - services.DeanReportService.faculty_summary(faculty)
+#   - services.RegistrarReportService.summary()
+#   - services.ExamOfficeReportService.summary()
+# ======================================================================
+
+class DeanDashboardView(APIView):
+    """
+    Mirrors CodDashboardView but scoped to Faculty instead of Department —
+    a Dean heads a Faculty (Faculty.dean FK), a COD heads a Department.
+    """
+    permission_classes = [IsRole.for_roles("dean")]
+
+    def get(self, request):
+        faculty = services.get_dean_faculty(request.user)
+        if not faculty:
+            return Response(
+                {"detail": "You are not assigned as dean of any faculty. Contact an admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(services.DeanReportService.faculty_summary(faculty))
+
+
+class RegistrarDashboardView(APIView):
+    """
+    Registrar isn't tied to one faculty/department — it's an
+    institution-wide records role, so this is unscoped (unlike Dean/COD).
+    """
+    permission_classes = [IsRole.for_roles("registrar")]
+
+    def get(self, request):
+        return Response(services.RegistrarReportService.summary())
+
+
+class ExamOfficeDashboardView(APIView):
+    """
+    Institution-wide examinations overview: upcoming exams, unpublished
+    exams, pending grade verifications, outstanding supplementary sittings.
+    """
+    permission_classes = [IsRole.for_roles("exam_office")]
+
+    def get(self, request):
+        return Response(services.ExamOfficeReportService.summary())

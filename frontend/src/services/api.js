@@ -494,6 +494,88 @@ export const codApi = {
 
 
 // ---------------------------------------------------------------------
+// Registrar APIs
+// ---------------------------------------------------------------------
+export const registrarApi = {
+  dashboard: () => api.get("/registrar/dashboard/"),
+
+  // Students
+  students: (params) => api.get("/students/", { params }),
+  getStudent: (id) => api.get(`/students/${id}/`),
+  admitStudent: (payload) => api.post("/students/admit/", payload),
+  updateStudent: (id, payload) => api.patch(`/students/${id}/`, payload),
+  studentTranscript: (id) => api.get(`/students/${id}/transcript/`),
+  studentFeeSummary: (id) => api.get(`/students/${id}/fee-summary/`),
+
+  // Deferments
+  deferments: (params) => api.get("/deferments/", { params }),
+  approveDeferment: (id) => api.post(`/deferments/${id}/approve/`),
+  rejectDeferment: (id, remarks) => api.post(`/deferments/${id}/reject/`, { remarks }),
+  resumeDeferment: (id) => api.post(`/deferments/${id}/resume/`),
+
+  // Clearances
+  clearances: (params) => api.get("/clearances/", { params }),
+  approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
+  rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
+
+  // Profile
+  profile: () => api.get("/auth/me/"),
+  permissions: () => api.get("/auth/permissions/"),
+};
+
+// ---------------------------------------------------------------------
+// Dean APIs
+// ---------------------------------------------------------------------
+export const deanApi = {
+  dashboard: () => api.get("/dean/dashboard/"),
+
+  // Departments (Faculty-scoped by backend via Faculty.dean)
+  departments: (params) => api.get("/departments/", { params }),
+  getDepartment: (id) => api.get(`/departments/${id}/`),
+
+  // Lecturers
+  lecturers: (params) => api.get("/lecturers/", { params }),
+  getLecturer: (id) => api.get(`/lecturers/${id}/`),
+
+  // Clearances
+  clearances: (params) => api.get("/clearances/", { params }),
+  approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
+  rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
+
+  // Profile
+  profile: () => api.get("/auth/me/"),
+  permissions: () => api.get("/auth/permissions/"),
+};
+
+// ---------------------------------------------------------------------
+// Exam Office APIs
+// ---------------------------------------------------------------------
+export const examOfficeApi = {
+  dashboard: () => api.get("/exam-office/dashboard/"),
+
+  // Examinations
+  examinations: (params) => api.get("/examinations/", { params }),
+  createExamination: (payload) => api.post("/examinations/", payload),
+  updateExamination: (id, payload) => api.patch(`/examinations/${id}/`, payload),
+  deleteExamination: (id) => api.delete(`/examinations/${id}/`),
+
+  // Grade verification
+  pendingGradeVerification: () => api.get("/grades/pending-verification/"),
+  verifyGrade: (id) => api.post(`/grades/${id}/verify/`),
+  grades: (params) => api.get("/grades/", { params }),
+
+  // Supplementary (institution-wide view via UnitRegistration filter —
+  // no dedicated backend endpoint exists yet for this)
+  supplementaryRegistrations: (params) =>
+    api.get("/unit-registrations/", { params: { registration_type: "supplementary", ...params } }),
+
+  // Profile
+  profile: () => api.get("/auth/me/"),
+  permissions: () => api.get("/auth/permissions/"),
+};
+
+
+// ---------------------------------------------------------------------
 // Hostel Warden APIs
 // ---------------------------------------------------------------------
 export const hostelWardenApi = {

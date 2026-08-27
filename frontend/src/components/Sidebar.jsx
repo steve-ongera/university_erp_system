@@ -127,6 +127,78 @@ const NAV_BY_ROLE = {
       links: [{ to: "/cod/profile", label: "My Profile", icon: "bi-person-circle" }],
     },
   ],
+  [ROLES.REGISTRAR]: [
+    { section: "Overview", links: [{ to: "/registrar/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Student Records",
+      links: [
+        { to: "/registrar/students", label: "Students", icon: "bi-people" },
+        { to: "/registrar/deferments", label: "Deferments", icon: "bi-pause-circle" },
+        { to: "/registrar/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
+    },
+    {
+      section: "Account",
+      links: [{ to: "/registrar/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
+  [ROLES.DEAN]: [
+    { section: "Overview", links: [{ to: "/dean/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Faculty",
+      links: [
+        { to: "/dean/departments", label: "Departments", icon: "bi-diagram-3" },
+        { to: "/dean/lecturers", label: "Lecturers", icon: "bi-person-video3" },
+        { to: "/dean/clearances", label: "Clearances", icon: "bi-file-earmark-check" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
+    },
+    {
+      section: "Account",
+      links: [{ to: "/dean/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
+  [ROLES.EXAM_OFFICE]: [
+    { section: "Overview", links: [{ to: "/exam-office/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Examinations",
+      links: [
+        { to: "/exam-office/examinations", label: "Examinations", icon: "bi-clipboard-check" },
+        { to: "/exam-office/grade-verification", label: "Grade Verification", icon: "bi-patch-check" },
+        { to: "/exam-office/supplementary", label: "Supplementary", icon: "bi-arrow-repeat" },
+        { to: "/grading-schemes", label: "Grading Schemes", icon: "bi-clipboard-data" },
+      ],
+    },
+    {
+      // NOTE: /conversations currently does NOT list ROLES.EXAM_OFFICE in
+      // its allow[] in App.jsx (compose-message does). Left out here to
+      // avoid a dead link — add both together if you want it enabled.
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+      ],
+    },
+    {
+      section: "Account",
+      links: [{ to: "/exam-office/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
   DEFAULT_ADMIN: [
     { section: "Overview", links: [{ to: "/admin/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
@@ -176,9 +248,10 @@ const NAV_BY_ROLE = {
 };
 
 // Roles that reuse the generic admin-style menu (each still sees only what
-// their backend permissions allow when they hit the API). COD has its own
-// dedicated nav tree above and is intentionally NOT in this list.
-const ADMIN_LIKE = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.EXAM_OFFICE, ROLES.STAFF];
+// their backend permissions allow when they hit the API). COD, Registrar,
+// Dean and Exam Office all have their own dedicated nav trees above and are
+// intentionally NOT in this list.
+const ADMIN_LIKE = [ROLES.ADMIN, ROLES.STAFF];
 
 export default function Sidebar({ mobileOpen, onClose }) {
   const { user } = useAuth();

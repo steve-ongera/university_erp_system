@@ -1220,3 +1220,127 @@ class CodReportService:
             "grade_distribution": grade_distribution,
             "students_by_programme": programme_breakdown,
         }
+        
+        
+        
+        
+# ======================================================================
+# Add these to services.py, near get_cod_department / CodReportService.
+# Written against the models you shared (models.py) — no guessing on
+# field names, only on the *shape* of the returned summary dict, which
+# you're free to adjust once you see the frontend cards.
+# ======================================================================
+
+from . import models as m
+
+
+def get_dean_faculty(user):
+    """Faculty this user heads, or None. Mirrors get_cod_department's contract."""
+    return m.Faculty.objects.filter(dean=user).first()
+
+
+class DeanReportService:
+    @staticmethod
+    def faculty_summary(faculty):
+        departments = m.Department.objects.filter(faculty=faculty)
+        programmes = m.Programme.objects.filter(faculty=faculty)
+        students = m.Student.objects.filter(programme__faculty=faculty)
+        lecturers = m.Lecturer.objects.filter(department__in=departments)
+
+        pending_clearances = m.ClearanceRequest.objects.filter(
+            student__programme__faculty=faculty,
+            status=m.ClearanceRequest.Status.PENDING,
+        ).count()
+
+        department_rows = []
+        for dept in departments:
+            department_rows.append({
+                "id": dept.id,
+                "name": dept.name,
+                "code": dept.code,
+                "head_of_department": dept.head_of_department.get_full_name() if dept.head_of_department else None,
+                "student_count": students.filter(programme__department=dept).count(),
+                "programme_count": programmes.filter(department=dept).count(),
+            })
+
+        return {
+            "faculty": {"id": faculty.id, "name": faculty.name, "code": faculty.code},
+            "stats": {
+                "departments": departments.count(),
+                "programmes": programmes.count(),
+                "students": students.count(),
+                "lecturers": lecturers.count(),
+                "active_students": students.filter(status=m.Student.Status.ACTIVE).count(),
+                "pending_clearances": pending_clearances,
+            },
+            "departments": department_rows,
+        }
+
+
+class RegistrarReportService:
+    @staticmethod
+    def summary():
+        students = m.Student.objects.all()
+        recent_students = students.select_related("user", "programme").order_by("-admission_date")[:10]
+
+        return {
+            "stats": {
+                "total_students": students.count(),
+                "active_students": students.filter(status=m.Student.Status.ACTIVE).count(),
+                "graduated_students": students.filter(status=m.Student.Status.GRADUATED).count(),
+                "deferred_students": students.filter(status=m.Student.Status.DEFERRED).count(),
+                "pending_deferments": m.StudentDeferment.objects.filter(
+                    status=m.StudentDeferment.Status.PENDING
+                ).count(),
+                "pending_reportings": m.StudentReporting.objects.filter(
+                    status=m.StudentReporting.Status.PENDING
+                ).count(),
+                "pending_clearances": m.ClearanceRequest.objects.filter(
+                    status=m.ClearanceRequest.Status.PENDING
+                ).count(),
+            },
+            "recent_admissions": [
+                {
+                    "id": str(st.id),
+                    "registration_number": st.registration_number,
+                    "full_name": st.user.get_full_name(),
+                    "programme": st.programme.code,
+                    "admission_date": st.admission_date.isoformat() if st.admission_date else None,
+                }
+                for st in recent_students
+            ],
+        }
+
+
+class ExamOfficeReportService:
+    @staticmethod
+    def summary():
+        today = timezone.now().date()
+        upcoming_exams = m.Examination.objects.filter(
+            exam_date__gte=today
+        ).select_related("course", "semester").order_by("exam_date", "start_time")[:10]
+
+        return {
+            "stats": {
+                "upcoming_exams": m.Examination.objects.filter(exam_date__gte=today).count(),
+                "unpublished_exams": m.Examination.objects.filter(is_published=False).count(),
+                "pending_grade_verifications": m.Grade.objects.filter(
+                    published_at__isnull=False, is_verified=False
+                ).count(),
+                "outstanding_supplementary_registrations": m.UnitRegistration.objects.filter(
+                    registration_type=m.UnitRegistration.RegType.SUPPLEMENTARY, is_active=True
+                ).count(),
+            },
+            "upcoming_exams": [
+                {
+                    "id": exam.id,
+                    "course": f"{exam.course.code} - {exam.course.name}",
+                    "exam_type": exam.exam_type,
+                    "exam_date": exam.exam_date.isoformat(),
+                    "start_time": str(exam.start_time),
+                    "venue": exam.venue,
+                    "is_published": exam.is_published,
+                }
+                for exam in upcoming_exams
+            ],
+        }
