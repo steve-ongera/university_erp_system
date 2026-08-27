@@ -56,10 +56,7 @@ export default function ExamOfficeGradeVerification() {
           </div>
         </div>
         <div className="mu-page-header-actions">
-          <Link to="/exam-office/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
+          
           <button className="mu-btn mu-btn-outline-primary" onClick={load}>
             <i className="bi bi-arrow-repeat" />
             Refresh

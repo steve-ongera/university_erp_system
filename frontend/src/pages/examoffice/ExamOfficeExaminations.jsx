@@ -104,10 +104,7 @@ export default function ExamOfficeExaminations() {
           </div>
         </div>
         <div className="mu-page-header-actions">
-          <Link to="/exam-office/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
+          
           <button className="mu-btn mu-btn-primary" onClick={startCreate}>
             <i className="bi bi-plus-circle" />
             Schedule Exam

@@ -52,12 +52,7 @@ export default function ExamOfficeProfile() {
             Home <span className="separator">/</span> Exam Office <span className="separator">/</span> Profile
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/exam-office/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Profile Content - 4x8 Grid */}

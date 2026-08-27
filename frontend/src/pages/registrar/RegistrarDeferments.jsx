@@ -65,12 +65,7 @@ export default function RegistrarDeferments() {
             Home <span className="separator">/</span> Registrar <span className="separator">/</span> Deferments
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/registrar/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Error Alert */}

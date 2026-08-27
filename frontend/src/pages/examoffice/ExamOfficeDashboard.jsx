@@ -54,12 +54,7 @@ export default function ExamOfficeDashboard() {
             Home <span className="separator">/</span> Exam Office <span className="separator">/</span> Dashboard
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Home
-          </Link>
-        </div>
+        
       </div>
 
       {/* Stats Grid - 5 Cards */}

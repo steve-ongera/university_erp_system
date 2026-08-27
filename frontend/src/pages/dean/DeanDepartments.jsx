@@ -33,12 +33,7 @@ export default function DeanDepartments() {
             Home <span className="separator">/</span> Dean <span className="separator">/</span> Departments
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/dean/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Info Alert */}

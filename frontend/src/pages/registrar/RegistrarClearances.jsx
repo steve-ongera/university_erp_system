@@ -63,12 +63,7 @@ export default function RegistrarClearances() {
             Home <span className="separator">/</span> Registrar <span className="separator">/</span> Clearances
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/registrar/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Error Alert */}

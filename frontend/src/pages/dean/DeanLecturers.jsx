@@ -38,12 +38,7 @@ export default function DeanLecturers() {
             Home <span className="separator">/</span> Dean <span className="separator">/</span> Lecturers
           </div>
         </div>
-        <div className="mu-page-header-actions">
-          <Link to="/dean/dashboard" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-arrow-left" />
-            Back to Dashboard
-          </Link>
-        </div>
+        
       </div>
 
       {/* Info Alert */}
