@@ -96,6 +96,37 @@ const NAV_BY_ROLE = {
       ],
     },
   ],
+  [ROLES.COD]: [
+    { section: "Overview", links: [{ to: "/cod/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "Department",
+      links: [
+        { to: "/cod/students", label: "Students", icon: "bi-people" },
+        { to: "/cod/enrollments", label: "Enrollments", icon: "bi-clipboard-check" },
+        { to: "/cod/reports", label: "Academic Reports", icon: "bi-bar-chart" },
+      ],
+    },
+    {
+      section: "Academics",
+      links: [
+        { to: "/cod/unit-allocations", label: "Unit Allocations", icon: "bi-diagram-3" },
+        { to: "/cod/verify-marks", label: "Verify Marks", icon: "bi-patch-check" },
+        { to: "/examinations", label: "Examinations", icon: "bi-clipboard-check" },
+      ],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
+    },
+    {
+      section: "Account",
+      links: [{ to: "/cod/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
   DEFAULT_ADMIN: [
     { section: "Overview", links: [{ to: "/admin/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
@@ -145,16 +176,17 @@ const NAV_BY_ROLE = {
 };
 
 // Roles that reuse the generic admin-style menu (each still sees only what
-// their backend permissions allow when they hit the API).
-const ADMIN_LIKE = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.COD, ROLES.EXAM_OFFICE, ROLES.STAFF];
+// their backend permissions allow when they hit the API). COD has its own
+// dedicated nav tree above and is intentionally NOT in this list.
+const ADMIN_LIKE = [ROLES.ADMIN, ROLES.REGISTRAR, ROLES.DEAN, ROLES.EXAM_OFFICE, ROLES.STAFF];
 
 export default function Sidebar({ mobileOpen, onClose }) {
   const { user } = useAuth();
   if (!user) return null;
 
-  const sections = ADMIN_LIKE.includes(user.user_type)
-    ? NAV_BY_ROLE.DEFAULT_ADMIN
-    : NAV_BY_ROLE[user.user_type] || [];
+  const sections =
+    NAV_BY_ROLE[user.user_type] ||
+    (ADMIN_LIKE.includes(user.user_type) ? NAV_BY_ROLE.DEFAULT_ADMIN : []);
 
   // Get user initials for avatar
   const initials = user

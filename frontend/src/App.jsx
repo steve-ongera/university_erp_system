@@ -206,13 +206,19 @@ export default function App() {
               }
             />
 
-            <Route path="/cod/dashboard" element={<ProtectedRoute allowedRoles={["cod"]}><CodDashboard /></ProtectedRoute>} />
-            <Route path="/cod/students" element={<ProtectedRoute allowedRoles={["cod"]}><CodStudents /></ProtectedRoute>} />
-            <Route path="/cod/reports" element={<ProtectedRoute allowedRoles={["cod"]}><CodReports /></ProtectedRoute>} />
-            <Route path="/cod/enrollments" element={<ProtectedRoute allowedRoles={["cod"]}><CodEnrollments /></ProtectedRoute>} />
-            <Route path="/cod/unit-allocations" element={<ProtectedRoute allowedRoles={["cod"]}><CodUnitAllocations /></ProtectedRoute>} />
-            <Route path="/cod/verify-marks" element={<ProtectedRoute allowedRoles={["cod"]}><CodVerifyMarks /></ProtectedRoute>} />
-            <Route path="/cod/profile" element={<ProtectedRoute allowedRoles={["cod"]}><CodProfile /></ProtectedRoute>} />
+            {/* ===== CHAIR OF DEPARTMENT (COD) PAGES =====
+                Fixed: these previously used `allowedRoles={["cod"]}`, a prop
+                ProtectedRoute never read — it only checks `allow`, so these
+                routes were silently falling back to ALL_ROLES. Now scoped
+                correctly using ROLES.COD (and ROLES.ADMIN, consistent with
+                how Finance/Hostel Warden modules are scoped above). */}
+            <Route path="/cod/dashboard" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodDashboard /></ProtectedRoute>} />
+            <Route path="/cod/students" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodStudents /></ProtectedRoute>} />
+            <Route path="/cod/reports" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodReports /></ProtectedRoute>} />
+            <Route path="/cod/enrollments" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodEnrollments /></ProtectedRoute>} />
+            <Route path="/cod/unit-allocations" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodUnitAllocations /></ProtectedRoute>} />
+            <Route path="/cod/verify-marks" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodVerifyMarks /></ProtectedRoute>} />
+            <Route path="/cod/profile" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodProfile /></ProtectedRoute>} />
 
             {/*
               ===== ADMIN-STYLE PAGES =====

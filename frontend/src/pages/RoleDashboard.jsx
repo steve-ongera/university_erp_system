@@ -18,8 +18,10 @@ export function getRoleHomePath(userType) {
       return "/finance/dashboard";
     case ROLES.STAFF:
       return "/staff/dashboard";
+    case ROLES.COD:
+      return "/cod/dashboard";
     default:
-      // admin, registrar, dean, cod, exam_office all share the admin-style shell
+      // admin, registrar, dean, exam_office all share the admin-style shell
       return "/admin/dashboard";
   }
 }
