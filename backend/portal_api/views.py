@@ -505,7 +505,11 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
 
 
 class UnitRegistrationViewSet(viewsets.ModelViewSet):
-    queryset = m.UnitRegistration.objects.select_related("course", "student")
+    queryset = m.UnitRegistration.objects.select_related(
+        "course", "student",
+        "semester__academic_year",
+        "enrollment__lecturer_allocation__lecturer__user",
+    )
     serializer_class = s.UnitRegistrationSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -517,7 +521,11 @@ class UnitRegistrationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.user_type == "student":
-            return m.UnitRegistration.objects.filter(student__user=user)
+            return m.UnitRegistration.objects.filter(student__user=user).select_related(
+                "course", "student",
+                "semester__academic_year",
+                "enrollment__lecturer_allocation__lecturer__user",
+            )
         return super().get_queryset()
 
     @action(detail=False, methods=["post"], url_path="auto-register")
@@ -530,8 +538,8 @@ class UnitRegistrationViewSet(viewsets.ModelViewSet):
         for reg in registrations:
             services.UnitRegistrationService.enroll_with_lecturer(reg)
         return Response(s.UnitRegistrationSerializer(registrations, many=True).data)
-
-
+    
+    
 class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = m.Enrollment.objects.select_related("student", "course")
     serializer_class = s.EnrollmentSerializer
@@ -1272,6 +1280,10 @@ from django.utils import timezone
 # STUDENT UNIT VIEWS
 # ======================================================================
 
+# ======================================================================
+# STUDENT UNIT VIEWS
+# ======================================================================
+
 class MyUnitsView(APIView):
     """Get all unit registrations for the current student with detailed information."""
     permission_classes = [permissions.IsAuthenticated]
@@ -1289,6 +1301,9 @@ class MyUnitsView(APIView):
             "course",
             "semester__academic_year",
             "enrollment",
+            "enrollment__lecturer_allocation",
+            "enrollment__lecturer_allocation__lecturer",
+            "enrollment__lecturer_allocation__lecturer__user",
             "supplementary_invoice"
         ).order_by("-semester__academic_year__year", "-semester__semester_number")
 

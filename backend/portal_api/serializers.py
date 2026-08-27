@@ -487,9 +487,10 @@ class UnitRegistrationSerializer(serializers.ModelSerializer):
     student_detail = StudentSerializer(source="student", read_only=True)
     has_grade = serializers.SerializerMethodField()
     grade_detail = serializers.SerializerMethodField()
-    enrollment_id = serializers.SerializerMethodField()   # <-- new
+    enrollment_id = serializers.SerializerMethodField()
     invoice_status = serializers.SerializerMethodField()
     is_paid = serializers.SerializerMethodField()
+    lecturer_detail = serializers.SerializerMethodField()   # <-- new
 
     class Meta:
         model = m.UnitRegistration
@@ -504,9 +505,34 @@ class UnitRegistrationSerializer(serializers.ModelSerializer):
             return GradeSerializer(obj.enrollment.grade).data
         return None
 
-    def get_enrollment_id(self, obj):               # <-- new
+    def get_enrollment_id(self, obj):
         return obj.enrollment.id if hasattr(obj, "enrollment") else None
 
+    def get_lecturer_detail(self, obj):
+        """
+        Looks up the CURRENT allocation directly from LecturerUnitAllocation
+        (the authoritative table) rather than Enrollment.lecturer_allocation,
+        which is only set once when the Enrollment row is first created and
+        goes stale if an allocation is added/changed afterward.
+        """
+        if not hasattr(obj, "enrollment"):
+            return None
+        enrollment = obj.enrollment
+        allocation = (
+            m.LecturerUnitAllocation.objects
+            .filter(course=enrollment.course, semester=enrollment.semester, is_active=True)
+            .select_related("lecturer__user")
+            .first()
+        )
+        if not allocation:
+            return None
+        lecturer = allocation.lecturer
+        return {
+            "id": lecturer.id,
+            "employee_number": lecturer.employee_number,
+            "full_name": lecturer.user.get_full_name(),
+            "email": lecturer.user.email,
+        }
 
     def get_invoice_status(self, obj):
         if obj.supplementary_invoice:

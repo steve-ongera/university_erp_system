@@ -225,45 +225,40 @@ export default function MyUnits() {
               <table className="mu-table mu-table-hover">
                 <thead>
                   <tr>
-                    <th style={{ width: 40 }}></th>
                     <th>Course Code</th>
                     <th>Course Name</th>
-                    <th>Credit Hours</th>
                     <th>Type</th>
+                    <th>Credit Hours</th>
+                    <th>Lecturer</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allSelectable.map((u) => (
-                    <tr key={u.course.id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedCourseIds.includes(u.course.id)}
-                          disabled={u.is_registered || !feeInfo.can_register}
-                          onChange={() => toggleUnit(u.course.id, u.is_registered)}
-                        />
-                      </td>
-                      <td><strong>{u.course.code}</strong></td>
-                      <td>{u.course.name}</td>
-                      <td>{u.course.credit_hours}</td>
-                      <td>
-                        <span className={`mu-badge ${u.registration_type === "supplementary" ? "mu-badge-warning" : u.is_mandatory ? "mu-badge-primary" : "mu-badge-gray"}`}>
-                          {u.registration_type === "supplementary" ? "Supplementary" : u.is_mandatory ? "Mandatory" : "Elective"}
-                        </span>
-                      </td>
-                      <td>
-                        {u.is_registered ? (
-                          <span className="mu-badge mu-badge-success">
-                            <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
-                            Registered
+                  {registrations.map((reg) => {
+                    const typeBadge = getTypeBadge(reg.registration_type);
+                    const statusBadge = getStatusBadge(reg);
+                    return (
+                      <tr key={reg.id}>
+                        <td><strong>{reg.course_detail?.code || "N/A"}</strong></td>
+                        <td>{reg.course_detail?.name || "Unknown Course"}</td>
+                        <td><span className={`mu-badge ${typeBadge.class}`}>{typeBadge.label}</span></td>
+                        <td>{reg.course_detail?.credit_hours || "N/A"}</td>
+                        <td>
+                          {reg.lecturer_detail ? (
+                            <span>{reg.lecturer_detail.full_name}</span>
+                          ) : (
+                            <span className="mu-badge mu-badge-gray">Not assigned</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`mu-badge ${statusBadge.class}`}>
+                            <i className={`bi ${statusBadge.icon}`} style={{ marginRight: 4 }} />
+                            {statusBadge.label}
                           </span>
-                        ) : (
-                          <span className="mu-badge mu-badge-gray">Not Registered</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
