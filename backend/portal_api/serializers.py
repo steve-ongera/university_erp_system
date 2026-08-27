@@ -52,6 +52,47 @@ class GradingSchemeSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class GradeTranscriptSerializer(serializers.ModelSerializer):
+    """
+    Presents a Grade row in transcript shape. Grade is the single
+    source of truth (OneToOneField on Enrollment — exactly one row,
+    always current, whether it was set via GradingService or corrected
+    by hand in admin). Field names match TranscriptEntrySerializer's
+    output so the frontend transcript UI works unchanged.
+    """
+    course_detail = serializers.SerializerMethodField()
+    academic_year_detail = serializers.SerializerMethodField()
+    semester_number = serializers.SerializerMethodField()
+    programme_year = serializers.SerializerMethodField()
+    credit_hours = serializers.SerializerMethodField()
+    is_supplementary = serializers.BooleanField(source="is_supplementary_result", read_only=True)
+
+    class Meta:
+        model = m.Grade
+        fields = [
+            "id", "course_detail", "academic_year_detail", "semester_number",
+            "programme_year", "letter_grade", "grade_points", "credit_hours",
+            "quality_points", "is_supplementary", "is_pass",
+            "requires_supplementary", "published_at",
+        ]
+
+    def get_course_detail(self, obj):
+        return CourseSerializer(obj.enrollment.course).data
+
+    def get_academic_year_detail(self, obj):
+        return AcademicYearSerializer(obj.enrollment.semester.academic_year).data
+
+    def get_semester_number(self, obj):
+        return obj.enrollment.semester.semester_number
+
+    def get_programme_year(self, obj):
+        allocation = obj.enrollment.lecturer_allocation
+        return allocation.year if allocation else None
+
+    def get_credit_hours(self, obj):
+        return obj.enrollment.course.credit_hours
+    
+    
 class AcademicYearSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.AcademicYear

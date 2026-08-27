@@ -1137,3 +1137,35 @@ ROLE_PAGE_PERMISSIONS = {
     "finance": ["finance_dashboard", "fee_structures", "payments", "awards"],
     "hostel_warden": ["hostel_dashboard", "hostel_management", "hostel_bookings"],
 }
+
+
+# ======================================================================
+# TRANSCRIPT
+# ======================================================================
+
+class TranscriptService:
+    """
+    Transcript rows are built directly from Grade — not TranscriptEntry.
+    Grade has enrollment = OneToOneField(...), so there is exactly ONE
+    row per enrollment, always. Whatever Grade currently says (including
+    hand-corrections made in Django admin, which bypass GradingService
+    and therefore never touch TranscriptEntry) is exactly what shows
+    here — no dedup step needed, no stale duplicate rows possible.
+    """
+
+    @staticmethod
+    def effective_entries(student: m.Student):
+        return (
+            m.Grade.objects
+            .filter(enrollment__student=student)
+            .select_related(
+                "enrollment__course",
+                "enrollment__semester__academic_year",
+                "enrollment__lecturer_allocation",
+            )
+            .order_by(
+                "enrollment__semester__academic_year__year",
+                "enrollment__semester__semester_number",
+                "enrollment__course__name",
+            )
+        )

@@ -332,8 +332,20 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="transcript")
     def transcript(self, request, pk=None):
+        """
+        Full academic transcript for this student, deduplicated to the
+        effective (latest) result per course/semester. TranscriptEntry
+        is append-only — a supplementary sitting adds a NEW row rather
+        than overwriting the original failing attempt — so raw
+        `student.transcript_entries.all()` would show a unit twice
+        (e.g. an original 'E' fail alongside its passing supplementary
+        'B') and would double-count it in GPA math. TranscriptService
+        collapses that down to one row per (course, academic_year,
+        semester_number), preferring the highest version / the
+        supplementary result on ties.
+        """
         student = self.get_object()
-        entries = student.transcript_entries.all()
+        entries = services.TranscriptService.effective_entries(student)
         return Response(s.TranscriptEntrySerializer(entries, many=True).data)
 
     @action(detail=True, methods=["get"], url_path="fee-summary")
@@ -716,10 +728,21 @@ class MyTranscriptView(APIView):
         student = getattr(request.user, "student_profile", None)
         if not student:
             return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
-        entries = student.transcript_entries.all()
-        return Response(s.TranscriptEntrySerializer(entries, many=True).data)
-
-
+        entries = services.TranscriptService.effective_entries(student)
+        return Response(s.GradeTranscriptSerializer(entries, many=True).data)
+    
+    @action(detail=True, methods=["get"], url_path="transcript")
+    def transcript(self, request, pk=None):
+        """
+        Transcript for this student, built from Grade (the single
+        source of truth — one row per Enrollment) rather than the
+        append-only TranscriptEntry log, so admin corrections show up
+        immediately and there's no possibility of a stale duplicate.
+        """
+        student = self.get_object()
+        entries = services.TranscriptService.effective_entries(student)
+        return Response(s.GradeTranscriptSerializer(entries, many=True).data)
+    
 # ======================================================================
 # SUPPLEMENTARY
 # ======================================================================
