@@ -71,6 +71,7 @@ export const authApi = {
   verifyOtp: (username, code) => api.post("/auth/verify-otp/", { username, code }),
   permissions: () => api.get("/auth/permissions/"),
   me: () => api.get("/auth/me/"),
+  updateMe: (payload) => api.patch("/auth/me/", payload),
   storeSession: ({ access, refresh, user }) => {
     localStorage.setItem("mu_access_token", access);
     localStorage.setItem("mu_refresh_token", refresh);
@@ -88,7 +89,6 @@ export const authApi = {
   },
 };
 
-// Add these to studentsApi:
 export const studentsApi = {
   list: (params) => api.get("/students/", { params }),
   get: (id) => api.get(`/students/${id}/`),
@@ -106,9 +106,6 @@ export const studentsApi = {
   myNotes: () => api.get("/me/notes/"),
 };
 
-// ---------------------------------------------------------------------
-// Unit APIs
-// ---------------------------------------------------------------------
 export const unitsApi = {
   autoRegister: (semester) => api.post("/me/units/auto-register/", { semester }),
   myRegistrations: () => api.get("/me/units/"),
@@ -119,9 +116,6 @@ export const unitsApi = {
   currentSemester: () => api.get("/me/current-semester/"),
 };
 
-// ---------------------------------------------------------------------
-// CATs APIs
-// ---------------------------------------------------------------------
 export const catsApi = {
   list: (params) => api.get("/cats/", { params }),
   create: (payload) => api.post("/cats/", payload),
@@ -138,8 +132,6 @@ export const catsApi = {
   myCats: () => api.get("/me/cats/"),
 };
 
-
-// Add register() alongside the existing mySupplementary GET
 export const supplementaryApi = {
   outstanding: () => api.get("/me/supplementary/"),
   register: (course, semester) => api.post("/me/supplementary/", { course, semester }),
@@ -159,7 +151,6 @@ export const reportingApi = {
 export const defermentApi = {
   mine: () => api.get("/deferments/"),
   create: (payload) => {
-    // payload may include a File (supporting_document), so send multipart.
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -172,9 +163,6 @@ export const defermentApi = {
   },
 };
 
-// ---------------------------------------------------------------------
-// Grades APIs
-// ---------------------------------------------------------------------
 export const gradesApi = {
   list: (params) => api.get("/grades/", { params }),
   enter: (payload) => api.post("/grades/enter/", payload),
@@ -182,9 +170,6 @@ export const gradesApi = {
   myGrades: () => api.get("/grades/"),
 };
 
-// ---------------------------------------------------------------------
-// Fees APIs
-// ---------------------------------------------------------------------
 export const feesApi = {
   myFeeSummary: () => api.get("/me/fee-summary/"),
   invoices: () => api.get("/invoices/"),
@@ -192,9 +177,6 @@ export const feesApi = {
   feeStructures: () => api.get("/fee-structures/"),
 };
 
-// ---------------------------------------------------------------------
-// Hostel APIs
-// ---------------------------------------------------------------------
 export const hostelApi = {
   beds: (params) => api.get("/beds/", { params }),
   book: (payload) => api.post("/hostel-bookings/", payload),
@@ -204,19 +186,12 @@ export const hostelApi = {
   status: () => api.get("/me/hostel-status/"),
 };
 
-
-// ---------------------------------------------------------------------
-// Clearance APIs
-// ---------------------------------------------------------------------
 export const clearanceApi = {
   request: (clearanceType) => api.post("/clearances/", { clearance_type: clearanceType }),
   mine: () => api.get("/clearances/"),
   status: () => api.get("/me/clearance-status/"),
 };
 
-// ---------------------------------------------------------------------
-// Notifications APIs
-// ---------------------------------------------------------------------
 export const notificationsApi = {
   summary: () => api.get("/notifications/summary/"),
   list: (params) => api.get("/notifications/", { params }),
@@ -224,43 +199,30 @@ export const notificationsApi = {
   markAllRead: () => api.post("/notifications/mark-all-read/"),
 };
 
-// ---------------------------------------------------------------------
-// Admin APIs
-// ---------------------------------------------------------------------
 export const adminApi = {
-  // Dashboard
   dashboard: () => api.get("/admin/dashboard/"),
-
-  // Academic Structure
   faculties: (params) => api.get("/faculties/", { params }),
   createFaculty: (payload) => api.post("/faculties/", payload),
   updateFaculty: (id, payload) => api.patch(`/faculties/${id}/`, payload),
   deleteFaculty: (id) => api.delete(`/faculties/${id}/`),
-
   departments: (params) => api.get("/departments/", { params }),
   createDepartment: (payload) => api.post("/departments/", payload),
   updateDepartment: (id, payload) => api.patch(`/departments/${id}/`, payload),
   deleteDepartment: (id) => api.delete(`/departments/${id}/`),
-
   gradingSchemes: (params) => api.get("/grading-schemes/", { params }),
   createGradingScheme: (payload) => api.post("/grading-schemes/", payload),
   updateGradingScheme: (id, payload) => api.patch(`/grading-schemes/${id}/`, payload),
   deleteGradingScheme: (id) => api.delete(`/grading-schemes/${id}/`),
-
   gradeBands: (params) => api.get("/grade-bands/", { params }),
   createGradeBand: (payload) => api.post("/grade-bands/", payload),
   updateGradeBand: (id, payload) => api.patch(`/grade-bands/${id}/`, payload),
   deleteGradeBand: (id) => api.delete(`/grade-bands/${id}/`),
-
   programmes: (params) => api.get("/programmes/", { params }),
   courses: (params) => api.get("/courses/", { params }),
   curriculumVersions: (params) => api.get("/curriculum-versions/", { params }),
-
-  // Calendar
   academicYears: (params) => api.get("/academic-years/", { params }),
   semesters: (params) => api.get("/semesters/", { params }),
   intakes: (params) => api.get("/intakes/", { params }),
-
   users: (params) => api.get("/users/", { params }),
   getUser: (id) => api.get(`/users/${id}/`),
   createUser: (payload) => api.post("/users/", payload),
@@ -268,114 +230,71 @@ export const adminApi = {
   deleteUser: (id) => api.delete(`/users/${id}/`),
   setUserPassword: (id, password, forceChange = true) =>
     api.post(`/users/${id}/set-password/`, { password, force_change: forceChange }),
-
-  // People Management
   students: (params) => api.get("/students/", { params }),
   lecturers: (params) => api.get("/lecturers/", { params }),
   staff: (params) => api.get("/staff/", { params }),
   deferments: (params) => api.get("/deferments/", { params }),
-
-  // Operations
   clearances: (params) => api.get("/clearances/", { params }),
   examinations: (params) => api.get("/examinations/", { params }),
-
-  // Fee Management
   feeStructures: (params) => api.get("/fee-structures/", { params }),
   financialAwards: (params) => api.get("/financial-awards/", { params }),
-
-  // Hostel
   hostels: (params) => api.get("/hostels/", { params }),
   rooms: (params) => api.get("/rooms/", { params }),
   beds: (params) => api.get("/beds/", { params }),
   hostelBookings: (params) => api.get("/hostel-bookings/", { params }),
-
-  // Promotions
   runPromotion: () => api.post("/admin-ops/run-promotion/"),
   unitRegistrations: (params) => api.get("/unit-registrations/", { params }),
-
-  // Reports
   reports: () => api.get("/reports/"),
-
-  // Reportings
   reportings: (params) => api.get("/student-reportings/", { params }),
   updateReportingStatus: (id, statusValue) =>
     api.post(`/student-reportings/${id}/update-status/`, { status: statusValue }),
   bulkUpdateReportingStatus: (reportingIds, statusValue) =>
     api.post("/student-reportings/bulk-update-status/", { reporting_ids: reportingIds, status: statusValue }),
   reportForStudent: (payload) => api.post("/student-reportings/report-for-student/", payload),
-
-  // Academic Years
   createAcademicYear: (payload) => api.post("/academic-years/", payload),
   updateAcademicYear: (id, payload) => api.patch(`/academic-years/${id}/`, payload),
   deleteAcademicYear: (id) => api.delete(`/academic-years/${id}/`),
-
-  // Semesters
   createSemester: (payload) => api.post("/semesters/", payload),
   updateSemester: (id, payload) => api.patch(`/semesters/${id}/`, payload),
   deleteSemester: (id) => api.delete(`/semesters/${id}/`),
-
-  // Intakes
   createIntake: (payload) => api.post("/intakes/", payload),
   updateIntake: (id, payload) => api.patch(`/intakes/${id}/`, payload),
   deleteIntake: (id) => api.delete(`/intakes/${id}/`),
-
-  // Programmes
   createProgramme: (payload) => api.post("/programmes/", payload),
   updateProgramme: (id, payload) => api.patch(`/programmes/${id}/`, payload),
   deleteProgramme: (id) => api.delete(`/programmes/${id}/`),
-
-  // Courses
   createCourse: (payload) => api.post("/courses/", payload),
   updateCourse: (id, payload) => api.patch(`/courses/${id}/`, payload),
   deleteCourse: (id) => api.delete(`/courses/${id}/`),
-
-  // Curriculum versions
   createCurriculumVersion: (payload) => api.post("/curriculum-versions/", payload),
   updateCurriculumVersion: (id, payload) => api.patch(`/curriculum-versions/${id}/`, payload),
   deleteCurriculumVersion: (id) => api.delete(`/curriculum-versions/${id}/`),
-
-  // Curriculum units
   curriculumUnits: (params) => api.get("/curriculum-units/", { params }),
   createCurriculumUnit: (payload) => api.post("/curriculum-units/", payload),
   updateCurriculumUnit: (id, payload) => api.patch(`/curriculum-units/${id}/`, payload),
   deleteCurriculumUnit: (id) => api.delete(`/curriculum-units/${id}/`),
-
-  // Lecturer unit allocations
   lecturerAllocations: (params) => api.get("/lecturer-allocations/", { params }),
   createLecturerAllocation: (payload) => api.post("/lecturer-allocations/", payload),
   updateLecturerAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
   deleteLecturerAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
-
-  // Timetable
   timetableSlots: (params) => api.get("/timetable/", { params }),
   createTimetableSlot: (payload) => api.post("/timetable/", payload),
   updateTimetableSlot: (id, payload) => api.patch(`/timetable/${id}/`, payload),
   deleteTimetableSlot: (id) => api.delete(`/timetable/${id}/`),
-
-  // Lecturer & Staff accounts
   admitLecturer: (payload) => api.post("/lecturers/admit/", payload),
   updateLecturer: (id, payload) => api.patch(`/lecturers/${id}/`, payload),
   deleteLecturer: (id) => api.delete(`/lecturers/${id}/`),
- 
   admitStaff: (payload) => api.post("/staff/admit/", payload),
   updateStaffMember: (id, payload) => api.patch(`/staff/${id}/`, payload),
   deleteStaffMember: (id) => api.delete(`/staff/${id}/`),
- 
-  // Deferments
   approveDeferment: (id) => api.post(`/deferments/${id}/approve/`),
   rejectDeferment: (id, remarks) => api.post(`/deferments/${id}/reject/`, { remarks }),
   resumeDeferment: (id) => api.post(`/deferments/${id}/resume/`),
- 
-  // Examinations
   createExamination: (payload) => api.post("/examinations/", payload),
   updateExamination: (id, payload) => api.patch(`/examinations/${id}/`, payload),
   deleteExamination: (id) => api.delete(`/examinations/${id}/`),
- 
-  // Clearances
   approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
   rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
-
-  // Security Audit
   loginSessions: (params) => api.get("/security/login-sessions/", { params }),
   lockEvents: (params) => api.get("/security/lock-events/", { params }),
   securityAlerts: (params) => api.get("/security/alerts/", { params }),
@@ -384,22 +303,15 @@ export const adminApi = {
   securityDashboard: () => api.get("/security/dashboard/"),
   unlockUser: (id, notes) => api.post(`/users/${id}/unlock/`, { notes }),
   lockUser: (id, notes) => api.post(`/users/${id}/lock/`, { notes }),
-
 };
 
-
 export const communicationApi = {
-  // ---- Broadcasts (Announcements) ----
   audienceOptions: () => api.get("/messages/audience-options/"),
   compose: (payload) => api.post("/messages/compose/", payload),
   sentMessages: (params) => api.get("/messages/", { params }),
   messageRecipients: (id) => api.get(`/messages/${id}/recipients/`),
- 
-  // ---- Inbox (received announcements) ----
   inbox: () => api.get("/me/inbox/"),
   markMessageRead: (id) => api.post(`/me/inbox/${id}/mark-read/`),
- 
-  // ---- Conversations (two-way threads: enquiries/complaints/support) ----
   conversationTargets: () => api.get("/me/conversation-targets/"),
   conversations: (params) => api.get("/conversations/", { params }),
   conversation: (id) => api.get(`/conversations/${id}/`),
@@ -409,16 +321,12 @@ export const communicationApi = {
   setConversationStatus: (id, statusValue) => api.post(`/conversations/${id}/set-status/`, { status: statusValue }),
 };
 
-// ---------------------------------------------------------------------
-// Lecturer APIs
-// ---------------------------------------------------------------------
 export const lecturerApi = {
   dashboard: () => api.get("/lecturer/dashboard/"),
   myAllocations: () => api.get("/lecturer-allocations/"),
   roster: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/roster/`),
   gradingSheet: (allocationId) => api.get(`/lecturer-allocations/${allocationId}/grading-sheet/`),
   enterGrades: (payload) => api.post("/grades/enter/", payload),
-  createCat: (payload) => api.post("/cats/", payload),
   myCats: () => api.get("/cats/"),
   myTimetable: () => api.get("/timetable/"),
   attendanceSessions: () => api.get("/attendance/mine/"),
@@ -426,80 +334,83 @@ export const lecturerApi = {
     api.post("/attendance/start/", { timetable_slot: timetableSlotId, duration_minutes: durationMinutes }),
   attendanceSessionLive: (sessionId) => api.get(`/attendance/${sessionId}/live/`),
   closeAttendanceSession: (sessionId) => api.post(`/attendance/${sessionId}/close/`),
-
   createCat: (formData) => api.post("/cats/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
   updateCat: (id, formData) => api.patch(`/cats/${id}/`, formData, { headers: { "Content-Type": "multipart/form-data" } }),
   deleteCat: (id) => api.delete(`/cats/${id}/`),
   catSubmissions: (catId) => api.get(`/cats/${catId}/submissions/`),
   gradeSubmission: (submissionId, marks) => api.post(`/cat-answers/${submissionId}/grade/`, { marks_awarded: marks }),
-
   notes: (params) => api.get("/lecture-notes/", { params }),
   createNote: (formData) => api.post("/lecture-notes/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
   deleteNote: (id) => api.delete(`/lecture-notes/${id}/`),
   togglePublishCat: (id, isPublished) => api.patch(`/cats/${id}/`, { is_published: isPublished }),
   togglePublishNote: (id, isPublished) => api.patch(`/lecture-notes/${id}/`, { is_published: isPublished }),
-
 };
 
-// ---------------------------------------------------------------------
-// Finance APIs
-// ---------------------------------------------------------------------
 export const financeApi = {
   feeStructures: (params) => api.get("/fee-structures/", { params }),
   createFeeStructure: (payload) => api.post("/fee-structures/", payload),
   updateFeeStructure: (id, payload) => api.patch(`/fee-structures/${id}/`, payload),
   deleteFeeStructure: (id) => api.delete(`/fee-structures/${id}/`),
- 
   payments: (params) => api.get("/fee-payments/", { params }),
   paymentAllocations: (paymentId) => api.get("/invoice-allocations/", { params: { payment: paymentId } }),
   resolvePayment: (id) => api.post(`/fee-payments/${id}/resolve/`),
   reassignPayment: (id, studentId) => api.post(`/fee-payments/${id}/reassign/`, { student: studentId }),
- 
   helbAwards: (params) => api.get("/financial-awards/", { params }),
   createHelbAward: (payload) => api.post("/financial-awards/", payload),
   updateHelbAward: (id, payload) => api.patch(`/financial-awards/${id}/`, payload),
   deleteHelbAward: (id) => api.delete(`/financial-awards/${id}/`),
   markDisbursed: (id) => api.post(`/financial-awards/${id}/mark-disbursed/`),
- 
   bankWebhook: (payload) => api.post("/integrations/bank-payment/", payload),
   dashboard: () => api.get("/finance/dashboard/"),
-
   feeStructureStudents: (id) => api.get(`/fee-structures/${id}/students/`),
   raiseFeeStructureInvoice: (id, studentId) => api.post(`/fee-structures/${id}/raise-invoice/`, { student: studentId }),
   recordFeeStructurePayment: (id, payload) => api.post(`/fee-structures/${id}/record-payment/`, payload),
 };
 
-// ---------------------------------------------------------------------
-// COD (Chairman of Department) APIs
-// ---------------------------------------------------------------------
 export const codApi = {
   dashboard: () => api.get("/cod/dashboard/"),
   reports: () => api.get("/cod/reports/"),
-
   students: (params) => api.get("/students/", { params }),
   lecturers: (params) => api.get("/lecturers/", { params }),
   courses: (params) => api.get("/courses/", { params }),
   enrollments: (params) => api.get("/enrollments/", { params }),
   semesters: (params) => api.get("/semesters/", { params }),
   programmes: (params) => api.get("/programmes/", { params }),
-
   unitAllocations: (params) => api.get("/lecturer-allocations/", { params }),
   createUnitAllocation: (payload) => api.post("/lecturer-allocations/", payload),
   updateUnitAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
   deleteUnitAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
-
   gradesPendingVerification: () => api.get("/grades/pending-verification/"),
   verifyGrade: (gradeId) => api.post(`/grades/${gradeId}/verify/`),
 };
 
+export const hostelWardenApi = {
+  hostels: (params) => api.get("/hostels/", { params }),
+  createHostel: (payload) => api.post("/hostels/", payload),
+  updateHostel: (id, payload) => api.patch(`/hostels/${id}/`, payload),
+  deleteHostel: (id) => api.delete(`/hostels/${id}/`),
+  rooms: (params) => api.get("/rooms/", { params }),
+  createRoom: (payload) => api.post("/rooms/", payload),
+  updateRoom: (id, payload) => api.patch(`/rooms/${id}/`, payload),
+  deleteRoom: (id) => api.delete(`/rooms/${id}/`),
+  beds: (params) => api.get("/beds/", { params }),
+  createBed: (payload) => api.post("/beds/", payload),
+  updateBed: (id, payload) => api.patch(`/beds/${id}/`, payload),
+  deleteBed: (id) => api.delete(`/beds/${id}/`),
+  bookings: (params) => api.get("/hostel-bookings/", { params }),
+  manualBook: (payload) => api.post("/hostel-bookings/manual_book/", payload),
+  checkIn: (id) => api.post(`/hostel-bookings/${id}/check_in/`),
+  checkOut: (id) => api.post(`/hostel-bookings/${id}/check_out/`),
+  cancelBooking: (id) => api.post(`/hostel-bookings/${id}/cancel/`),
+  dashboard: (academicYearId) => api.get("/hostel/dashboard/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
+};
 
 // ---------------------------------------------------------------------
-// Registrar APIs
+// Registrar APIs (institution-wide — no faculty/department scoping)
 // ---------------------------------------------------------------------
 export const registrarApi = {
   dashboard: () => api.get("/registrar/dashboard/"),
 
-  // Students
   students: (params) => api.get("/students/", { params }),
   getStudent: (id) => api.get(`/students/${id}/`),
   admitStudent: (payload) => api.post("/students/admit/", payload),
@@ -507,100 +418,69 @@ export const registrarApi = {
   studentTranscript: (id) => api.get(`/students/${id}/transcript/`),
   studentFeeSummary: (id) => api.get(`/students/${id}/fee-summary/`),
 
-  // Deferments
   deferments: (params) => api.get("/deferments/", { params }),
   approveDeferment: (id) => api.post(`/deferments/${id}/approve/`),
   rejectDeferment: (id, remarks) => api.post(`/deferments/${id}/reject/`, { remarks }),
   resumeDeferment: (id) => api.post(`/deferments/${id}/resume/`),
 
-  // Clearances
   clearances: (params) => api.get("/clearances/", { params }),
   approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
   rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
 
-  // Profile
   profile: () => api.get("/auth/me/"),
+  updateProfile: (payload) => api.patch("/auth/me/", payload),
   permissions: () => api.get("/auth/permissions/"),
 };
 
 // ---------------------------------------------------------------------
-// Dean APIs
+// Dean APIs (scoped server-side to the dean's own faculty)
 // ---------------------------------------------------------------------
 export const deanApi = {
   dashboard: () => api.get("/dean/dashboard/"),
 
-  // Departments (Faculty-scoped by backend via Faculty.dean)
+  // read-only: server blocks create/update for dean role
   departments: (params) => api.get("/departments/", { params }),
   getDepartment: (id) => api.get(`/departments/${id}/`),
 
-  // Lecturers
+  // read-only: server blocks create/update for dean role
   lecturers: (params) => api.get("/lecturers/", { params }),
   getLecturer: (id) => api.get(`/lecturers/${id}/`),
 
-  // Clearances
+  // approve/reject limited server-side to DEPARTMENT/GRADUATION types
   clearances: (params) => api.get("/clearances/", { params }),
   approveClearance: (id, remarks) => api.post(`/clearances/${id}/approve/`, { remarks }),
   rejectClearance: (id, remarks) => api.post(`/clearances/${id}/reject/`, { remarks }),
 
-  // Profile
   profile: () => api.get("/auth/me/"),
+  updateProfile: (payload) => api.patch("/auth/me/", payload),
   permissions: () => api.get("/auth/permissions/"),
 };
 
 // ---------------------------------------------------------------------
-// Exam Office APIs
+// Exam Office APIs (institution-wide)
 // ---------------------------------------------------------------------
 export const examOfficeApi = {
   dashboard: () => api.get("/exam-office/dashboard/"),
 
-  // Examinations
   examinations: (params) => api.get("/examinations/", { params }),
   createExamination: (payload) => api.post("/examinations/", payload),
   updateExamination: (id, payload) => api.patch(`/examinations/${id}/`, payload),
   deleteExamination: (id) => api.delete(`/examinations/${id}/`),
+  courses: (params) => api.get("/courses/", { params }),
+  semesters: (params) => api.get("/semesters/", { params }),
 
-  // Grade verification
   pendingGradeVerification: () => api.get("/grades/pending-verification/"),
   verifyGrade: (id) => api.post(`/grades/${id}/verify/`),
   grades: (params) => api.get("/grades/", { params }),
 
-  // Supplementary (institution-wide view via UnitRegistration filter —
-  // no dedicated backend endpoint exists yet for this)
+  // reuses UnitRegistrationViewSet with a registration_type filter —
+  // registration_type is already in filterset_fields, no new endpoint needed
   supplementaryRegistrations: (params) =>
     api.get("/unit-registrations/", { params: { registration_type: "supplementary", ...params } }),
 
-  // Profile
   profile: () => api.get("/auth/me/"),
+  updateProfile: (payload) => api.patch("/auth/me/", payload),
   permissions: () => api.get("/auth/permissions/"),
-};
-
-
-// ---------------------------------------------------------------------
-// Hostel Warden APIs
-// ---------------------------------------------------------------------
-export const hostelWardenApi = {
-  hostels: (params) => api.get("/hostels/", { params }),
-  createHostel: (payload) => api.post("/hostels/", payload),
-  updateHostel: (id, payload) => api.patch(`/hostels/${id}/`, payload),
-  deleteHostel: (id) => api.delete(`/hostels/${id}/`),
- 
-  rooms: (params) => api.get("/rooms/", { params }),
-  createRoom: (payload) => api.post("/rooms/", payload),
-  updateRoom: (id, payload) => api.patch(`/rooms/${id}/`, payload),
-  deleteRoom: (id) => api.delete(`/rooms/${id}/`),
- 
-  beds: (params) => api.get("/beds/", { params }),
-  createBed: (payload) => api.post("/beds/", payload),
-  updateBed: (id, payload) => api.patch(`/beds/${id}/`, payload),
-  deleteBed: (id) => api.delete(`/beds/${id}/`),
- 
-  bookings: (params) => api.get("/hostel-bookings/", { params }),
-  manualBook: (payload) => api.post("/hostel-bookings/manual_book/", payload),
-  checkIn: (id) => api.post(`/hostel-bookings/${id}/check_in/`),
-  checkOut: (id) => api.post(`/hostel-bookings/${id}/check_out/`),
-  cancelBooking: (id) => api.post(`/hostel-bookings/${id}/cancel/`),
- 
-  dashboard: (academicYearId) => api.get("/hostel/dashboard/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
 };
 
 export default api;
