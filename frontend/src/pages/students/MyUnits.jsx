@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { unitsApi, studentsApi } from "../../services/api";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function MyUnits() {
   const { user } = useAuth();
@@ -15,6 +16,7 @@ export default function MyUnits() {
   const [feeInfo, setFeeInfo] = useState({ total_outstanding: 0, wallet_credit: 0, can_register: true });
   const [error, setError] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [activeTab, setActiveTab] = useState("register");
 
   const loadData = async () => {
     setLoading(true);
@@ -111,18 +113,14 @@ export default function MyUnits() {
   };
 
   if (loading) {
-    return (
-      <div className="mu-loader">
-        <i className="bi bi-arrow-repeat mu-animate-spin" />
-        <span>Loading your units...</span>
-      </div>
-    );
+    return <LoadingSpinner text="Loading your units..." />;
   }
 
   const allSelectable = [...availableUnits, ...supplementaryUnits];
 
   return (
     <div>
+      {/* Page Header */}
       <div className="mu-page-header">
         <div>
           <h1>
@@ -133,6 +131,7 @@ export default function MyUnits() {
             Home <span className="separator">/</span> Academics <span className="separator">/</span> My Units
           </div>
         </div>
+        
       </div>
 
       {error && (
@@ -178,6 +177,7 @@ export default function MyUnits() {
         </div>
       )}
 
+      {/* Stats Summary */}
       <div className="mu-dashboard-grid" style={{ marginBottom: 24 }}>
         <div className="mu-stat-card">
           <div className="mu-stat-icon blue"><i className="bi bi-journal-bookmark" /></div>
@@ -201,128 +201,237 @@ export default function MyUnits() {
         </div>
       </div>
 
-      <div className="mu-card" style={{ marginBottom: 24 }}>
-        <div className="mu-card-header">
-          <h4>
-            Units For Year {studentProfile?.current_year} · Semester {studentProfile?.current_semester}
-          </h4>
-          <button
-            className="mu-btn mu-btn-primary mu-btn-sm"
-            onClick={handleRegister}
-            disabled={registering || !feeInfo.can_register}
-            title={!feeInfo.can_register ? "Clear your fee balance to register" : ""}
-          >
-            {registering ? (
-              <><i className="bi bi-arrow-repeat mu-animate-spin" /> Registering...</>
-            ) : (
-              <><i className="bi bi-check2-square" /> Register Selected</>
-            )}
-          </button>
-        </div>
-        <div className="mu-card-body" style={{ padding: 0 }}>
-          {allSelectable.length > 0 ? (
-            <div className="mu-table-wrapper">
-              <table className="mu-table mu-table-hover">
-                <thead>
-                  <tr>
-                    <th>Course Code</th>
-                    <th>Course Name</th>
-                    <th>Type</th>
-                    <th>Credit Hours</th>
-                    <th>Lecturer</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((reg) => {
-                    const typeBadge = getTypeBadge(reg.registration_type);
-                    const statusBadge = getStatusBadge(reg);
-                    return (
-                      <tr key={reg.id}>
-                        <td><strong>{reg.course_detail?.code || "N/A"}</strong></td>
-                        <td>{reg.course_detail?.name || "Unknown Course"}</td>
-                        <td><span className={`mu-badge ${typeBadge.class}`}>{typeBadge.label}</span></td>
-                        <td>{reg.course_detail?.credit_hours || "N/A"}</td>
-                        <td>
-                          {reg.lecturer_detail ? (
-                            <span>{reg.lecturer_detail.full_name}</span>
-                          ) : (
-                            <span className="mu-badge mu-badge-gray">Not assigned</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`mu-badge ${statusBadge.class}`}>
-                            <i className={`bi ${statusBadge.icon}`} style={{ marginRight: 4 }} />
-                            {statusBadge.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
-              No units are mapped to your current year/semester yet. Contact the registrar.
-            </div>
-          )}
-        </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--mu-border)", marginBottom: 16, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("register")}
+          style={{
+            border: "none",
+            borderBottom: activeTab === "register" ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+            borderRadius: 0,
+            background: "transparent",
+            padding: "8px 16px",
+            cursor: "pointer",
+            color: activeTab === "register" ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+            fontWeight: activeTab === "register" ? 600 : 400,
+            fontSize: "var(--mu-font-size-sm)",
+            transition: "all var(--mu-transition-fast)",
+          }}
+        >
+          <i className="bi bi-check2-square" style={{ marginRight: 6 }} />
+          Unit Registration ({allSelectable.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("myunits")}
+          style={{
+            border: "none",
+            borderBottom: activeTab === "myunits" ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+            borderRadius: 0,
+            background: "transparent",
+            padding: "8px 16px",
+            cursor: "pointer",
+            color: activeTab === "myunits" ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+            fontWeight: activeTab === "myunits" ? 600 : 400,
+            fontSize: "var(--mu-font-size-sm)",
+            transition: "all var(--mu-transition-fast)",
+          }}
+        >
+          <i className="bi bi-journal-bookmark" style={{ marginRight: 6 }} />
+          My Registered Units ({registrations.length})
+        </button>
       </div>
 
-      <div className="mu-card">
-        <div className="mu-card-header">
-          <h4>All My Registered Units</h4>
-          <span className="mu-badge mu-badge-primary">{registrations.length} Units</span>
-        </div>
-        <div className="mu-card-body" style={{ padding: 0 }}>
-          {registrations.length > 0 ? (
-            <div className="mu-table-wrapper">
-              <table className="mu-table mu-table-hover">
-                <thead>
-                  <tr>
-                    <th>Course Code</th>
-                    <th>Course Name</th>
-                    <th>Type</th>
-                    <th>Credit Hours</th>
-                    <th>Status</th>
-                   
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((reg) => {
-                    const typeBadge = getTypeBadge(reg.registration_type);
-                    const statusBadge = getStatusBadge(reg);
-                    return (
-                      <tr key={reg.id}>
-                        <td><strong>{reg.course_detail?.code || "N/A"}</strong></td>
-                        <td>{reg.course_detail?.name || "Unknown Course"}</td>
-                        <td><span className={`mu-badge ${typeBadge.class}`}>{typeBadge.label}</span></td>
-                        <td>{reg.course_detail?.credit_hours || "N/A"}</td>
-                        <td>
-                          <span className={`mu-badge ${statusBadge.class}`}>
-                            <i className={`bi ${statusBadge.icon}`} style={{ marginRight: 4 }} />
-                            {statusBadge.label}
-                          </span>
-                        </td>
-                        
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
-              <i className="bi bi-journal-bookmark" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
-              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Units Registered</h3>
-              <p style={{ margin: "8px 0 16px" }}>
-                Use the checklist above to select and register your units for this semester.
-              </p>
+      {/* Unit Registration Tab */}
+      {activeTab === "register" && (
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              Units For Year {studentProfile?.current_year} · Semester {studentProfile?.current_semester}
+            </h4>
+            <button
+              className="mu-btn mu-btn-primary mu-btn-sm"
+              onClick={handleRegister}
+              disabled={registering || !feeInfo.can_register}
+              title={!feeInfo.can_register ? "Clear your fee balance to register" : ""}
+            >
+              {registering ? (
+                <><i className="bi bi-arrow-repeat mu-animate-spin" /> Registering...</>
+              ) : (
+                <><i className="bi bi-check2-square" /> Register Selected</>
+              )}
+            </button>
+          </div>
+          <div className="mu-card-body" style={{ padding: 0 }}>
+            {allSelectable.length > 0 ? (
+              <div className="mu-table-wrapper">
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>
+                        <input
+                          type="checkbox"
+                          checked={allSelectable.every((u) => selectedCourseIds.includes(u.course.id) || u.is_registered)}
+                          onChange={() => {
+                            const allIds = allSelectable.map((u) => u.course.id);
+                            const allSelected = allIds.every((id) => selectedCourseIds.includes(id));
+                            setSelectedCourseIds(allSelected ? [] : allIds);
+                          }}
+                          disabled={!feeInfo.can_register}
+                        />
+                      </th>
+                      <th>Course Code</th>
+                      <th>Course Name</th>
+                      <th>Type</th>
+                      <th>Credit Hours</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allSelectable.map((unit) => {
+                      const isSelected = selectedCourseIds.includes(unit.course.id);
+                      const isRegistered = unit.is_registered;
+                      const isSupplementary = unit.registration_type === "supplementary";
+
+                      return (
+                        <tr key={unit.course.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={isSelected || isRegistered}
+                              onChange={() => toggleUnit(unit.course.id, isRegistered)}
+                              disabled={isRegistered || !feeInfo.can_register}
+                            />
+                          </td>
+                          <td>
+                            <strong>{unit.course.code}</strong>
+                            {isRegistered && (
+                              <span className="mu-badge mu-badge-success" style={{ marginLeft: 8, fontSize: "0.6rem" }}>
+                                <i className="bi bi-check-circle" style={{ marginRight: 2 }} />
+                                Registered
+                              </span>
+                            )}
+                          </td>
+                          <td>{unit.course.name}</td>
+                          <td>
+                            <span className={`mu-badge ${isSupplementary ? "mu-badge-warning" : "mu-badge-primary"}`}>
+                              {isSupplementary ? "Supplementary" : unit.is_mandatory ? "Core" : "Elective"}
+                            </span>
+                          </td>
+                          <td>{unit.course.credit_hours}</td>
+                          <td>
+                            {isRegistered ? (
+                              <span className="mu-badge mu-badge-success">Registered</span>
+                            ) : isSelected ? (
+                              <span className="mu-badge mu-badge-primary">Selected</span>
+                            ) : (
+                              <span className="mu-badge mu-badge-gray">Not Selected</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                No units are mapped to your current year/semester yet. Contact the registrar.
+              </div>
+            )}
+          </div>
+          {allSelectable.length > 0 && (
+            <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+                {selectedCourseIds.filter(id => allSelectable.some(u => u.course.id === id && !u.is_registered)).length} unit(s) selected for registration
+              </span>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                {allSelectable.filter(u => u.is_registered).length} already registered
+              </span>
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* My Registered Units Tab */}
+      {activeTab === "myunits" && (
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>All My Registered Units</h4>
+            <span className="mu-badge mu-badge-primary">{registrations.length} Units</span>
+          </div>
+          <div className="mu-card-body" style={{ padding: 0 }}>
+            {registrations.length > 0 ? (
+              <div className="mu-table-wrapper">
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th>Course Code</th>
+                      <th>Course Name</th>
+                      <th>Type</th>
+                      <th>Credit Hours</th>
+                      <th>Lecturer</th>
+                      <th>Status</th>
+                     
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registrations.map((reg) => {
+                      const typeBadge = getTypeBadge(reg.registration_type);
+                      const statusBadge = getStatusBadge(reg);
+                      return (
+                        <tr key={reg.id}>
+                          <td><strong>{reg.course_detail?.code || "N/A"}</strong></td>
+                          <td>{reg.course_detail?.name || "Unknown Course"}</td>
+                          <td><span className={`mu-badge ${typeBadge.class}`}>{typeBadge.label}</span></td>
+                          <td>{reg.course_detail?.credit_hours || "N/A"}</td>
+                           <td>
+                            {reg.lecturer_detail ? (
+                              <span>{reg.lecturer_detail.full_name}</span>
+                            ) : (
+                              <span className="mu-badge mu-badge-gray">Not assigned</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`mu-badge ${statusBadge.class}`}>
+                              <i className={`bi ${statusBadge.icon}`} style={{ marginRight: 4 }} />
+                              {statusBadge.label}
+                            </span>
+                          </td>
+                          
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-journal-bookmark" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+                <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Units Registered</h3>
+                <p style={{ margin: "8px 0 0" }}>
+                  You haven't registered for any units yet. Go to the "Unit Registration" tab to register.
+                </p>
+              </div>
+            )}
+          </div>
+          {registrations.length > 0 && (
+            <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+                Total: {registrations.length} unit(s)
+              </span>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+                Last updated: {new Date().toLocaleDateString()}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );
