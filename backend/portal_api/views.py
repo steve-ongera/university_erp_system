@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
+from rest_framework import serializers
 
 from . import models as m
 from . import serializers as s
@@ -249,6 +250,13 @@ class CourseViewSet(viewsets.ModelViewSet):
     filterset_fields = ["department", "course_type", "is_active"]
     ordering_fields = ["name", "code", "credit_hours"]
     ordering = ["name"]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            return qs.filter(department=department) if department else qs.none()
+        return qs
 
 
 class CurriculumVersionViewSet(viewsets.ModelViewSet):
@@ -312,6 +320,9 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            qs = qs.filter(programme__department=department) if department else qs.none()
         programme = self.request.query_params.get("programme")
         year = self.request.query_params.get("year")
         status_filter = self.request.query_params.get("status")
@@ -379,6 +390,13 @@ class LecturerViewSet(viewsets.ModelViewSet):
     search_fields = ["employee_number", "user__first_name", "user__last_name"]
     ordering_fields = ["employee_number", "joining_date"]
     ordering = ["-joining_date"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            return qs.filter(department=department) if department else qs.none()
+        return qs
 
     @action(detail=False, methods=["post"], url_path="admit")
     def admit(self, request):
@@ -478,6 +496,9 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if self.request.user.user_type == "lecturer":
             return qs.filter(lecturer__user=self.request.user)
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            return qs.filter(course__department=department) if department else qs.none()
         return qs
 
     @action(detail=True, methods=["get"], url_path="roster")
@@ -502,6 +523,22 @@ class LecturerUnitAllocationViewSet(viewsets.ModelViewSet):
                 "grade": s.GradeSerializer(grade).data if grade else None,
             })
         return Response(rows)
+    
+    def perform_create(self, serializer):
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            course = serializer.validated_data.get("course")
+            if not department or not course or course.department_id != department.id:
+                raise serializers.ValidationError("You can only allocate units within your own department.")
+        serializer.save(assigned_by=self.request.user)
+
+    def perform_update(self, serializer):
+        if self.request.user.user_type == "cod":
+            department = services.get_cod_department(self.request.user)
+            course = serializer.validated_data.get("course", serializer.instance.course)
+            if not department or course.department_id != department.id:
+                raise serializers.ValidationError("You can only edit units within your own department.")
+        serializer.save()
 
 
 class UnitRegistrationViewSet(viewsets.ModelViewSet):
@@ -549,6 +586,16 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["student__registration_number", "course__code", "course__name"]
     ordering_fields = ["id"]
     ordering = ["-id"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.user_type == "cod":
+            department = services.get_cod_department(user)
+            return qs.filter(course__department=department) if department else qs.none()
+        if user.user_type == "student":
+            return qs.filter(student__user=user)
+        return qs
 
 # ======================================================================
 # CATS / GRADES
@@ -691,7 +738,7 @@ class GradeViewSet(viewsets.ModelViewSet):
     serializer_class = s.GradeSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ["enrollment", "enrollment__student", "enrollment__course", "enrollment__semester"]
+    filterset_fields = ["enrollment", "enrollment__student", "enrollment__course", "enrollment__semester", "is_verified"]
     search_fields = ["enrollment__student__registration_number", "enrollment__course__code", "enrollment__course__name"]
     ordering_fields = ["published_at", "exam_date"]
     ordering = ["-published_at"]
@@ -699,16 +746,19 @@ class GradeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.user_type == "student":
-            # Show all of the student's own results — published or not.
             return m.Grade.objects.filter(enrollment__student__user=user)
         if user.user_type == "lecturer":
             return m.Grade.objects.filter(enrollment__lecturer_allocation__lecturer__user=user)
+        if user.user_type == "cod":
+            department = services.get_cod_department(user)
+            if not department:
+                return m.Grade.objects.none()
+            return m.Grade.objects.filter(enrollment__course__department=department)
         return super().get_queryset()
 
     @action(detail=False, methods=["post"], url_path="enter",
             permission_classes=[IsRole.for_roles("lecturer", "admin", "exam_office")])
     def enter_grade(self, request):
-        """Lecturer enters raw CAT + exam marks; server computes letter/points/pass via GradingService."""
         serializer = s.GradeEntrySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -728,6 +778,36 @@ class GradeViewSet(viewsets.ModelViewSet):
 
         return Response(s.GradeSerializer(grade).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["get"], url_path="pending-verification",
+            permission_classes=[IsRole.for_roles("cod", "admin", "exam_office")])
+    def pending_verification(self, request):
+        """Entered-but-unverified grades — the COD's marks-verification queue."""
+        qs = m.Grade.objects.filter(
+            published_at__isnull=False, is_verified=False
+        ).select_related("enrollment__student", "enrollment__course", "enrollment__semester__academic_year")
+
+        if request.user.user_type == "cod":
+            department = services.get_cod_department(request.user)
+            qs = qs.filter(enrollment__course__department=department) if department else qs.none()
+
+        return Response(s.GradeSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=["post"], url_path="verify",
+            permission_classes=[IsRole.for_roles("cod", "admin", "exam_office")])
+    def verify(self, request, pk=None):
+        grade = self.get_object()
+        if request.user.user_type == "cod":
+            department = services.get_cod_department(request.user)
+            if not department or grade.enrollment.course.department_id != department.id:
+                return Response({"detail": "This unit is outside your department."},
+                                 status=status.HTTP_403_FORBIDDEN)
+        grade.is_verified = True
+        grade.verified_by = request.user
+        grade.verified_at = timezone.now()
+        grade.save(update_fields=["is_verified", "verified_by", "verified_at"])
+        return Response(s.GradeSerializer(grade).data)
+
+
 
 class MyTranscriptView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -738,6 +818,7 @@ class MyTranscriptView(APIView):
             return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
         entries = services.TranscriptService.effective_entries(student)
         return Response(s.GradeTranscriptSerializer(entries, many=True).data)
+
     
     @action(detail=True, methods=["get"], url_path="transcript")
     def transcript(self, request, pk=None):
@@ -2309,3 +2390,36 @@ class GradeBandViewSet(viewsets.ModelViewSet):
     filterset_fields = ["scheme", "is_supplementary_band", "is_fail_band"]
     ordering_fields = ["min_score"]
     ordering = ["-min_score"]
+    
+    
+
+# ======================================================================
+# COD DASHBOARD
+# ======================================================================
+
+class CodDashboardView(APIView):
+    permission_classes = [IsRole.for_roles("cod")]
+
+    def get(self, request):
+        department = services.get_cod_department(request.user)
+        if not department:
+            return Response(
+                {"detail": "You are not assigned as head of any department. Contact an admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(services.CodReportService.department_summary(department))
+
+
+class CodDepartmentReportsView(APIView):
+    """Deeper report view — same builder as the dashboard, kept as its own endpoint
+    so the frontend Reports page can be extended independently later."""
+    permission_classes = [IsRole.for_roles("cod")]
+
+    def get(self, request):
+        department = services.get_cod_department(request.user)
+        if not department:
+            return Response(
+                {"detail": "You are not assigned as head of any department. Contact an admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(services.CodReportService.department_summary(department))

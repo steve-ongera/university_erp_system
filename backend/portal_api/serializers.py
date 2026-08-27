@@ -277,12 +277,14 @@ class CatAnswerSubmissionSerializer(serializers.ModelSerializer):
 
 class GradeSerializer(serializers.ModelSerializer):
     enrollment_detail = EnrollmentSerializer(source="enrollment", read_only=True)
+    verified_by_detail = UserSerializer(source="verified_by", read_only=True)
 
     class Meta:
         model = m.Grade
         fields = "__all__"
         read_only_fields = ["total_marks", "letter_grade", "grade_points", "quality_points",
-                             "is_pass", "requires_supplementary", "published_at"]
+                             "is_pass", "requires_supplementary", "published_at",
+                             "is_verified", "verified_by", "verified_at"]
 
 class GradeEntrySerializer(serializers.Serializer):
     """Payload lecturers submit: raw CAT + exam marks; grading is computed server-side."""

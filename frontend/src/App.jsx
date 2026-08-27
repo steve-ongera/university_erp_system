@@ -70,6 +70,14 @@ import HostelWardenDashboard from "./pages/hostel/HostelWardenDashboard";
 import HostelsRooms from "./pages/hostel/HostelsRooms";
 import HostelBookings from "./pages/hostel/HostelBookings";
 
+import CodDashboard from "./pages/cod/CodDashboard";
+import CodStudents from "./pages/cod/CodStudents";
+import CodReports from "./pages/cod/CodReports";
+import CodEnrollments from "./pages/cod/CodEnrollments";
+import CodUnitAllocations from "./pages/cod/CodUnitAllocations";
+import CodVerifyMarks from "./pages/cod/CodVerifyMarks";
+import CodProfile from "./pages/cod/CodProfile";
+
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./style/main.css";
 
@@ -197,6 +205,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route path="/cod/dashboard" element={<ProtectedRoute allowedRoles={["cod"]}><CodDashboard /></ProtectedRoute>} />
+            <Route path="/cod/students" element={<ProtectedRoute allowedRoles={["cod"]}><CodStudents /></ProtectedRoute>} />
+            <Route path="/cod/reports" element={<ProtectedRoute allowedRoles={["cod"]}><CodReports /></ProtectedRoute>} />
+            <Route path="/cod/enrollments" element={<ProtectedRoute allowedRoles={["cod"]}><CodEnrollments /></ProtectedRoute>} />
+            <Route path="/cod/unit-allocations" element={<ProtectedRoute allowedRoles={["cod"]}><CodUnitAllocations /></ProtectedRoute>} />
+            <Route path="/cod/verify-marks" element={<ProtectedRoute allowedRoles={["cod"]}><CodVerifyMarks /></ProtectedRoute>} />
+            <Route path="/cod/profile" element={<ProtectedRoute allowedRoles={["cod"]}><CodProfile /></ProtectedRoute>} />
 
             {/*
               ===== ADMIN-STYLE PAGES =====

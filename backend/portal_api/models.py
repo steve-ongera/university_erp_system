@@ -689,6 +689,14 @@ class Grade(models.Model):
     exam_date = models.DateField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     entered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # --- ADD THESE ---
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="True once the department's COD has reviewed and signed off this entered grade.")
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="verified_grades")
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.enrollment} -> {self.letter_grade or 'ungraded'}"

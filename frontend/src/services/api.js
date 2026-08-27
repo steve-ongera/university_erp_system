@@ -470,6 +470,30 @@ export const financeApi = {
 };
 
 // ---------------------------------------------------------------------
+// COD (Chairman of Department) APIs
+// ---------------------------------------------------------------------
+export const codApi = {
+  dashboard: () => api.get("/cod/dashboard/"),
+  reports: () => api.get("/cod/reports/"),
+
+  students: (params) => api.get("/students/", { params }),
+  lecturers: (params) => api.get("/lecturers/", { params }),
+  courses: (params) => api.get("/courses/", { params }),
+  enrollments: (params) => api.get("/enrollments/", { params }),
+  semesters: (params) => api.get("/semesters/", { params }),
+  programmes: (params) => api.get("/programmes/", { params }),
+
+  unitAllocations: (params) => api.get("/lecturer-allocations/", { params }),
+  createUnitAllocation: (payload) => api.post("/lecturer-allocations/", payload),
+  updateUnitAllocation: (id, payload) => api.patch(`/lecturer-allocations/${id}/`, payload),
+  deleteUnitAllocation: (id) => api.delete(`/lecturer-allocations/${id}/`),
+
+  gradesPendingVerification: () => api.get("/grades/pending-verification/"),
+  verifyGrade: (gradeId) => api.post(`/grades/${gradeId}/verify/`),
+};
+
+
+// ---------------------------------------------------------------------
 // Hostel Warden APIs
 // ---------------------------------------------------------------------
 export const hostelWardenApi = {

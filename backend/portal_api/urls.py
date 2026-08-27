@@ -124,6 +124,9 @@ urlpatterns = [
     path("finance/dashboard/", v.FinanceDashboardView.as_view(), name="finance-dashboard"),
     path("hostel/dashboard/", v.HostelDashboardView.as_view(), name="hostel-dashboard"),
     path("auth/permissions/", v.MyPermissionsView.as_view(), name="my-permissions"),
+    
+    path("cod/dashboard/", v.CodDashboardView.as_view(), name="cod-dashboard"),
+    path("cod/reports/", v.CodDepartmentReportsView.as_view(), name="cod-reports"),
 
     path("", include(router.urls)),
 ]

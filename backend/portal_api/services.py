@@ -1131,13 +1131,13 @@ ROLE_PAGE_PERMISSIONS = {
     "registrar": ["faculties", "programmes", "courses", "calendar", "students",
                   "deferments", "promotions", "examinations", "clearances", "reports"],
     "dean": ["programmes", "courses", "clearances", "reports"],
-    "cod": ["courses", "lecturers", "unitallocations", "examinations"],
+    "cod": ["cod_dashboard", "cod_students", "cod_reports", "cod_enrollments",
+            "unitallocations", "cod_verify_marks", "examinations", "profile"],
     "exam_office": ["calendar", "resultsmanagement", "examinations", "clearances", "reports"],
     "staff": [],
     "finance": ["finance_dashboard", "fee_structures", "payments", "awards"],
     "hostel_warden": ["hostel_dashboard", "hostel_management", "hostel_bookings"],
 }
-
 
 # ======================================================================
 # TRANSCRIPT
@@ -1169,3 +1169,54 @@ class TranscriptService:
                 "enrollment__course__name",
             )
         )
+        
+        
+# ======================================================================
+# COD (CHAIRMAN OF DEPARTMENT) HELPERS
+# ======================================================================
+
+def get_cod_department(user: m.User):
+    """The single Department this COD heads, or None if unassigned/misconfigured."""
+    return m.Department.objects.filter(head_of_department=user).first()
+
+
+class CodReportService:
+    """Academic reporting scoped to one department — the COD's dashboard/reports source."""
+
+    @staticmethod
+    def department_summary(department: m.Department) -> dict:
+        students = m.Student.objects.filter(programme__department=department)
+        lecturers = m.Lecturer.objects.filter(department=department, is_active=True)
+        courses = m.Course.objects.filter(department=department, is_active=True)
+
+        grades = m.Grade.objects.filter(
+            enrollment__course__department=department, published_at__isnull=False
+        )
+        total_graded = grades.count()
+        pass_count = grades.filter(is_pass=True).count()
+        pending_verification = grades.filter(is_verified=False).count()
+
+        grade_distribution = [
+            {"letter_grade": row["letter_grade"], "count": row["c"]}
+            for row in grades.values("letter_grade").annotate(c=Count("id")).order_by("letter_grade")
+        ]
+
+        programme_breakdown = list(
+            students.values("programme__code", "programme__name")
+            .annotate(count=Count("id")).order_by("-count")
+        )
+
+        return {
+            "department": {"id": department.id, "name": department.name, "code": department.code},
+            "stats": {
+                "total_students": students.count(),
+                "active_students": students.filter(status=m.Student.Status.ACTIVE).count(),
+                "total_lecturers": lecturers.count(),
+                "total_courses": courses.count(),
+                "graded_units": total_graded,
+                "pass_rate": round((pass_count / total_graded) * 100, 1) if total_graded else None,
+                "pending_verification": pending_verification,
+            },
+            "grade_distribution": grade_distribution,
+            "students_by_programme": programme_breakdown,
+        }
