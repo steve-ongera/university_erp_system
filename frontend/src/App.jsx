@@ -78,6 +78,25 @@ import CodUnitAllocations from "./pages/cod/CodUnitAllocations";
 import CodVerifyMarks from "./pages/cod/CodVerifyMarks";
 import CodProfile from "./pages/cod/CodProfile";
 
+// Registrar / Dean / Exam Office Pages
+import RegistrarDashboard from "./pages/registrar/RegistrarDashboard";
+import RegistrarStudents from "./pages/registrar/RegistrarStudents";
+import RegistrarDeferments from "./pages/registrar/RegistrarDeferments";
+import RegistrarClearances from "./pages/registrar/RegistrarClearances";
+import RegistrarProfile from "./pages/registrar/RegistrarProfile";
+
+import DeanDashboard from "./pages/dean/DeanDashboard";
+import DeanDepartments from "./pages/dean/DeanDepartments";
+import DeanLecturers from "./pages/dean/DeanLecturers";
+import DeanClearances from "./pages/dean/DeanClearances";
+import DeanProfile from "./pages/dean/DeanProfile";
+
+import ExamOfficeDashboard from "./pages/examoffice/ExamOfficeDashboard";
+import ExamOfficeExaminations from "./pages/examoffice/ExamOfficeExaminations";
+import ExamOfficeGradeVerification from "./pages/examoffice/ExamOfficeGradeVerification";
+import ExamOfficeSupplementary from "./pages/examoffice/ExamOfficeSupplementary";
+import ExamOfficeProfile from "./pages/examoffice/ExamOfficeProfile";
+
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./style/main.css";
 
@@ -219,6 +238,30 @@ export default function App() {
             <Route path="/cod/unit-allocations" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodUnitAllocations /></ProtectedRoute>} />
             <Route path="/cod/verify-marks" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodVerifyMarks /></ProtectedRoute>} />
             <Route path="/cod/profile" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodProfile /></ProtectedRoute>} />
+
+            {/* ===== REGISTRAR =====
+                Dashboard and Profile are live now; Students/Deferments/
+                Clearances stay under-development (same placeholder
+                pattern as Staff) until we build them out one by one. */}
+            <Route path="/registrar/dashboard" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarDashboard /></ProtectedRoute>} />
+            <Route path="/registrar/students" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarStudents /></ProtectedRoute>} />
+            <Route path="/registrar/deferments" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarDeferments /></ProtectedRoute>} />
+            <Route path="/registrar/clearances" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarClearances /></ProtectedRoute>} />
+            <Route path="/registrar/profile" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarProfile /></ProtectedRoute>} />
+
+            {/* ===== DEAN ===== */}
+            <Route path="/dean/dashboard" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanDashboard /></ProtectedRoute>} />
+            <Route path="/dean/departments" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanDepartments /></ProtectedRoute>} />
+            <Route path="/dean/lecturers" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanLecturers /></ProtectedRoute>} />
+            <Route path="/dean/clearances" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanClearances /></ProtectedRoute>} />
+            <Route path="/dean/profile" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanProfile /></ProtectedRoute>} />
+
+            {/* ===== EXAM OFFICE ===== */}
+            <Route path="/exam-office/dashboard" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeDashboard /></ProtectedRoute>} />
+            <Route path="/exam-office/examinations" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeExaminations /></ProtectedRoute>} />
+            <Route path="/exam-office/grade-verification" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeGradeVerification /></ProtectedRoute>} />
+            <Route path="/exam-office/supplementary" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeSupplementary /></ProtectedRoute>} />
+            <Route path="/exam-office/profile" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeProfile /></ProtectedRoute>} />
 
             {/*
               ===== ADMIN-STYLE PAGES =====
