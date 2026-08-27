@@ -14,15 +14,14 @@ from portal_api import models as pm
 class IsLibraryStaff(permissions.BasePermission):
     """
     Who can run circulation/admin actions. Reuses portal_api roles rather
-    than inventing a parallel role system. Swap/extend this set — or add
-    a dedicated 'librarian' UserType to portal_api.User — if the library
-    ever gets staff distinct from general 'staff'/'admin'/'registrar'.
-    """
-    STAFF_ROLES = {"admin", "staff", "registrar"}
+    than inventing a parallel role system.
 
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated
-                     and request.user.user_type in self.STAFF_ROLES)
+    'librarian' is the dedicated role for this module — 'staff'/'registrar'
+    are kept here for backwards compatibility with anyone already running
+    the desk under those roles; drop them once all library staff are
+    migrated to the librarian role.
+    """
+    STAFF_ROLES = {"admin", "librarian", "staff", "registrar"}
 
 
 # ======================================================================

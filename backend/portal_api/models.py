@@ -49,6 +49,7 @@ class User(AbstractUser):
         HOSTEL_WARDEN = "hostel_warden", "Hostel Warden"
         FINANCE = "finance", "Finance Officer"
         EXAM_OFFICE = "exam_office", "Examinations Office"
+        LIBRARIAN = "librarian", "Librarian"
 
     class Gender(models.TextChoices):
         MALE = "male", "Male"
