@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { authApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { getRoleHomePath } from "./RoleDashboard";
-import muLogo from "../assets/mut_logo.png"; // Make sure this path is correct
+import muLogo from "../assets/mut_logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,24 +17,35 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const goToRoleHome = (data) => {
+    // 1. Commit session data into AuthContext
     loginWithSession(data);
-    navigate(data.user ? getRoleHomePath(data.user.user_type) : "/dashboard");
+
+    // 2. Determine target path safely
+    const targetPath = getRoleHomePath(data.user?.user_type);
+
+    // 3. Defer navigation slightly so React Context completes its state batch update
+    setTimeout(() => {
+      navigate(targetPath, { replace: true });
+    }, 0);
   };
 
   const handleCredentials = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const { data } = await authApi.login(username, password);
+
       if (data.otp_required) {
         setStep("otp");
+        setLoading(false);
       } else {
         goToRoleHome(data);
+        // Do not call setLoading(false) here so the UI doesn't flicker while navigating
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Login failed. Check your credentials.");
-    } finally {
       setLoading(false);
     }
   };
@@ -43,12 +54,13 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const { data } = await authApi.verifyOtp(username, code);
       goToRoleHome(data);
+      // Do not call setLoading(false) here so the UI doesn't flicker while navigating
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid code.");
-    } finally {
       setLoading(false);
     }
   };

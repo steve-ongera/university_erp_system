@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { libraryApi } from "../../services/api";
-import LibraryNav from "./LibraryNav";
-import "../../style/library.css";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import Modal from "../../components/Modal";
 
 function LoanStatusBadge({ loan }) {
-  if (loan.status === "returned") return <span className="lib-badge lib-badge-gray">Returned</span>;
-  if (loan.status === "lost") return <span className="lib-badge lib-badge-red">Lost</span>;
-  if (loan.is_overdue) return <span className="lib-badge lib-badge-red">{loan.days_overdue}d overdue</span>;
-  return <span className="lib-badge lib-badge-green">Active</span>;
+  if (loan.status === "returned") return <span className="mu-badge mu-badge-gray">Returned</span>;
+  if (loan.status === "lost") return <span className="mu-badge mu-badge-danger">Lost</span>;
+  if (loan.is_overdue) return <span className="mu-badge mu-badge-danger">{loan.days_overdue}d overdue</span>;
+  return <span className="mu-badge mu-badge-success">Active</span>;
 }
 
 export default function LibraryCirculation() {
   const [subTab, setSubTab] = useState("issue");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // --- issue form state ---
   const [username, setUsername] = useState("");
@@ -30,16 +32,31 @@ export default function LibraryCirculation() {
   const [returnTarget, setReturnTarget] = useState(null);
 
   const loadActive = async () => {
-    const { data } = await libraryApi.loans({ status: "active" });
-    setActiveLoans(data.results || data);
+    setLoading(true);
+    try {
+      const { data } = await libraryApi.loans({ status: "active" });
+      setActiveLoans(data.results || data);
+    } catch {
+      setActiveLoans([]);
+    } finally {
+      setLoading(false);
+    }
   };
   const loadOverdue = async () => {
-    const { data } = await libraryApi.overdueLoans();
-    setOverdueLoans(data.results || data);
+    setLoading(true);
+    try {
+      const { data } = await libraryApi.overdueLoans();
+      setOverdueLoans(data.results || data);
+    } catch {
+      setOverdueLoans([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setError(""); setNotice("");
+    setError("");
+    setNotice("");
     if (subTab === "active") loadActive();
     if (subTab === "overdue") loadOverdue();
   }, [subTab]);
@@ -69,17 +86,17 @@ export default function LibraryCirculation() {
   const issueBook = async () => {
     if (!member?.id || !selectedCopy) return;
     setIssuing(true);
-    setError(""); setNotice("");
+    setError("");
+    setNotice("");
     try {
       await libraryApi.issueLoan(member.id, selectedCopy);
       const name = member.user_detail
         ? `${member.user_detail.first_name} ${member.user_detail.last_name}`
         : username;
-      setNotice(`Book issued to ${name}.`);
+      setNotice(`✅ Book issued to ${name}.`);
       setSelectedCopy("");
       setAvailableCopies([]);
       setBookQuery("");
-      // refresh member eligibility snapshot
       lookupMember({ preventDefault: () => {} });
     } catch (e) {
       setError(e.response?.data?.detail || "Could not issue this book.");
@@ -97,7 +114,7 @@ export default function LibraryCirculation() {
         is_damaged: returnTarget.is_damaged,
         condition_notes: returnTarget.condition_notes,
       });
-      setNotice("Loan closed.");
+      setNotice("✅ Loan closed successfully.");
       setReturnTarget(null);
       if (subTab === "active") loadActive();
       if (subTab === "overdue") loadOverdue();
@@ -109,7 +126,7 @@ export default function LibraryCirculation() {
   const renew = async (loanId) => {
     try {
       await libraryApi.renewLoan(loanId);
-      setNotice("Loan renewed.");
+      setNotice("✅ Loan renewed successfully.");
       if (subTab === "active") loadActive();
       if (subTab === "overdue") loadOverdue();
     } catch (e) {
@@ -117,185 +134,401 @@ export default function LibraryCirculation() {
     }
   };
 
+  // Tabs configuration
+  const tabs = [
+    { key: "issue", label: "Issue a Book", icon: "bi-arrow-left-right" },
+    { key: "active", label: "Active Loans", icon: "bi-journal-bookmark" },
+    { key: "overdue", label: "Overdue", icon: "bi-exclamation-triangle" },
+  ];
+
+  if (loading && subTab !== "issue") {
+    return <LoadingSpinner text="Loading loans..." />;
+  }
+
   return (
-    <div className="lib-page">
-      <div className="lib-header">
+    <div>
+      {/* Page Header */}
+      <div className="mu-page-header">
         <div>
-          <h1 className="lib-title"><i className="bi bi-arrow-left-right" /> Circulation</h1>
-          <p className="lib-subtitle">Issue new loans and process returns.</p>
+          <h1>
+            <i className="bi bi-arrow-left-right" />
+            Circulation
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Library <span className="separator">/</span> Circulation
+          </div>
+        </div>
+        <div className="mu-page-header-actions">
+          <Link to="/library/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
         </div>
       </div>
 
-      <LibraryNav />
+      {/* Alerts */}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {notice}
+        </div>
+      )}
 
-      {error && <div className="lib-alert lib-alert-error">{error}</div>}
-      {notice && <div className="lib-alert lib-alert-success">{notice}</div>}
-
-      <div className="lib-tabs-inline">
-        {["issue", "active", "overdue"].map((t) => (
-          <button key={t} className={`lib-tab-btn ${subTab === t ? "active" : ""}`} onClick={() => setSubTab(t)}>
-            {t === "issue" ? "Issue a book" : t === "active" ? "Active loans" : "Overdue"}
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--mu-border)", marginBottom: 24, flexWrap: "wrap" }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setSubTab(tab.key)}
+            style={{
+              border: "none",
+              borderBottom: subTab === tab.key ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+              borderRadius: 0,
+              background: "transparent",
+              padding: "8px 16px",
+              cursor: "pointer",
+              color: subTab === tab.key ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+              fontWeight: subTab === tab.key ? 600 : 400,
+              fontSize: "var(--mu-font-size-sm)",
+              transition: "all var(--mu-transition-fast)",
+            }}
+          >
+            <i className={tab.icon} style={{ marginRight: 6 }} />
+            {tab.label}
           </button>
         ))}
       </div>
 
+      {/* Issue Tab */}
       {subTab === "issue" && (
-        <div className="lib-card">
-          <h2 className="lib-card-title"><i className="bi bi-person-check" /> 1. Find the member</h2>
-          <form className="lib-toolbar" onSubmit={lookupMember}>
-            <div className="lib-toolbar-left" style={{ flex: 1 }}>
-              <input
-                className="lib-input"
-                style={{ minWidth: 240 }}
-                placeholder="Registration / employee number"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <button className="lib-btn lib-btn-outline" type="submit">Look up</button>
-            </div>
-          </form>
-          {memberLookupError && <div className="lib-alert lib-alert-error">{memberLookupError}</div>}
-          {member && (
-            <div className="lib-alert" style={{ background: "#eef1f3" }}>
-              <strong>{member.user_detail?.first_name} {member.user_detail?.last_name}</strong> — card {member.library_card_number}
-              {" · "}
-              {member.eligibility?.eligible ? (
-                <span className="lib-badge lib-badge-green">Eligible to borrow</span>
-              ) : (
-                <span className="lib-badge lib-badge-red">{member.eligibility?.reason}</span>
-              )}
-            </div>
-          )}
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-person-check" style={{ marginRight: 8 }} />
+              Step 1: Find the Member
+            </h4>
+          </div>
+          <div className="mu-card-body">
+            <form onSubmit={lookupMember} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: "1 1 240px" }}>
+                <input
+                  className="mu-input"
+                  placeholder="Registration / employee number"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <button className="mu-btn mu-btn-outline-primary" type="submit">
+                <i className="bi bi-search" />
+                Look Up
+              </button>
+            </form>
 
-          <h2 className="lib-card-title" style={{ marginTop: 20 }}><i className="bi bi-search" /> 2. Find an available copy</h2>
-          <form className="lib-toolbar" onSubmit={searchAvailableCopies}>
-            <div className="lib-toolbar-left" style={{ flex: 1 }}>
-              <input
-                className="lib-input"
-                style={{ minWidth: 240 }}
-                placeholder="Title or accession number"
-                value={bookQuery}
-                onChange={(e) => setBookQuery(e.target.value)}
-              />
-              <button className="lib-btn lib-btn-outline" type="submit">Search</button>
-            </div>
-          </form>
-          {!!availableCopies.length && (
-            <div className="lib-field">
-              <label>Select copy</label>
-              <select className="lib-select" value={selectedCopy} onChange={(e) => setSelectedCopy(e.target.value)}>
-                <option value="">— Choose a copy —</option>
-                {availableCopies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.accession_number} — {c.shelf_location || "no shelf set"}</option>
-                ))}
-              </select>
-            </div>
-          )}
+            {memberLookupError && (
+              <div className="mu-alert mu-alert-danger" style={{ marginTop: 12 }}>
+                <i className="bi bi-exclamation-triangle" />
+                {memberLookupError}
+              </div>
+            )}
 
-          <div style={{ marginTop: 16 }}>
+            {member && (
+              <div className="mu-alert mu-alert-info" style={{ marginTop: 12 }}>
+                <i className="bi bi-person" />
+                <div>
+                  <strong>{member.user_detail?.first_name} {member.user_detail?.last_name}</strong>
+                  <span style={{ margin: "0 8px" }}>·</span>
+                  Card: {member.library_card_number}
+                  <span style={{ margin: "0 8px" }}>·</span>
+                  {member.eligibility?.eligible ? (
+                    <span className="mu-badge mu-badge-success">Eligible to borrow</span>
+                  ) : (
+                    <span className="mu-badge mu-badge-danger">{member.eligibility?.reason}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {subTab === "issue" && (
+        <div className="mu-card" style={{ marginTop: 24 }}>
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-search" style={{ marginRight: 8 }} />
+              Step 2: Find an Available Copy
+            </h4>
+          </div>
+          <div className="mu-card-body">
+            <form onSubmit={searchAvailableCopies} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: "1 1 240px" }}>
+                <input
+                  className="mu-input"
+                  placeholder="Title or accession number"
+                  value={bookQuery}
+                  onChange={(e) => setBookQuery(e.target.value)}
+                />
+              </div>
+              <button className="mu-btn mu-btn-outline-primary" type="submit">
+                <i className="bi bi-search" />
+                Search
+              </button>
+            </form>
+
+            {availableCopies.length > 0 && (
+              <div className="mu-form-group" style={{ marginTop: 12 }}>
+                <label>Select Copy</label>
+                <select
+                  className="mu-select"
+                  value={selectedCopy}
+                  onChange={(e) => setSelectedCopy(e.target.value)}
+                >
+                  <option value="">— Choose a copy —</option>
+                  {availableCopies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.accession_number} — {c.shelf_location || "no shelf set"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
-              className="lib-btn lib-btn-primary"
+              className="mu-btn mu-btn-primary"
               disabled={!member?.eligibility?.eligible || !selectedCopy || issuing}
               onClick={issueBook}
             >
-              {issuing ? "Issuing…" : "Issue book"}
+              {issuing ? (
+                <>
+                  <i className="bi bi-arrow-repeat mu-animate-spin" />
+                  Issuing...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check2-circle" />
+                  Issue Book
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
+      {/* Active Loans Tab */}
       {subTab === "active" && (
-        <div className="lib-card">
-          <div className="lib-table-wrap">
-            <table className="lib-table">
-              <thead><tr><th>Member</th><th>Title</th><th>Due</th><th>Status</th><th></th></tr></thead>
-              <tbody>
-                {activeLoans.map((loan) => (
-                  <tr key={loan.id}>
-                    <td>{loan.member_detail?.user_detail?.first_name} {loan.member_detail?.user_detail?.last_name}</td>
-                    <td>{loan.book_detail?.title}</td>
-                    <td>{loan.due_date}</td>
-                    <td><LoanStatusBadge loan={loan} /></td>
-                    <td style={{ display: "flex", gap: 6 }}>
-                      <button className="lib-btn lib-btn-outline lib-btn-sm" onClick={() => renew(loan.id)}>Renew</button>
-                      <button className="lib-btn lib-btn-primary lib-btn-sm" onClick={() => openReturn(loan)}>Return</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!activeLoans.length && <div className="lib-empty">No active loans.</div>}
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-journal-bookmark" style={{ marginRight: 8 }} />
+              Active Loans
+            </h4>
+            <span className="mu-badge mu-badge-primary">
+              {activeLoans.length} Loan(s)
+            </span>
           </div>
+          <div className="mu-card-body" style={{ padding: 0 }}>
+            {activeLoans.length === 0 ? (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-inbox" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+                <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Active Loans</h3>
+                <p style={{ margin: "8px 0 0" }}>There are no active loans at the moment.</p>
+              </div>
+            ) : (
+              <div className="mu-table-wrapper">
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Title</th>
+                      <th>Due Date</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: "center" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeLoans.map((loan) => (
+                      <tr key={loan.id}>
+                        <td>
+                          {loan.member_detail?.user_detail?.first_name} {loan.member_detail?.user_detail?.last_name}
+                        </td>
+                        <td>{loan.book_detail?.title}</td>
+                        <td>{loan.due_date}</td>
+                        <td><LoanStatusBadge loan={loan} /></td>
+                        <td style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                              onClick={() => renew(loan.id)}
+                            >
+                              <i className="bi bi-arrow-repeat" />
+                              Renew
+                            </button>
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-primary"
+                              onClick={() => openReturn(loan)}
+                            >
+                              <i className="bi bi-arrow-return-left" />
+                              Return
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          {activeLoans.length > 0 && (
+            <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+                Total: {activeLoans.length} active loan(s)
+              </span>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+                Last updated: {new Date().toLocaleDateString()}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Overdue Tab */}
       {subTab === "overdue" && (
-        <div className="lib-card">
-          <div className="lib-table-wrap">
-            <table className="lib-table">
-              <thead><tr><th>Member</th><th>Title</th><th>Due</th><th>Days overdue</th><th></th></tr></thead>
-              <tbody>
-                {overdueLoans.map((loan) => (
-                  <tr key={loan.id}>
-                    <td>{loan.member_detail?.user_detail?.first_name} {loan.member_detail?.user_detail?.last_name}</td>
-                    <td>{loan.book_detail?.title}</td>
-                    <td>{loan.due_date}</td>
-                    <td><span className="lib-badge lib-badge-red">{loan.days_overdue}d</span></td>
-                    <td>
-                      <button className="lib-btn lib-btn-primary lib-btn-sm" onClick={() => openReturn(loan)}>Return</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!overdueLoans.length && <div className="lib-empty">Nothing overdue right now.</div>}
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-exclamation-triangle" style={{ marginRight: 8 }} />
+              Overdue Loans
+            </h4>
+            <span className="mu-badge mu-badge-danger">
+              {overdueLoans.length} Overdue
+            </span>
           </div>
+          <div className="mu-card-body" style={{ padding: 0 }}>
+            {overdueLoans.length === 0 ? (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-check-circle" style={{ fontSize: 48, display: "block", marginBottom: 16, color: "var(--mu-success)" }} />
+                <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>Nothing Overdue</h3>
+                <p style={{ margin: "8px 0 0" }}>All loans are in good standing.</p>
+              </div>
+            ) : (
+              <div className="mu-table-wrapper">
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Title</th>
+                      <th>Due Date</th>
+                      <th>Days Overdue</th>
+                      <th style={{ textAlign: "center" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overdueLoans.map((loan) => (
+                      <tr key={loan.id}>
+                        <td>
+                          {loan.member_detail?.user_detail?.first_name} {loan.member_detail?.user_detail?.last_name}
+                        </td>
+                        <td>{loan.book_detail?.title}</td>
+                        <td>{loan.due_date}</td>
+                        <td>
+                          <span className="mu-badge mu-badge-danger">
+                            <i className="bi bi-clock" style={{ marginRight: 4 }} />
+                            {loan.days_overdue}d
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-primary"
+                            onClick={() => openReturn(loan)}
+                          >
+                            <i className="bi bi-arrow-return-left" />
+                            Return
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          {overdueLoans.length > 0 && (
+            <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+                Total: {overdueLoans.length} overdue loan(s)
+              </span>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+                Last updated: {new Date().toLocaleDateString()}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Return Modal */}
       {returnTarget && (
-        <div className="lib-modal-backdrop" onClick={() => setReturnTarget(null)}>
-          <div className="lib-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Return "{returnTarget.book_detail?.title}"</h3>
-            <div className="lib-checkbox-row">
+        <Modal
+          isOpen={true}
+          onClose={() => setReturnTarget(null)}
+          title={`Return "${returnTarget.book_detail?.title}"`}
+          size="md"
+          confirmText="Confirm Return"
+          onConfirm={submitReturn}
+        >
+          <div className="mu-checkbox" style={{ marginBottom: 12 }}>
+            <input
+              type="checkbox"
+              checked={returnTarget.is_lost}
+              onChange={(e) => setReturnTarget({ ...returnTarget, is_lost: e.target.checked, is_damaged: false })}
+              id="is_lost"
+            />
+            <label htmlFor="is_lost">Reported lost (replacement fine applies)</label>
+          </div>
+
+          {!returnTarget.is_lost && (
+            <div className="mu-checkbox" style={{ marginBottom: 12 }}>
               <input
                 type="checkbox"
-                checked={returnTarget.is_lost}
-                onChange={(e) => setReturnTarget({ ...returnTarget, is_lost: e.target.checked, is_damaged: false })}
+                checked={returnTarget.is_damaged}
+                onChange={(e) => setReturnTarget({ ...returnTarget, is_damaged: e.target.checked })}
+                id="is_damaged"
               />
-              Reported lost (replacement fine applies)
+              <label htmlFor="is_damaged">Returned damaged (damage fine applies)</label>
             </div>
-            {!returnTarget.is_lost && (
-              <div className="lib-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={returnTarget.is_damaged}
-                  onChange={(e) => setReturnTarget({ ...returnTarget, is_damaged: e.target.checked })}
-                />
-                Returned damaged (damage fine applies)
-              </div>
-            )}
-            {returnTarget.is_damaged && (
-              <div className="lib-field">
-                <label>Condition notes</label>
-                <textarea
-                  className="lib-textarea"
-                  value={returnTarget.condition_notes}
-                  onChange={(e) => setReturnTarget({ ...returnTarget, condition_notes: e.target.value })}
-                />
-              </div>
-            )}
-            {returnTarget.is_overdue && (
-              <div className="lib-alert lib-alert-error">
-                This loan is {returnTarget.days_overdue} day(s) overdue — an overdue fine will be raised automatically.
-              </div>
-            )}
-            <div className="lib-modal-actions">
-              <button className="lib-btn lib-btn-outline" onClick={() => setReturnTarget(null)}>Cancel</button>
-              <button className="lib-btn lib-btn-primary" onClick={submitReturn}>Confirm return</button>
+          )}
+
+          {returnTarget.is_damaged && (
+            <div className="mu-form-group">
+              <label>Condition Notes</label>
+              <textarea
+                className="mu-textarea"
+                rows={3}
+                value={returnTarget.condition_notes}
+                onChange={(e) => setReturnTarget({ ...returnTarget, condition_notes: e.target.value })}
+                placeholder="Describe the damage..."
+              />
             </div>
-          </div>
-        </div>
+          )}
+
+          {returnTarget.is_overdue && (
+            <div className="mu-alert mu-alert-danger">
+              <i className="bi bi-exclamation-triangle" />
+              This loan is <strong>{returnTarget.days_overdue}</strong> day(s) overdue — an overdue fine will be raised automatically.
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   );

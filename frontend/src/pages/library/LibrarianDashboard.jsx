@@ -1,9 +1,12 @@
-// Kept as a separate file because App.jsx's existing "/library-management/dashboard"
-// route already imports LibraryDashboard. It simply renders the same component used
-// for the new role-specific "/librarian/dashboard" route, so there is one
-// implementation to maintain.
-import LibrarianDashboard from "./LibrarianDashboard";
+import UnderDevelopment from "../UnderDevelopment";
 
-export default function LibraryDashboard() {
-  return <LibrarianDashboard />;
+export default function LibrarianDashboard() {
+  return (
+    <UnderDevelopment 
+      title="Librarian Dashboard" 
+      description="The library management module is currently under development. Features will include book catalog management, borrower tracking, and library resource administration."
+      icon="bi-journal-bookmark"
+      estimatedRelease="Coming Soon"
+    />
+  );
 }

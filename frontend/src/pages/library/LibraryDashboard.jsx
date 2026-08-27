@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { libraryApi } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import LibraryNav from "./LibraryNav";
+
 import "../../style/library.css";
 
 export default function LibrarianDashboard() {
@@ -33,8 +33,6 @@ export default function LibrarianDashboard() {
           </p>
         </div>
       </div>
-
-      <LibraryNav />
 
       {error && <div className="lib-alert lib-alert-error">{error}</div>}
 

@@ -7,40 +7,72 @@ import { useAuth, ROLES } from "../context/AuthContext";
  * anyone who lands on /dashboard directly — old bookmark, back button, etc).
  */
 export function getRoleHomePath(userType) {
-  switch (userType) {
-    case ROLES.STUDENT:
+  // Normalize userType string to lower-case to prevent issues with casing differences (e.g. "librarian" vs "LIBRARIAN")
+  const normalizedRole = userType ? String(userType).toLowerCase() : "";
+
+  switch (normalizedRole) {
+    case "student":
+    case ROLES.STUDENT?.toLowerCase():
       return "/student/dashboard";
-    case ROLES.LECTURER:
+
+    case "lecturer":
+    case ROLES.LECTURER?.toLowerCase():
       return "/lecturer/dashboard";
-    case ROLES.HOSTEL_WARDEN:
+
+    case "hostel_warden":
+    case ROLES.HOSTEL_WARDEN?.toLowerCase():
       return "/hostel/dashboard";
-    case ROLES.FINANCE:
+
+    case "finance":
+    case ROLES.FINANCE?.toLowerCase():
       return "/finance/dashboard";
-    case ROLES.STAFF:
+
+    case "staff":
+    case ROLES.STAFF?.toLowerCase():
       return "/staff/dashboard";
-    case ROLES.COD:
+
+    case "cod":
+    case ROLES.COD?.toLowerCase():
       return "/cod/dashboard";
-    case ROLES.DEAN:
+
+    case "dean":
+    case ROLES.DEAN?.toLowerCase():
       return "/dean/dashboard";
-    case ROLES.REGISTRAR:
+
+    case "registrar":
+    case ROLES.REGISTRAR?.toLowerCase():
       return "/registrar/dashboard";
-    case ROLES.EXAM_OFFICE:
+
+    case "exam_office":
+    case ROLES.EXAM_OFFICE?.toLowerCase():
       return "/exam-office/dashboard";
-    case ROLES.LIBRARIAN:
-      return '/librarian/dashboard';
+
+    case "librarian":
+    case ROLES.LIBRARIAN?.toLowerCase():
+      return "/librarian/dashboard";
+
+    case "admin":
+    case ROLES.ADMIN?.toLowerCase():
+      return "/admin/dashboard";
+
     default:
-      // admin (and anything unmapped) shares the admin-style shell
+      // Fallback for unmapped or missing roles
       return "/admin/dashboard";
   }
 }
 
 /**
  * /dashboard is a pure redirect now — it forwards straight to the user's
- * real role dashboard instead of rendering placeholder widgets. Kept as a
- * route (not removed) purely so stale /dashboard links still resolve.
+ * real role dashboard instead of rendering placeholder widgets.
  */
 export default function RoleDashboard() {
-  const { user } = useAuth();
-  if (!user) return null;
+  const { user, loading } = useAuth();
+
+  // If AuthContext is still loading the session from storage, wait
+  if (loading) return null;
+
+  // If no authenticated user exists, redirect to login
+  if (!user) return <Navigate to="/login" replace />;
+
   return <Navigate to={getRoleHomePath(user.user_type)} replace />;
 }

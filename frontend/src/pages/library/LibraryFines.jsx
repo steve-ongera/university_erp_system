@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { libraryApi } from "../../services/api";
-import LibraryNav from "./LibraryNav";
-import "../../style/library.css";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import Modal from "../../components/Modal";
 
 const money = (v) => `Ksh ${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 export default function LibraryFines() {
   const [fines, setFines] = useState([]);
-  const [filter, setFilter] = useState("unpaid"); // unpaid | paid | waived | all
+  const [filter, setFilter] = useState("unpaid");
   const [selected, setSelected] = useState([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(false);
   const [waiveTarget, setWaiveTarget] = useState(null);
   const [waiveReason, setWaiveReason] = useState("");
 
   const load = async () => {
+    setLoading(true);
     try {
       const params = {};
       if (filter === "unpaid") { params.is_paid = false; params.is_waived = false; }
@@ -25,10 +28,14 @@ export default function LibraryFines() {
       setSelected([]);
     } catch {
       setError("Could not load fines.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+  }, [filter]);
 
   const toggleSelect = (id) => {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -41,10 +48,11 @@ export default function LibraryFines() {
 
   const payFines = async () => {
     if (!selected.length) return;
-    setError(""); setNotice("");
+    setError("");
+    setNotice("");
     try {
       const { data } = await libraryApi.payFines(selected);
-      setNotice(`Recorded payment for ${data.paid} fine(s).`);
+      setNotice(`✅ Recorded payment for ${data.paid} fine(s).`);
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not record payment.");
@@ -56,97 +64,273 @@ export default function LibraryFines() {
       await libraryApi.waiveFine(waiveTarget.id, waiveReason);
       setWaiveTarget(null);
       setWaiveReason("");
-      setNotice("Fine waived.");
+      setNotice("✅ Fine waived successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not waive fine.");
     }
   };
 
+  if (loading) {
+    return <LoadingSpinner text="Loading fines..." />;
+  }
+
+  // Calculate stats
+  const stats = {
+    total: fines.length,
+    unpaid: fines.filter(f => !f.is_paid && !f.is_waived).length,
+    paid: fines.filter(f => f.is_paid).length,
+    waived: fines.filter(f => f.is_waived).length,
+    totalAmount: fines.reduce((sum, f) => sum + Number(f.amount), 0),
+    unpaidAmount: fines.filter(f => !f.is_paid && !f.is_waived).reduce((sum, f) => sum + Number(f.amount), 0),
+  };
+
   return (
-    <div className="lib-page">
-      <div className="lib-header">
+    <div>
+      {/* Page Header */}
+      <div className="mu-page-header">
         <div>
-          <h1 className="lib-title"><i className="bi bi-cash-coin" /> Fines</h1>
-          <p className="lib-subtitle">Overdue, lost and damage fines. Once raised a fine is never edited — only paid or waived.</p>
+          <h1>
+            <i className="bi bi-cash-coin" />
+            Fines
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Library <span className="separator">/</span> Fines
+          </div>
+        </div>
+        <div className="mu-page-header-actions">
+          <Link to="/library/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
         </div>
       </div>
 
-      <LibraryNav />
+      {/* Info Alert */}
+      <div className="mu-alert mu-alert-info" style={{ marginBottom: 24 }}>
+        <i className="bi bi-info-circle" />
+        <div>
+          Overdue, lost and damage fines. Once raised a fine is never edited — only paid or waived.
+        </div>
+      </div>
 
-      {error && <div className="lib-alert lib-alert-error">{error}</div>}
-      {notice && <div className="lib-alert lib-alert-success">{notice}</div>}
+      {/* Alerts */}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {notice}
+        </div>
+      )}
 
-      <div className="lib-card">
-        <div className="lib-toolbar">
-          <div className="lib-toolbar-left">
-            <select className="lib-select" value={filter} onChange={(e) => setFilter(e.target.value)}>
+      {/* Stats Summary */}
+      <div className="mu-dashboard-grid" style={{ marginBottom: 24, gridTemplateColumns: "repeat(4, 1fr)" }}>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon blue">
+            <i className="bi bi-cash-coin" />
+          </div>
+          <div className="mu-stat-label">Total Fines</div>
+          <div className="mu-stat-value">{stats.total}</div>
+          <div className="mu-stat-change up" style={{ color: "var(--mu-gray-500)" }}>
+            Total: {money(stats.totalAmount)}
+          </div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon red">
+            <i className="bi bi-exclamation-triangle" />
+          </div>
+          <div className="mu-stat-label">Unpaid</div>
+          <div className="mu-stat-value">{stats.unpaid}</div>
+          <div className="mu-stat-change down" style={{ color: "var(--mu-danger)" }}>
+            {money(stats.unpaidAmount)}
+          </div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon green">
+            <i className="bi bi-check-circle" />
+          </div>
+          <div className="mu-stat-label">Paid</div>
+          <div className="mu-stat-value">{stats.paid}</div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon gray">
+            <i className="bi bi-slash-circle" />
+          </div>
+          <div className="mu-stat-label">Waived</div>
+          <div className="mu-stat-value">{stats.waived}</div>
+        </div>
+      </div>
+
+      {/* Fines Table */}
+      <div className="mu-card">
+        <div className="mu-card-header">
+          <h4>
+            <i className="bi bi-cash-coin" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+            Fines
+          </h4>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span className="mu-badge mu-badge-primary">
+              {fines.length} Fine(s)
+            </span>
+            <select
+              className="mu-select"
+              style={{ width: 120, padding: "3px 8px", fontSize: "var(--mu-font-size-xs)", minHeight: "auto", height: 28 }}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            >
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
               <option value="waived">Waived</option>
               <option value="all">All</option>
             </select>
+            {filter === "unpaid" && (
+              <button
+                className="mu-btn mu-btn-sm mu-btn-primary"
+                disabled={!selected.length}
+                onClick={payFines}
+              >
+                <i className="bi bi-check2-circle" />
+                Pay ({selected.length ? money(selectedTotal) : "select"})
+              </button>
+            )}
           </div>
-          {filter === "unpaid" && (
-            <button className="lib-btn lib-btn-primary" disabled={!selected.length} onClick={payFines}>
-              <i className="bi bi-check2-circle" /> Record payment ({selected.length ? money(selectedTotal) : "select fines"})
-            </button>
+        </div>
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          {fines.length === 0 ? (
+            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              <i className="bi bi-cash-coin" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Fines Found</h3>
+              <p style={{ margin: "8px 0 0" }}>No fines for this filter.</p>
+            </div>
+          ) : (
+            <div className="mu-table-wrapper">
+              <table className="mu-table mu-table-hover">
+                <thead>
+                  <tr>
+                    {filter === "unpaid" && <th style={{ width: 40 }}></th>}
+                    <th>Member</th>
+                    <th>Reason</th>
+                    <th style={{ textAlign: "right" }}>Amount</th>
+                    <th>Raised</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "center" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fines.map((f) => (
+                    <tr key={f.id}>
+                      {filter === "unpaid" && (
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="mu-checkbox-input"
+                            checked={selected.includes(f.id)}
+                            onChange={() => toggleSelect(f.id)}
+                          />
+                        </td>
+                      )}
+                      <td>
+                        <strong>
+                          {f.member_detail?.user_detail?.first_name} {f.member_detail?.user_detail?.last_name}
+                        </strong>
+                      </td>
+                      <td>
+                        <span className="mu-badge mu-badge-primary" style={{ textTransform: "capitalize" }}>
+                          {f.reason}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <span className="mu-badge mu-badge-info">
+                          {money(f.amount)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                          {new Date(f.created_at).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td>
+                        {f.is_waived ? (
+                          <span className="mu-badge mu-badge-gray">Waived</span>
+                        ) : f.is_paid ? (
+                          <span className="mu-badge mu-badge-success">
+                            <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="mu-badge mu-badge-danger">
+                            <i className="bi bi-exclamation-triangle" style={{ marginRight: 4 }} />
+                            Unpaid
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {!f.is_paid && !f.is_waived && (
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                            onClick={() => setWaiveTarget(f)}
+                          >
+                            <i className="bi bi-slash-circle" />
+                            Waive
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-        <div className="lib-table-wrap">
-          <table className="lib-table">
-            <thead>
-              <tr>
-                {filter === "unpaid" && <th style={{ width: 32 }}></th>}
-                <th>Member</th><th>Reason</th><th>Amount</th><th>Raised</th><th>Status</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {fines.map((f) => (
-                <tr key={f.id}>
-                  {filter === "unpaid" && (
-                    <td>
-                      <input type="checkbox" checked={selected.includes(f.id)} onChange={() => toggleSelect(f.id)} />
-                    </td>
-                  )}
-                  <td>{f.member_detail?.user_detail?.first_name} {f.member_detail?.user_detail?.last_name}</td>
-                  <td style={{ textTransform: "capitalize" }}>{f.reason}</td>
-                  <td>{money(f.amount)}</td>
-                  <td>{new Date(f.created_at).toLocaleDateString()}</td>
-                  <td>
-                    {f.is_waived
-                      ? <span className="lib-badge lib-badge-gray">Waived</span>
-                      : f.is_paid
-                      ? <span className="lib-badge lib-badge-green">Paid</span>
-                      : <span className="lib-badge lib-badge-red">Unpaid</span>}
-                  </td>
-                  <td>
-                    {!f.is_paid && !f.is_waived && (
-                      <button className="lib-btn lib-btn-outline lib-btn-sm" onClick={() => setWaiveTarget(f)}>Waive</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!fines.length && <div className="lib-empty">No fines for this filter.</div>}
-        </div>
+        {fines.length > 0 && (
+          <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+              Total: {fines.length} fine(s)
+            </span>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+              Last updated: {new Date().toLocaleDateString()}
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* Waive Modal */}
       {waiveTarget && (
-        <div className="lib-modal-backdrop" onClick={() => setWaiveTarget(null)}>
-          <div className="lib-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Waive {money(waiveTarget.amount)} fine</h3>
-            <div className="lib-field">
-              <label>Reason</label>
-              <textarea className="lib-textarea" value={waiveReason} onChange={(e) => setWaiveReason(e.target.value)} />
-            </div>
-            <div className="lib-modal-actions">
-              <button className="lib-btn lib-btn-outline" onClick={() => setWaiveTarget(null)}>Cancel</button>
-              <button className="lib-btn lib-btn-primary" onClick={waive}>Waive fine</button>
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setWaiveTarget(null);
+            setWaiveReason("");
+          }}
+          title={`Waive ${money(waiveTarget.amount)} Fine`}
+          size="md"
+          confirmText="Waive Fine"
+          onConfirm={waive}
+        >
+          <div className="mu-form-group">
+            <label>Reason for Waiving</label>
+            <textarea
+              className="mu-textarea"
+              rows={3}
+              value={waiveReason}
+              onChange={(e) => setWaiveReason(e.target.value)}
+              placeholder="Enter reason for waiving this fine..."
+            />
+          </div>
+          <div className="mu-alert mu-alert-warning" style={{ marginTop: 12 }}>
+            <i className="bi bi-exclamation-triangle" />
+            <div>
+              <strong>Warning:</strong> This action cannot be undone. The fine will be marked as waived.
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

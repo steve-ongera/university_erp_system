@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { libraryApi } from "../../services/api";
-import LibraryNav from "./LibraryNav";
-import "../../style/library.css";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import Modal from "../../components/Modal";
 
 export default function LibraryMembers() {
   const [members, setMembers] = useState([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspendReason, setSuspendReason] = useState("");
 
@@ -15,24 +17,33 @@ export default function LibraryMembers() {
   const [lookupUsername, setLookupUsername] = useState("");
 
   const load = async () => {
+    setLoading(true);
     try {
       const { data } = await libraryApi.members(search ? { search } : {});
       setMembers(data.results || data);
     } catch {
       setError("Could not load members.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+  }, []);
 
-  const runSearch = (e) => { e.preventDefault(); load(); };
+  const runSearch = (e) => {
+    e.preventDefault();
+    load();
+  };
 
   const lookup = async (e) => {
     e.preventDefault();
-    setError(""); setNotice("");
+    setError("");
+    setNotice("");
     try {
       await libraryApi.memberLookup(lookupUsername.trim());
-      setNotice(`Member record ready for ${lookupUsername.trim()}.`);
+      setNotice(`✅ Member record ready for ${lookupUsername.trim()}.`);
       setLookupUsername("");
       load();
     } catch (e) {
@@ -45,7 +56,7 @@ export default function LibraryMembers() {
       await libraryApi.suspendMember(suspendTarget.id, suspendReason);
       setSuspendTarget(null);
       setSuspendReason("");
-      setNotice("Member suspended.");
+      setNotice("✅ Member suspended successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not suspend member.");
@@ -55,92 +66,242 @@ export default function LibraryMembers() {
   const reinstate = async (id) => {
     try {
       await libraryApi.reinstateMember(id);
-      setNotice("Member reinstated.");
+      setNotice("✅ Member reinstated successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not reinstate member.");
     }
   };
 
+  if (loading) {
+    return <LoadingSpinner text="Loading members..." />;
+  }
+
   return (
-    <div className="lib-page">
-      <div className="lib-header">
+    <div>
+      {/* Page Header */}
+      <div className="mu-page-header">
         <div>
-          <h1 className="lib-title"><i className="bi bi-people" /> Members</h1>
-          <p className="lib-subtitle">Library membership records — created automatically on first visit.</p>
-        </div>
-      </div>
-
-      <LibraryNav />
-
-      {error && <div className="lib-alert lib-alert-error">{error}</div>}
-      {notice && <div className="lib-alert lib-alert-success">{notice}</div>}
-
-      <div className="lib-card">
-        <h2 className="lib-card-title"><i className="bi bi-person-plus" /> Quick lookup / enroll</h2>
-        <form className="lib-toolbar-left" onSubmit={lookup}>
-          <input
-            className="lib-input"
-            style={{ minWidth: 260 }}
-            placeholder="Registration / employee number"
-            value={lookupUsername}
-            onChange={(e) => setLookupUsername(e.target.value)}
-          />
-          <button className="lib-btn lib-btn-primary" type="submit">Look up / create</button>
-        </form>
-      </div>
-
-      <div className="lib-card">
-        <div className="lib-toolbar">
-          <form className="lib-toolbar-left" onSubmit={runSearch}>
-            <input className="lib-input" placeholder="Search name, card number, username" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <button className="lib-btn lib-btn-outline" type="submit">Search</button>
-          </form>
-        </div>
-        <div className="lib-table-wrap">
-          <table className="lib-table">
-            <thead><tr><th>Name</th><th>Card #</th><th>Active loans</th><th>Fines owed</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id}>
-                  <td>{m.user_detail?.first_name} {m.user_detail?.last_name}</td>
-                  <td>{m.library_card_number}</td>
-                  <td>{m.active_loans_count}</td>
-                  <td>Ksh {Number(m.outstanding_fines_total || 0).toLocaleString()}</td>
-                  <td>
-                    {m.is_suspended
-                      ? <span className="lib-badge lib-badge-red">Suspended</span>
-                      : <span className="lib-badge lib-badge-green">Active</span>}
-                  </td>
-                  <td>
-                    {m.is_suspended ? (
-                      <button className="lib-btn lib-btn-outline lib-btn-sm" onClick={() => reinstate(m.id)}>Reinstate</button>
-                    ) : (
-                      <button className="lib-btn lib-btn-danger lib-btn-sm" onClick={() => setSuspendTarget(m)}>Suspend</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!members.length && <div className="lib-empty">No members found.</div>}
-        </div>
-      </div>
-
-      {suspendTarget && (
-        <div className="lib-modal-backdrop" onClick={() => setSuspendTarget(null)}>
-          <div className="lib-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Suspend {suspendTarget.user_detail?.first_name} {suspendTarget.user_detail?.last_name}</h3>
-            <div className="lib-field">
-              <label>Reason</label>
-              <textarea className="lib-textarea" value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} />
-            </div>
-            <div className="lib-modal-actions">
-              <button className="lib-btn lib-btn-outline" onClick={() => setSuspendTarget(null)}>Cancel</button>
-              <button className="lib-btn lib-btn-danger" onClick={suspend}>Suspend member</button>
-            </div>
+          <h1>
+            <i className="bi bi-people" />
+            Members
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Library <span className="separator">/</span> Members
           </div>
         </div>
+        <div className="mu-page-header-actions">
+          <Link to="/library/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+
+      {/* Info Alert */}
+      <div className="mu-alert mu-alert-info" style={{ marginBottom: 24 }}>
+        <i className="bi bi-info-circle" />
+        <div>
+          Library membership records — created automatically on first visit.
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {notice}
+        </div>
+      )}
+
+      {/* Quick Lookup Card */}
+      <div className="mu-card" style={{ marginBottom: 24 }}>
+        <div className="mu-card-header">
+          <h4>
+            <i className="bi bi-person-plus" style={{ marginRight: 8 }} />
+            Quick Lookup / Enroll
+          </h4>
+        </div>
+        <div className="mu-card-body">
+          <form onSubmit={lookup} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: "1 1 260px" }}>
+              <input
+                className="mu-input"
+                placeholder="Registration / employee number"
+                value={lookupUsername}
+                onChange={(e) => setLookupUsername(e.target.value)}
+              />
+            </div>
+            <button className="mu-btn mu-btn-primary" type="submit">
+              <i className="bi bi-search" />
+              Look up / Create
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Members Table */}
+      <div className="mu-card">
+        <div className="mu-card-header">
+          <h4>
+            <i className="bi bi-people" style={{ marginRight: 8 }} />
+            All Members
+          </h4>
+          <span className="mu-badge mu-badge-primary">
+            {members.length} Member(s)
+          </span>
+        </div>
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          {/* Search inside table */}
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--mu-border)", background: "var(--mu-gray-50)" }}>
+            <form onSubmit={runSearch} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: "1 1 240px" }}>
+                <input
+                  className="mu-input"
+                  placeholder="Search name, card number, username"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <button className="mu-btn mu-btn-outline-primary" type="submit">
+                <i className="bi bi-search" />
+                Search
+              </button>
+            </form>
+          </div>
+
+          {members.length === 0 ? (
+            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              <i className="bi bi-people" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No Members Found</h3>
+              <p style={{ margin: "8px 0 0" }}>Use the lookup above to enroll a member.</p>
+            </div>
+          ) : (
+            <div className="mu-table-wrapper">
+              <table className="mu-table mu-table-hover">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Card #</th>
+                    <th style={{ textAlign: "center" }}>Active Loans</th>
+                    <th style={{ textAlign: "right" }}>Fines Owed</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "center" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.id}>
+                      <td>
+                        <strong>
+                          {m.user_detail?.first_name} {m.user_detail?.last_name}
+                        </strong>
+                      </td>
+                      <td>
+                        <span className="mu-badge mu-badge-primary">
+                          {m.library_card_number}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="mu-badge mu-badge-info">
+                          {m.active_loans_count}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <span className={`mu-badge ${m.outstanding_fines_total > 0 ? "mu-badge-danger" : "mu-badge-success"}`}>
+                          Ksh {Number(m.outstanding_fines_total || 0).toLocaleString()}
+                        </span>
+                      </td>
+                      <td>
+                        {m.is_suspended ? (
+                          <span className="mu-badge mu-badge-danger">
+                            <i className="bi bi-pause-circle" style={{ marginRight: 4 }} />
+                            Suspended
+                          </span>
+                        ) : (
+                          <span className="mu-badge mu-badge-success">
+                            <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {m.is_suspended ? (
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-success"
+                            onClick={() => reinstate(m.id)}
+                          >
+                            <i className="bi bi-arrow-counterclockwise" />
+                            Reinstate
+                          </button>
+                        ) : (
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-danger"
+                            onClick={() => setSuspendTarget(m)}
+                          >
+                            <i className="bi bi-pause-circle" />
+                            Suspend
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        {members.length > 0 && (
+          <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+              Total: {members.length} member(s)
+            </span>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+              Last updated: {new Date().toLocaleDateString()}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Suspend Modal */}
+      {suspendTarget && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setSuspendTarget(null);
+            setSuspendReason("");
+          }}
+          title={`Suspend ${suspendTarget.user_detail?.first_name} ${suspendTarget.user_detail?.last_name}`}
+          size="md"
+          confirmText="Suspend Member"
+          onConfirm={suspend}
+          danger={true}
+        >
+          <div className="mu-form-group">
+            <label>Reason for Suspension</label>
+            <textarea
+              className="mu-textarea"
+              rows={3}
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              placeholder="Enter reason for suspension..."
+            />
+          </div>
+          <div className="mu-alert mu-alert-warning" style={{ marginTop: 12 }}>
+            <i className="bi bi-exclamation-triangle" />
+            <div>
+              <strong>Warning:</strong> Suspended members cannot borrow books until reinstated.
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

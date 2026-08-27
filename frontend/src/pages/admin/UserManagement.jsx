@@ -19,6 +19,7 @@ const CREATABLE_ROLES = [
   { value: "finance", label: "Finance Officer" },
   { value: "hostel_warden", label: "Hostel Warden" },
   { value: "staff", label: "Staff" },
+  { value: "librarian", label: "librarian"},
 ];
 
 const ALL_ROLES = [
