@@ -9,11 +9,13 @@
 //   - libraryApi.overdueLoans()   -> GET /library/loans/overdue/ (table)
 
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { libraryApi } from "../../services/api";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const CHART_COLORS = ["#4f46e5", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
@@ -30,25 +32,21 @@ const formatKES = (value) =>
     maximumFractionDigits: 0,
   }).format(value || 0);
 
-function StatCard({ icon, label, value, tone }) {
+function StatCard({ icon, label, value, color }) {
+  const iconColorMap = {
+    indigo: "blue",
+    sky: "blue",
+    emerald: "green",
+    amber: "gold",
+    rose: "red",
+  };
   return (
-    <div className={`lib-stat-card lib-stat-card--${tone}`}>
-      <div className="lib-stat-card__icon">
+    <div className="mu-stat-card">
+      <div className={`mu-stat-icon ${iconColorMap[color] || "blue"}`}>
         <i className={`bi ${icon}`} />
       </div>
-      <div className="lib-stat-card__body">
-        <div className="lib-stat-card__value">{value}</div>
-        <div className="lib-stat-card__label">{label}</div>
-      </div>
-    </div>
-  );
-}
-
-function ChartCard({ title, children, empty }) {
-  return (
-    <div className="lib-chart-card">
-      <h3 className="lib-chart-card__title">{title}</h3>
-      {empty ? <p className="lib-empty">{empty}</p> : children}
+      <div className="mu-stat-label">{label}</div>
+      <div className="mu-stat-value">{value}</div>
     </div>
   );
 }
@@ -94,143 +92,266 @@ export default function LibrarianDashboard() {
   );
 
   if (loading) {
+    return <LoadingSpinner text="Loading dashboard..." />;
+  }
+
+  if (error) {
     return (
-      <div className="lib-dashboard__loading">
-        <i className="bi bi-arrow-repeat lib-spin" />
-        <span>Loading dashboard…</span>
+      <div className="mu-alert mu-alert-danger">
+        <i className="bi bi-exclamation-triangle" />
+        {error}
       </div>
     );
   }
 
-  if (error) {
-    return <div className="alert alert-danger m-4">{error}</div>;
-  }
-
-  const { totals, loans_trend, category_distribution, fines_breakdown } = summary;
+  const { totals, loans_trend, category_distribution, fines_breakdown } = summary || {};
 
   return (
-    <div className="lib-dashboard">
-      <header className="lib-dashboard__header">
-        <h1>Library Dashboard</h1>
-        <p>Circulation, catalog and fines at a glance.</p>
-      </header>
+    <div>
+      {/* Page Header */}
+      <div className="mu-page-header">
+        <div>
+          <h1>
+            <i className="bi bi-speedometer2" />
+            Library Dashboard
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Library <span className="separator">/</span> Dashboard
+          </div>
+        </div>
+      </div>
 
-      {/* ---------------- 5 stat cards ---------------- */}
-      <section className="lib-stat-grid">
-        <StatCard icon="bi-journal-bookmark" label="Books in catalog" value={totals.books} tone="indigo" />
+      {/* Stats Grid - 5 Cards */}
+      <div className="mu-dashboard-grid" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+        <StatCard
+          icon="bi-journal-bookmark"
+          label="Books in Catalog"
+          value={totals?.books || 0}
+          color="indigo"
+        />
         <StatCard
           icon="bi-stack"
-          label="Copies available"
-          value={`${totals.available_copies}/${totals.copies}`}
-          tone="sky"
+          label="Copies Available"
+          value={`${totals?.available_copies || 0}/${totals?.copies || 0}`}
+          color="sky"
         />
-        <StatCard icon="bi-arrow-left-right" label="Active loans" value={totals.active_loans} tone="emerald" />
-        <StatCard icon="bi-exclamation-triangle" label="Overdue loans" value={totals.overdue_loans} tone="amber" />
+        <StatCard
+          icon="bi-arrow-left-right"
+          label="Active Loans"
+          value={totals?.active_loans || 0}
+          color="emerald"
+        />
+        <StatCard
+          icon="bi-exclamation-triangle"
+          label="Overdue Loans"
+          value={totals?.overdue_loans || 0}
+          color="amber"
+        />
         <StatCard
           icon="bi-cash-coin"
-          label="Outstanding fines"
-          value={formatKES(totals.outstanding_fines)}
-          tone="rose"
+          label="Outstanding Fines"
+          value={formatKES(totals?.outstanding_fines || 0)}
+          color="rose"
         />
-      </section>
+      </div>
 
-      {/* ---------------- 3 charts ---------------- */}
-      <section className="lib-chart-grid">
-        <ChartCard title="Circulation trend (last 14 days)">
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={loans_trend}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} fontSize={12} />
-              <YAxis allowDecimals={false} fontSize={12} width={30} />
-              <Tooltip labelFormatter={(d) => `Date: ${d}`} formatter={(v) => [v, "Loans issued"]} />
-              <Line type="monotone" dataKey="loans" stroke="#4f46e5" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Catalog by category"
-          empty={category_distribution.length === 0 ? "No categorised books yet." : null}
-        >
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={category_distribution} layout="vertical" margin={{ left: 8, right: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} fontSize={12} />
-              <YAxis type="category" dataKey="name" width={100} fontSize={12} />
-              <Tooltip formatter={(v) => [v, "Books"]} />
-              <Bar dataKey="book_count" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Outstanding fines by reason"
-          empty={fines_breakdown.length === 0 ? "No outstanding fines right now." : null}
-        >
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={fines_breakdown}
-                dataKey="total"
-                nameKey="reason"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={(entry) => FINE_REASON_LABELS[entry.reason] || entry.reason}
-              >
-                {fines_breakdown.map((entry, i) => (
-                  <Cell key={entry.reason} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v, _n, item) => [formatKES(v), FINE_REASON_LABELS[item.payload.reason]]} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </section>
-
-      {/* ---------------- 1 table ---------------- */}
-      <section className="lib-table-card">
-        <div className="lib-table-card__header">
-          <h3>Most overdue loans</h3>
-          <a href="/library-management/circulation">View all circulation →</a>
+      {/* Three Column Charts */}
+      <div className="mu-dashboard-grid-3" style={{ marginBottom: 24 }}>
+        {/* Line Chart */}
+        <div className="mu-card" style={{ gridColumn: "span 1" }}>
+          <div className="mu-card-header">
+            <h4>Circulation Trend (Last 14 Days)</h4>
+          </div>
+          <div className="mu-card-body" style={{ height: 280 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={loans_trend || []}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--mu-gray-200)" />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={(d) => d?.slice(5) || ""} 
+                  fontSize={11} 
+                  stroke="var(--mu-gray-400)"
+                />
+                <YAxis 
+                  allowDecimals={false} 
+                  fontSize={11} 
+                  width={30} 
+                  stroke="var(--mu-gray-400)"
+                />
+                <Tooltip 
+                  labelFormatter={(d) => `Date: ${d}`} 
+                  formatter={(v) => [v, "Loans issued"]}
+                  contentStyle={{ 
+                    background: "var(--mu-white)", 
+                    border: "1px solid var(--mu-border)",
+                    borderRadius: "var(--mu-radius-sm)",
+                    boxShadow: "var(--mu-shadow-sm)"
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="loans" 
+                  stroke="#4f46e5" 
+                  strokeWidth={2.5} 
+                  dot={{ fill: "#4f46e5", r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <table className="lib-table">
-          <thead>
-            <tr>
-              <th>Borrower</th>
-              <th>Book</th>
-              <th>Accession #</th>
-              <th>Due date</th>
-              <th>Days overdue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topOverdue.length === 0 && (
-              <tr>
-                <td colSpan={5} className="lib-table__empty">
-                  Nothing overdue right now.
-                </td>
-              </tr>
+
+        {/* Bar Chart - Category Distribution */}
+        <div className="mu-card" style={{ gridColumn: "span 1" }}>
+          <div className="mu-card-header">
+            <h4>Catalog by Category</h4>
+          </div>
+          <div className="mu-card-body" style={{ height: 280 }}>
+            {category_distribution?.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-inbox" style={{ fontSize: 24, marginRight: 8 }} />
+                No categorised books yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={category_distribution || []} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--mu-gray-200)" />
+                  <XAxis type="number" allowDecimals={false} fontSize={11} stroke="var(--mu-gray-400)" />
+                  <YAxis type="category" dataKey="name" width={100} fontSize={11} stroke="var(--mu-gray-400)" />
+                  <Tooltip 
+                    formatter={(v) => [v, "Books"]}
+                    contentStyle={{ 
+                      background: "var(--mu-white)", 
+                      border: "1px solid var(--mu-border)",
+                      borderRadius: "var(--mu-radius-sm)",
+                      boxShadow: "var(--mu-shadow-sm)"
+                    }}
+                  />
+                  <Bar dataKey="book_count" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
-            {topOverdue.map((loan) => {
-              const borrower = loan.member_detail?.user_detail;
-              return (
-                <tr key={loan.id}>
-                  <td>
-                    {borrower ? `${borrower.first_name} ${borrower.last_name}` : loan.member_detail?.library_card_number}
-                  </td>
-                  <td>{loan.book_detail?.title}</td>
-                  <td>{loan.copy_detail?.accession_number}</td>
-                  <td>{loan.due_date}</td>
-                  <td>
-                    <span className="lib-badge lib-badge--danger">{loan.days_overdue}d</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
+          </div>
+        </div>
+
+        {/* Pie Chart - Fines Breakdown */}
+        <div className="mu-card" style={{ gridColumn: "span 1" }}>
+          <div className="mu-card-header">
+            <h4>Outstanding Fines by Reason</h4>
+          </div>
+          <div className="mu-card-body" style={{ height: 280 }}>
+            {fines_breakdown?.length === 0 ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-check-circle" style={{ fontSize: 24, marginRight: 8, color: "var(--mu-success)" }} />
+                No outstanding fines right now.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={fines_breakdown || []}
+                    dataKey="total"
+                    nameKey="reason"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={(entry) => FINE_REASON_LABELS[entry.reason] || entry.reason}
+                    labelLine={{ stroke: "var(--mu-gray-300)" }}
+                  >
+                    {(fines_breakdown || []).map((entry, i) => (
+                      <Cell key={entry.reason} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(v, _n, item) => [formatKES(v), FINE_REASON_LABELS[item?.payload?.reason] || "Fine"]}
+                    contentStyle={{ 
+                      background: "var(--mu-white)", 
+                      border: "1px solid var(--mu-border)",
+                      borderRadius: "var(--mu-radius-sm)",
+                      boxShadow: "var(--mu-shadow-sm)"
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Most Overdue Loans Table */}
+      <div className="mu-card">
+        <div className="mu-card-header">
+          <h4>
+            <i className="bi bi-exclamation-triangle" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+            Most Overdue Loans
+          </h4>
+          <Link to="/library/circulation" className="mu-btn mu-btn-sm mu-btn-outline-primary">
+            View All <i className="bi bi-chevron-right" />
+          </Link>
+        </div>
+        <div className="mu-card-body" style={{ padding: 0 }}>
+          {topOverdue.length === 0 ? (
+            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              <i className="bi bi-check-circle" style={{ fontSize: 48, display: "block", marginBottom: 16, color: "var(--mu-success)" }} />
+              <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>Nothing Overdue</h3>
+              <p style={{ margin: "8px 0 0" }}>All loans are in good standing.</p>
+            </div>
+          ) : (
+            <div className="mu-table-wrapper">
+              <table className="mu-table mu-table-hover">
+                <thead>
+                  <tr>
+                    <th>Borrower</th>
+                    <th>Book</th>
+                    <th>Accession #</th>
+                    <th>Due Date</th>
+                    <th style={{ textAlign: "center" }}>Days Overdue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topOverdue.map((loan) => {
+                    const borrower = loan.member_detail?.user_detail;
+                    return (
+                      <tr key={loan.id}>
+                        <td>
+                          <strong>
+                            {borrower ? `${borrower.first_name} ${borrower.last_name}` : loan.member_detail?.library_card_number || "N/A"}
+                          </strong>
+                        </td>
+                        <td>{loan.book_detail?.title}</td>
+                        <td>
+                          <span className="mu-badge mu-badge-primary">
+                            {loan.copy_detail?.accession_number}
+                          </span>
+                        </td>
+                        <td>{loan.due_date}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="mu-badge mu-badge-danger">
+                            <i className="bi bi-clock" style={{ marginRight: 4 }} />
+                            {loan.days_overdue}d
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        {topOverdue.length > 0 && (
+          <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+              Showing {topOverdue.length} most overdue loan(s)
+            </span>
+            <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+              <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+              Last updated: {new Date().toLocaleDateString()}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
