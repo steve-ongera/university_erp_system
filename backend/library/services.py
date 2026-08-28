@@ -277,8 +277,10 @@ class FineService:
 class LibraryReportService:
     @staticmethod
     def dashboard_summary():
-        from django.db.models import Count, Sum
-
+        from django.db.models import Count, Sum, Q
+        from django.db.models.functions import TruncDate
+ 
+        # ---- existing stat-card totals (unchanged) ----
         total_books = lm.Book.objects.filter(is_active=True).count()
         total_copies = lm.BookCopy.objects.filter(is_active=True).count()
         available_copies = lm.BookCopy.objects.filter(status=lm.BookCopy.Status.AVAILABLE).count()
@@ -290,19 +292,68 @@ class LibraryReportService:
         outstanding_fines = lm.LibraryFine.objects.filter(
             is_paid=False, is_waived=False
         ).aggregate(t=Sum("amount"))["t"] or Decimal("0")
-
+ 
         popular_books = list(
             lm.Book.objects.annotate(loan_count=Count("copies__loans"))
             .order_by("-loan_count")
             .values("title", "loan_count")[:5]
         )
-
+ 
+        # ---- NEW: circulation trend — loans issued per day, last 14 days ----
+        # Chart 1 (line): shows whether circulation desk activity is rising/falling.
+        since_date = (timezone.now() - timezone.timedelta(days=13)).date()
+        trend_qs = (
+            lm.BookLoan.objects.filter(borrowed_at__date__gte=since_date)
+            .annotate(day=TruncDate("borrowed_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+        )
+        trend_by_day = {row["day"]: row["count"] for row in trend_qs}
+        loans_trend = [
+            {
+                "date": (since_date + timezone.timedelta(days=i)).isoformat(),
+                "loans": trend_by_day.get(since_date + timezone.timedelta(days=i), 0),
+            }
+            for i in range(14)
+        ]
+ 
+        # ---- NEW: catalog composition by category ----
+        # Chart 2 (bar): what the collection is actually made of.
+        category_distribution = list(
+            lm.BookCategory.objects.annotate(
+                book_count=Count("books", filter=Q(books__is_active=True))
+            )
+            .filter(book_count__gt=0)
+            .order_by("-book_count")
+            .values("name", "book_count")[:8]
+        )
+        uncategorised = lm.Book.objects.filter(is_active=True, category__isnull=True).count()
+        if uncategorised:
+            category_distribution.append({"name": "Uncategorised", "book_count": uncategorised})
+ 
+        # ---- NEW: outstanding fines broken down by reason ----
+        # Chart 3 (pie): overdue vs lost vs damaged — tells the librarian
+        # whether the fines pile is mostly late returns or replacement costs.
+        fines_breakdown = list(
+            lm.LibraryFine.objects.filter(is_paid=False, is_waived=False)
+            .values("reason")
+            .annotate(total=Sum("amount"), count=Count("id"))
+            .order_by("-total")
+        )
+ 
         return {
             "totals": {
-                "books": total_books, "copies": total_copies, "available_copies": available_copies,
-                "active_loans": active_loans, "overdue_loans": overdue_loans,
+                "books": total_books,
+                "copies": total_copies,
+                "available_copies": available_copies,
+                "active_loans": active_loans,
+                "overdue_loans": overdue_loans,
                 "pending_reservations": pending_reservations,
                 "outstanding_fines": float(outstanding_fines),
             },
             "popular_books": popular_books,
+            "loans_trend": loans_trend,
+            "category_distribution": category_distribution,
+            "fines_breakdown": fines_breakdown,
         }
+ 
