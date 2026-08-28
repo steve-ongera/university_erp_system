@@ -43,7 +43,7 @@ export default function LibraryMembers() {
     setNotice("");
     try {
       await libraryApi.memberLookup(lookupUsername.trim());
-      setNotice(`✅ Member record ready for ${lookupUsername.trim()}.`);
+      setNotice(` Member record ready for ${lookupUsername.trim()}.`);
       setLookupUsername("");
       load();
     } catch (e) {
@@ -56,7 +56,7 @@ export default function LibraryMembers() {
       await libraryApi.suspendMember(suspendTarget.id, suspendReason);
       setSuspendTarget(null);
       setSuspendReason("");
-      setNotice("✅ Member suspended successfully.");
+      setNotice(" Member suspended successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not suspend member.");
@@ -66,7 +66,7 @@ export default function LibraryMembers() {
   const reinstate = async (id) => {
     try {
       await libraryApi.reinstateMember(id);
-      setNotice("✅ Member reinstated successfully.");
+      setNotice(" Member reinstated successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not reinstate member.");

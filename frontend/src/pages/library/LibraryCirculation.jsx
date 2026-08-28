@@ -93,7 +93,7 @@ export default function LibraryCirculation() {
       const name = member.user_detail
         ? `${member.user_detail.first_name} ${member.user_detail.last_name}`
         : username;
-      setNotice(`✅ Book issued to ${name}.`);
+      setNotice(` Book issued to ${name}.`);
       setSelectedCopy("");
       setAvailableCopies([]);
       setBookQuery("");
@@ -114,7 +114,7 @@ export default function LibraryCirculation() {
         is_damaged: returnTarget.is_damaged,
         condition_notes: returnTarget.condition_notes,
       });
-      setNotice("✅ Loan closed successfully.");
+      setNotice(" Loan closed successfully.");
       setReturnTarget(null);
       if (subTab === "active") loadActive();
       if (subTab === "overdue") loadOverdue();
@@ -126,7 +126,7 @@ export default function LibraryCirculation() {
   const renew = async (loanId) => {
     try {
       await libraryApi.renewLoan(loanId);
-      setNotice("✅ Loan renewed successfully.");
+      setNotice(" Loan renewed successfully.");
       if (subTab === "active") loadActive();
       if (subTab === "overdue") loadOverdue();
     } catch (e) {

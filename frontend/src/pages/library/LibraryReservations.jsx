@@ -39,7 +39,7 @@ export default function LibraryReservations() {
     setNotice("");
     try {
       await libraryApi.cancelReservation(id);
-      setNotice("✅ Reservation cancelled.");
+      setNotice(" Reservation cancelled.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not cancel reservation.");

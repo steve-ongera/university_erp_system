@@ -52,7 +52,7 @@ export default function LibraryFines() {
     setNotice("");
     try {
       const { data } = await libraryApi.payFines(selected);
-      setNotice(`✅ Recorded payment for ${data.paid} fine(s).`);
+      setNotice(` Recorded payment for ${data.paid} fine(s).`);
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not record payment.");
@@ -64,7 +64,7 @@ export default function LibraryFines() {
       await libraryApi.waiveFine(waiveTarget.id, waiveReason);
       setWaiveTarget(null);
       setWaiveReason("");
-      setNotice("✅ Fine waived successfully.");
+      setNotice(" Fine waived successfully.");
       load();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not waive fine.");

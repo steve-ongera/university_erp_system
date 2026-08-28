@@ -88,7 +88,7 @@ export default function LibraryCatalog() {
       if (form.id) await libraryApi.updateCategory(form.id, form);
       else await libraryApi.createCategory(form);
       setCatModal(null);
-      setNotice("✅ Category saved.");
+      setNotice(" Category saved.");
       loadCategories();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not save category.");
@@ -111,7 +111,7 @@ export default function LibraryCatalog() {
       if (form.id) await libraryApi.updateBook(form.id, payload);
       else await libraryApi.createBook(payload);
       setBookModal(null);
-      setNotice("✅ Book saved.");
+      setNotice(" Book saved.");
       loadBooks();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not save book.");
@@ -133,7 +133,7 @@ export default function LibraryCatalog() {
       if (form.id) await libraryApi.updateCopy(form.id, form);
       else await libraryApi.createCopy(form);
       setCopyModal(null);
-      setNotice("✅ Copy saved.");
+      setNotice(" Copy saved.");
       loadCopies();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not save copy.");
