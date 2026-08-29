@@ -144,7 +144,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — 5 cards total: Units, Completed, GPA, Fee Balance, Wallet Credit */}
       <div className="mu-dashboard-grid">
         <div className="mu-stat-card">
           <div className="mu-stat-icon blue">
@@ -165,19 +165,10 @@ export default function StudentDashboard() {
             <i className="bi bi-star" />
           </div>
           <div className="mu-stat-label">Current GPA</div>
-          <div className="mu-stat-value">{stats?.current_gpa?.toFixed(2) || "N/A"}</div>
-        </div>
-        <div className="mu-stat-card">
-          <div className="mu-stat-icon red">
-            <i className="bi bi-bell" />
+          <div className="mu-stat-value">
+            {typeof stats?.current_gpa === "number" ? stats.current_gpa.toFixed(2) : "N/A"}
           </div>
-          <div className="mu-stat-label">Notifications</div>
-          <div className="mu-stat-value">{stats?.notifications || 0}</div>
         </div>
-      </div>
-
-      {/* Second row - Fee Stats */}
-      <div className="mu-dashboard-grid" style={{ marginBottom: 24 }}>
         <div className="mu-stat-card">
           <div className="mu-stat-icon red">
             <i className="bi bi-cash-coin" />
@@ -210,57 +201,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mu-card" style={{ marginBottom: 24 }}>
-        <div className="mu-card-header">
-          <h4>Quick Actions</h4>
-        </div>
-        <div className="mu-card-body">
-          <div className="mu-quick-actions">
-            {!quick_actions?.has_reported && (
-              <Link to="/reporting" className="mu-quick-action">
-                <i className="bi bi-check2-square" />
-                <span>Report Semester</span>
-                <span className="mu-badge mu-badge-warning" style={{ fontSize: "var(--mu-font-size-xs)" }}>Required</span>
-              </Link>
-            )}
-            {!quick_actions?.has_hostel && student?.current_year === 1 && student?.current_semester === 1 && (
-              <Link to="/hostel" className="mu-quick-action">
-                <i className="bi bi-building" />
-                <span>Book Hostel</span>
-                <span className="mu-badge mu-badge-primary" style={{ fontSize: "var(--mu-font-size-xs)" }}>Available</span>
-              </Link>
-            )}
-            {quick_actions?.has_outstanding_fees && (
-              <Link to="/fees" className="mu-quick-action">
-                <i className="bi bi-cash-coin" />
-                <span>Pay Fees</span>
-                <span className="mu-badge mu-badge-danger" style={{ fontSize: "var(--mu-font-size-xs)" }}>Overdue</span>
-              </Link>
-            )}
-            {quick_actions?.is_eligible_for_clearance && (
-              <Link to="/clearance" className="mu-quick-action">
-                <i className="bi bi-file-earmark-check" />
-                <span>Apply Clearance</span>
-                <span className="mu-badge mu-badge-info" style={{ fontSize: "var(--mu-font-size-xs)" }}>Eligible</span>
-              </Link>
-            )}
-            <Link to="/units" className="mu-quick-action">
-              <i className="bi bi-journal-bookmark" />
-              <span>View Units</span>
-            </Link>
-            <Link to="/grades" className="mu-quick-action">
-              <i className="bi bi-award" />
-              <span>Check Results</span>
-            </Link>
-            <Link to="/timetable" className="mu-quick-action">
-              <i className="bi bi-calendar3" />
-              <span>Timetable</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Two Column Layout - Recent Grades & Upcoming Exams */}
       <div className="mu-dashboard-grid-2">
         {/* Recent Grades */}
@@ -277,40 +217,45 @@ export default function StudentDashboard() {
                 <table className="mu-table">
                   <thead>
                     <tr>
-                      <th>Course</th>
+                      <th>Unit</th>
                       <th>Grade</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recent_grades.map((grade) => (
-                      <tr key={grade.id}>
-                        <td>{grade.enrollment?.course?.code || "N/A"}</td>
-                        <td>
-                          <span className="mu-badge mu-badge-primary">
-                            {grade.letter_grade || "N/A"}
-                          </span>
-                        </td>
-                        <td>
-                          {grade.is_pass ? (
-                            <span className="mu-badge mu-badge-success">
-                              <i className="bi bi-check-circle" />
-                              Pass
+                    {recent_grades.map((grade) => {
+                      const course = grade.enrollment_detail?.course_detail;
+                      return (
+                        <tr key={grade.id}>
+                          <td>
+                            {course ? `${course.name} (${course.code})` : "N/A"}
+                          </td>
+                          <td>
+                            <span className="mu-badge mu-badge-primary">
+                              {grade.letter_grade || "N/A"}
                             </span>
-                          ) : grade.requires_supplementary ? (
-                            <span className="mu-badge mu-badge-warning">
-                              <i className="bi bi-arrow-repeat" />
-                              Supplementary
-                            </span>
-                          ) : (
-                            <span className="mu-badge mu-badge-danger">
-                              <i className="bi bi-x-circle" />
-                              Fail
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td>
+                            {grade.is_pass ? (
+                              <span className="mu-badge mu-badge-success">
+                                <i className="bi bi-check-circle" />
+                                Pass
+                              </span>
+                            ) : grade.requires_supplementary ? (
+                              <span className="mu-badge mu-badge-warning">
+                                <i className="bi bi-arrow-repeat" />
+                                Supplementary
+                              </span>
+                            ) : (
+                              <span className="mu-badge mu-badge-danger">
+                                <i className="bi bi-x-circle" />
+                                Fail
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -345,7 +290,7 @@ export default function StudentDashboard() {
                   <tbody>
                     {upcoming_exams.map((exam) => (
                       <tr key={exam.id}>
-                        <td>{exam.course?.code || "N/A"}</td>
+                        <td>{exam.course_detail?.code || exam.course?.code || "N/A"}</td>
                         <td>{new Date(exam.exam_date).toLocaleDateString()}</td>
                         <td>{exam.start_time || "TBD"}</td>
                       </tr>

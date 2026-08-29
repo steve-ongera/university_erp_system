@@ -1323,6 +1323,7 @@ class ReportsView(APIView):
     def get(self, request):
         return Response(services.ReportService.summary())
 
+
 class MyDashboardView(APIView):
     """Student dashboard with real-time statistics and data."""
     permission_classes = [permissions.IsAuthenticated]
@@ -1334,10 +1335,10 @@ class MyDashboardView(APIView):
 
         # Get current semester
         current_semester = m.Semester.objects.filter(is_current=True).first()
-        
+
         # Get enrollments for current semester
         enrollments = m.Enrollment.objects.filter(
-            student=student, 
+            student=student,
             semester=current_semester,
             is_active=True
         ) if current_semester else []
@@ -1347,6 +1348,19 @@ class MyDashboardView(APIView):
             enrollment__student=student,
             published_at__isnull=False
         ).select_related("enrollment__course")
+
+        # cumulative_gpa is a stored field nothing currently writes to, so
+        # compute it live from published grades' quality points / credit hours
+        # (mirrors the same math GradingService uses when it sets quality_points).
+        graded_list = list(grades)
+        total_quality_points = sum(
+            (g.quality_points for g in graded_list if g.quality_points is not None), Decimal("0")
+        )
+        total_credit_hours = sum(
+            (g.enrollment.course.credit_hours for g in graded_list if g.quality_points is not None), 0
+        )
+        computed_gpa = round(float(total_quality_points) / total_credit_hours, 2) if total_credit_hours else None
+        current_gpa = float(student.cumulative_gpa) if student.cumulative_gpa else computed_gpa
 
         # Calculate stats
         total_units = m.UnitRegistration.objects.filter(
@@ -1396,7 +1410,7 @@ class MyDashboardView(APIView):
             "stats": {
                 "total_units": total_units,
                 "completed_units": grades.filter(is_pass=True).count(),
-                "current_gpa": float(student.cumulative_gpa) if student.cumulative_gpa else None,
+                "current_gpa": current_gpa,
                 "notifications": notifications,
                 "fee_balance": float(fee_summary["total_outstanding"]),
                 "wallet_credit": float(fee_summary["wallet_credit"]),

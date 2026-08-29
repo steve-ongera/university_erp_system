@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { libraryApi } from "../../services/api";
-import "../../style/library.css";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const money = (v) => `Ksh ${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 function LoanStatusBadge({ loan }) {
-  if (loan.status === "returned") return <span className="lib-badge lib-badge-gray">Returned</span>;
-  if (loan.status === "lost") return <span className="lib-badge lib-badge-red">Lost</span>;
-  if (loan.is_overdue) return <span className="lib-badge lib-badge-red">{loan.days_overdue}d overdue</span>;
-  return <span className="lib-badge lib-badge-green">Active</span>;
+  if (loan.status === "returned") return <span className="mu-badge mu-badge-gray">Returned</span>;
+  if (loan.status === "lost") return <span className="mu-badge mu-badge-danger">Lost</span>;
+  if (loan.is_overdue) return <span className="mu-badge mu-badge-danger">{loan.days_overdue}d overdue</span>;
+  return <span className="mu-badge mu-badge-success">Active</span>;
 }
 
 export default function MyLibrary() {
@@ -59,7 +60,7 @@ export default function MyLibrary() {
     setError("");
     try {
       await libraryApi.reserve(bookId);
-      setNotice("Reservation placed. You'll be notified when a copy is ready.");
+      setNotice("✅ Reservation placed. You'll be notified when a copy is ready.");
       loadProfile();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not place reservation.");
@@ -71,7 +72,7 @@ export default function MyLibrary() {
     setError("");
     try {
       await libraryApi.renewLoan(loanId);
-      setNotice("Loan renewed.");
+      setNotice("✅ Loan renewed successfully.");
       loadProfile();
     } catch (e) {
       setError(e.response?.data?.detail || "Could not renew this loan.");
@@ -87,93 +88,380 @@ export default function MyLibrary() {
     }
   };
 
-  if (loading) return <div className="lib-page"><p className="lib-loading">Loading your library account…</p></div>;
+  if (loading) {
+    return <LoadingSpinner text="Loading your library account..." />;
+  }
+
+  // Tabs configuration
+  const tabs = [
+    { key: "overview", label: "Overview", icon: "bi-speedometer2" },
+    { key: "browse", label: "Browse & Reserve", icon: "bi-search" },
+    { key: "history", label: "History", icon: "bi-clock-history" },
+  ];
 
   return (
-    <div className="lib-page">
-      <div className="lib-header">
+    <div>
+      {/* Page Header */}
+      <div className="mu-page-header">
         <div>
-          <h1 className="lib-title"><i className="bi bi-book-half" /> My Library</h1>
-          {profile && (
-            <p className="lib-subtitle">
-              Card {profile.member?.library_card_number} · {profile.active_loans?.length || 0} book(s) out
-            </p>
-          )}
+          <h1>
+            <i className="bi bi-book-half" />
+            My Library
+          </h1>
+          <div className="mu-breadcrumb">
+            Home <span className="separator">/</span> Library <span className="separator">/</span> My Library
+          </div>
+        </div>
+        <div className="mu-page-header-actions">
+          <Link to="/dashboard" className="mu-btn mu-btn-outline-primary">
+            <i className="bi bi-arrow-left" />
+            Back to Dashboard
+          </Link>
         </div>
       </div>
 
-      {error && <div className="lib-alert lib-alert-error">{error}</div>}
-      {notice && <div className="lib-alert lib-alert-success">{notice}</div>}
-
-      {profile?.eligibility && !profile.eligibility.eligible && (
-        <div className="lib-alert lib-alert-error">
-          <i className="bi bi-exclamation-triangle" /> You currently can't borrow: {profile.eligibility.reason}
+      {/* Profile Info */}
+      {profile && (
+        <div className="mu-card" style={{ marginBottom: 24 }}>
+          <div className="mu-card-body">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, color: "var(--mu-gray-900)" }}>
+                  <i className="bi bi-person" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+                  {profile.member?.user_detail?.first_name} {profile.member?.user_detail?.last_name}
+                </h3>
+                <p style={{ margin: "4px 0 0", color: "var(--mu-gray-500)", fontSize: "var(--mu-font-size-sm)" }}>
+                  <span className="mu-badge mu-badge-primary">
+                    <i className="bi bi-credit-card" style={{ marginRight: 4 }} />
+                    Card: {profile.member?.library_card_number}
+                  </span>
+                  <span className="mu-badge mu-badge-info" style={{ marginLeft: 8 }}>
+                    <i className="bi bi-journal-bookmark" style={{ marginRight: 4 }} />
+                    {profile.active_loans?.length || 0} book(s) out
+                  </span>
+                </p>
+              </div>
+              <div>
+                {profile?.eligibility?.eligible ? (
+                  <span className="mu-badge mu-badge-success">
+                    <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                    Eligible to borrow
+                  </span>
+                ) : (
+                  <span className="mu-badge mu-badge-danger">
+                    <i className="bi bi-exclamation-triangle" style={{ marginRight: 4 }} />
+                    {profile?.eligibility?.reason || "Cannot borrow"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="lib-tabs-inline">
-        {["overview", "browse", "history"].map((t) => (
+      {/* Alerts */}
+      {error && (
+        <div className="mu-alert mu-alert-danger">
+          <i className="bi bi-exclamation-triangle" />
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="mu-alert mu-alert-success">
+          <i className="bi bi-check-circle" />
+          {notice}
+        </div>
+      )}
+
+      {/* Eligibility Alert */}
+      {profile?.eligibility && !profile.eligibility.eligible && (
+        <div className="mu-alert mu-alert-danger" style={{ marginBottom: 24 }}>
+          <i className="bi bi-exclamation-triangle" />
+          <div>
+            <strong>You currently can't borrow:</strong> {profile.eligibility.reason}
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--mu-border)", marginBottom: 24, flexWrap: "wrap" }}>
+        {tabs.map((tabItem) => (
           <button
-            key={t}
-            className={`lib-tab-btn ${tab === t ? "active" : ""}`}
-            onClick={() => setTab(t)}
+            key={tabItem.key}
+            type="button"
+            onClick={() => setTab(tabItem.key)}
+            style={{
+              border: "none",
+              borderBottom: tab === tabItem.key ? "2px solid var(--mu-primary-500)" : "2px solid transparent",
+              borderRadius: 0,
+              background: "transparent",
+              padding: "8px 16px",
+              cursor: "pointer",
+              color: tab === tabItem.key ? "var(--mu-primary-500)" : "var(--mu-gray-500)",
+              fontWeight: tab === tabItem.key ? 600 : 400,
+              fontSize: "var(--mu-font-size-sm)",
+              transition: "all var(--mu-transition-fast)",
+            }}
           >
-            {t === "overview" ? "Overview" : t === "browse" ? "Browse & Reserve" : "History"}
+            <i className={tabItem.icon} style={{ marginRight: 6 }} />
+            {tabItem.label}
           </button>
         ))}
       </div>
 
+      {/* Overview Tab */}
       {tab === "overview" && (
         <>
-          <div className="lib-card">
-            <h2 className="lib-card-title"><i className="bi bi-journal-check" /> Active loans</h2>
-            {profile?.active_loans?.length ? (
-              <div className="lib-table-wrap">
-                <table className="lib-table">
-                  <thead>
-                    <tr><th>Title</th><th>Due</th><th>Status</th><th></th></tr>
-                  </thead>
-                  <tbody>
-                    {profile.active_loans.map((loan) => (
-                      <tr key={loan.id}>
-                        <td>{loan.book_detail?.title}</td>
-                        <td>{loan.due_date}</td>
-                        <td><LoanStatusBadge loan={loan} /></td>
-                        <td>
-                          <button className="lib-btn lib-btn-outline lib-btn-sm" onClick={() => handleRenew(loan.id)}>
-                            Renew
-                          </button>
-                        </td>
+          {/* Active Loans */}
+          <div className="mu-card" style={{ marginBottom: 24 }}>
+            <div className="mu-card-header">
+              <h4>
+                <i className="bi bi-journal-check" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+                Active Loans
+              </h4>
+              <span className="mu-badge mu-badge-primary">
+                {profile?.active_loans?.length || 0} Loan(s)
+              </span>
+            </div>
+            <div className="mu-card-body" style={{ padding: 0 }}>
+              {profile?.active_loans?.length ? (
+                <div className="mu-table-wrapper">
+                  <table className="mu-table mu-table-hover">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Due</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: "center" }}>Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="lib-empty">No books currently borrowed.</div>
-            )}
+                    </thead>
+                    <tbody>
+                      {profile.active_loans.map((loan) => (
+                        <tr key={loan.id}>
+                          <td>
+                            <strong>{loan.book_detail?.title}</strong>
+                          </td>
+                          <td>{loan.due_date}</td>
+                          <td><LoanStatusBadge loan={loan} /></td>
+                          <td style={{ textAlign: "center" }}>
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                              onClick={() => handleRenew(loan.id)}
+                            >
+                              <i className="bi bi-arrow-repeat" />
+                              Renew
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                  <i className="bi bi-inbox" style={{ fontSize: 24, display: "block", marginBottom: 8 }} />
+                  <p style={{ margin: 0 }}>No books currently borrowed.</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="lib-card">
-            <h2 className="lib-card-title"><i className="bi bi-bookmark-star" /> Reservations</h2>
-            {profile?.reservations?.length ? (
-              <div className="lib-table-wrap">
-                <table className="lib-table">
-                  <thead><tr><th>Title</th><th>Status</th><th>Expires</th><th></th></tr></thead>
+          {/* Reservations */}
+          <div className="mu-card" style={{ marginBottom: 24 }}>
+            <div className="mu-card-header">
+              <h4>
+                <i className="bi bi-bookmark-star" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+                Reservations
+              </h4>
+              <span className="mu-badge mu-badge-primary">
+                {profile?.reservations?.length || 0} Reservation(s)
+              </span>
+            </div>
+            <div className="mu-card-body" style={{ padding: 0 }}>
+              {profile?.reservations?.length ? (
+                <div className="mu-table-wrapper">
+                  <table className="mu-table mu-table-hover">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th style={{ textAlign: "center" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profile.reservations.map((r) => (
+                        <tr key={r.id}>
+                          <td>
+                            <strong>{r.book_detail?.title}</strong>
+                          </td>
+                          <td>
+                            <span className={`mu-badge ${
+                              r.status === "pending" ? "mu-badge-warning" :
+                              r.status === "fulfilled" ? "mu-badge-success" :
+                              "mu-badge-gray"
+                            }`}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td>{new Date(r.expires_at).toLocaleDateString()}</td>
+                          <td style={{ textAlign: "center" }}>
+                            {r.status === "pending" && (
+                              <button
+                                className="mu-btn mu-btn-sm mu-btn-danger"
+                                onClick={() => handleCancelReservation(r.id)}
+                              >
+                                <i className="bi bi-x-circle" />
+                                Cancel
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                  <i className="bi bi-bookmark-star" style={{ fontSize: 24, display: "block", marginBottom: 8 }} />
+                  <p style={{ margin: 0 }}>No reservations.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Fines */}
+          <div className="mu-card">
+            <div className="mu-card-header">
+              <h4>
+                <i className="bi bi-cash-coin" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+                Fines
+              </h4>
+              <span className="mu-badge mu-badge-primary">
+                {profile?.fines?.length || 0} Fine(s)
+              </span>
+            </div>
+            <div className="mu-card-body" style={{ padding: 0 }}>
+              {profile?.fines?.length ? (
+                <div className="mu-table-wrapper">
+                  <table className="mu-table mu-table-hover">
+                    <thead>
+                      <tr>
+                        <th>Reason</th>
+                        <th style={{ textAlign: "right" }}>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profile.fines.map((f) => (
+                        <tr key={f.id}>
+                          <td style={{ textTransform: "capitalize" }}>
+                            <span className="mu-badge mu-badge-primary">{f.reason}</span>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <span className="mu-badge mu-badge-info">{money(f.amount)}</span>
+                          </td>
+                          <td>
+                            {f.is_waived ? (
+                              <span className="mu-badge mu-badge-gray">Waived</span>
+                            ) : f.is_paid ? (
+                              <span className="mu-badge mu-badge-success">
+                                <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                                Paid
+                              </span>
+                            ) : (
+                              <span className="mu-badge mu-badge-danger">
+                                <i className="bi bi-exclamation-triangle" style={{ marginRight: 4 }} />
+                                Unpaid
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                  <i className="bi bi-check-circle" style={{ fontSize: 24, display: "block", marginBottom: 8, color: "var(--mu-success)" }} />
+                  <p style={{ margin: 0 }}>No fines on your account.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Browse Tab */}
+      {tab === "browse" && (
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-search" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+              Browse the Catalog
+            </h4>
+          </div>
+          <div className="mu-card-body">
+            <form onSubmit={runSearch} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: "1 1 260px" }}>
+                <input
+                  className="mu-input"
+                  placeholder="Search by title, author or ISBN"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <button className="mu-btn mu-btn-primary" type="submit" disabled={searching}>
+                {searching ? (
+                  <>
+                    <i className="bi bi-arrow-repeat mu-animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-search" />
+                    Search
+                  </>
+                )}
+              </button>
+            </form>
+
+            {books.length > 0 ? (
+              <div className="mu-table-wrapper" style={{ marginTop: 16 }}>
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Author(s)</th>
+                      <th style={{ textAlign: "center" }}>Available</th>
+                      <th style={{ textAlign: "center" }}>Action</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {profile.reservations.map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.book_detail?.title}</td>
+                    {books.map((b) => (
+                      <tr key={b.id}>
                         <td>
-                          <span className={`lib-badge ${r.status === "pending" ? "lib-badge-amber" : r.status === "fulfilled" ? "lib-badge-green" : "lib-badge-gray"}`}>
-                            {r.status}
+                          <strong>{b.title}</strong>
+                        </td>
+                        <td>{b.authors}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="mu-badge mu-badge-info">
+                            {b.available_copies} / {b.total_copies}
                           </span>
                         </td>
-                        <td>{new Date(r.expires_at).toLocaleDateString()}</td>
-                        <td>
-                          {r.status === "pending" && (
-                            <button className="lib-btn lib-btn-danger lib-btn-sm" onClick={() => handleCancelReservation(r.id)}>
-                              Cancel
+                        <td style={{ textAlign: "center" }}>
+                          {b.available_copies > 0 ? (
+                            <span className="mu-badge mu-badge-success">
+                              <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
+                              Borrow at the desk
+                            </span>
+                          ) : (
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                              onClick={() => handleReserve(b.id)}
+                            >
+                              <i className="bi bi-bookmark-star" />
+                              Reserve
                             </button>
                           )}
                         </td>
@@ -183,110 +471,72 @@ export default function MyLibrary() {
                 </table>
               </div>
             ) : (
-              <div className="lib-empty">No reservations.</div>
+              <div style={{ padding: 32, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-search" style={{ fontSize: 24, display: "block", marginBottom: 8 }} />
+                <p style={{ margin: 0 }}>Search the catalog to see availability and place a reservation.</p>
+              </div>
             )}
           </div>
+        </div>
+      )}
 
-          <div className="lib-card">
-            <h2 className="lib-card-title"><i className="bi bi-cash-coin" /> Fines</h2>
-            {profile?.fines?.length ? (
-              <div className="lib-table-wrap">
-                <table className="lib-table">
-                  <thead><tr><th>Reason</th><th>Amount</th><th>Status</th></tr></thead>
+      {/* History Tab */}
+      {tab === "history" && (
+        <div className="mu-card">
+          <div className="mu-card-header">
+            <h4>
+              <i className="bi bi-clock-history" style={{ marginRight: 8, color: "var(--mu-primary-500)" }} />
+              Loan History
+            </h4>
+            <span className="mu-badge mu-badge-primary">
+              {profile?.loan_history?.length || 0} Record(s)
+            </span>
+          </div>
+          <div className="mu-card-body" style={{ padding: 0 }}>
+            {profile?.loan_history?.length ? (
+              <div className="mu-table-wrapper">
+                <table className="mu-table mu-table-hover">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Borrowed</th>
+                      <th>Due</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {profile.fines.map((f) => (
-                      <tr key={f.id}>
-                        <td style={{ textTransform: "capitalize" }}>{f.reason}</td>
-                        <td>{money(f.amount)}</td>
+                    {profile.loan_history.map((loan) => (
+                      <tr key={loan.id}>
                         <td>
-                          {f.is_waived ? (
-                            <span className="lib-badge lib-badge-gray">Waived</span>
-                          ) : f.is_paid ? (
-                            <span className="lib-badge lib-badge-green">Paid</span>
-                          ) : (
-                            <span className="lib-badge lib-badge-red">Unpaid</span>
-                          )}
+                          <strong>{loan.book_detail?.title}</strong>
                         </td>
+                        <td>{new Date(loan.borrowed_at).toLocaleDateString()}</td>
+                        <td>{loan.due_date}</td>
+                        <td><LoanStatusBadge loan={loan} /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <div className="lib-empty">No fines on your account.</div>
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                <i className="bi bi-clock-history" style={{ fontSize: 48, display: "block", marginBottom: 16 }} />
+                <h3 style={{ margin: 0, color: "var(--mu-gray-500)" }}>No History</h3>
+                <p style={{ margin: "8px 0 0" }}>No past loans yet.</p>
+              </div>
             )}
           </div>
-        </>
-      )}
-
-      {tab === "browse" && (
-        <div className="lib-card">
-          <h2 className="lib-card-title"><i className="bi bi-search" /> Browse the catalog</h2>
-          <form className="lib-toolbar" onSubmit={runSearch}>
-            <div className="lib-toolbar-left" style={{ flex: 1 }}>
-              <input
-                className="lib-input"
-                style={{ minWidth: 260 }}
-                placeholder="Search by title, author or ISBN"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button className="lib-btn lib-btn-primary" type="submit" disabled={searching}>
-                {searching ? "Searching…" : "Search"}
-              </button>
+          {profile?.loan_history?.length > 0 && (
+            <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
+                Total: {profile.loan_history.length} record(s)
+              </span>
+              <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
+                <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
+                Last updated: {new Date().toLocaleDateString()}
+              </span>
             </div>
-          </form>
-          {books.length ? (
-            <div className="lib-table-wrap">
-              <table className="lib-table">
-                <thead><tr><th>Title</th><th>Author(s)</th><th>Available</th><th></th></tr></thead>
-                <tbody>
-                  {books.map((b) => (
-                    <tr key={b.id}>
-                      <td>{b.title}</td>
-                      <td>{b.authors}</td>
-                      <td>{b.available_copies} / {b.total_copies}</td>
-                      <td>
-                        {b.available_copies > 0 ? (
-                          <span className="lib-badge lib-badge-green">Borrow at the desk</span>
-                        ) : (
-                          <button className="lib-btn lib-btn-outline lib-btn-sm" onClick={() => handleReserve(b.id)}>
-                            Reserve
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="lib-empty">Search the catalog to see availability and place a reservation.</div>
-          )}
-        </div>
-      )}
-
-      {tab === "history" && (
-        <div className="lib-card">
-          <h2 className="lib-card-title"><i className="bi bi-clock-history" /> Loan history</h2>
-          {profile?.loan_history?.length ? (
-            <div className="lib-table-wrap">
-              <table className="lib-table">
-                <thead><tr><th>Title</th><th>Borrowed</th><th>Due</th><th>Status</th></tr></thead>
-                <tbody>
-                  {profile.loan_history.map((loan) => (
-                    <tr key={loan.id}>
-                      <td>{loan.book_detail?.title}</td>
-                      <td>{new Date(loan.borrowed_at).toLocaleDateString()}</td>
-                      <td>{loan.due_date}</td>
-                      <td><LoanStatusBadge loan={loan} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="lib-empty">No past loans yet.</div>
           )}
         </div>
       )}
