@@ -1,29 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supplementaryApi, unitsApi } from "../../services/api";
+import { supplementaryApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Modal from "../../components/Modal";
 
 export default function Supplementary() {
   const [loading, setLoading] = useState(true);
-  const [outstandingCourses, setOutstandingCourses] = useState([]);
+  const [outstandingUnits, setOutstandingUnits] = useState([]);
   const [currentSemester, setCurrentSemester] = useState(null);
   const [registering, setRegistering] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedUnit, setSelectedUnit] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
     setError("");
     try {
-      const [outstandingRes, semRes] = await Promise.all([
-        supplementaryApi.outstanding(),
-        unitsApi.currentSemester(),
-      ]);
-      setOutstandingCourses(Array.isArray(outstandingRes.data) ? outstandingRes.data : []);
-      setCurrentSemester(semRes.data);
+      const res = await supplementaryApi.outstanding();
+      const data = res.data || {};
+      setOutstandingUnits(Array.isArray(data.outstanding_units) ? data.outstanding_units : []);
+      setCurrentSemester(data.current_semester || null);
     } catch (err) {
       console.error("Error fetching supplementary units:", err);
       setError("Failed to load outstanding supplementary units.");
@@ -37,20 +35,21 @@ export default function Supplementary() {
   }, []);
 
   const handleRegister = async () => {
-    if (!selectedCourse) return;
+    if (!selectedUnit) return;
     if (!currentSemester) {
       setError("No active semester found.");
       return;
     }
-    setRegistering(selectedCourse.id);
+    const course = selectedUnit.course;
+    setRegistering(course.id);
     setError("");
     setSuccess("");
     try {
-      await supplementaryApi.register(selectedCourse.id, currentSemester.id);
-      setSuccess(`Registered for supplementary: ${selectedCourse.code}`);
+      await supplementaryApi.register(course.id, currentSemester.id);
+      setSuccess(`Registered for supplementary: ${course.code}`);
       setConfirmModalOpen(false);
       await loadData();
-      setSelectedCourse(null);
+      setSelectedUnit(null);
     } catch (err) {
       console.error("Error registering supplementary unit:", err);
       setError(err.response?.data?.detail || "Failed to register supplementary unit.");
@@ -59,14 +58,24 @@ export default function Supplementary() {
     }
   };
 
-  const openConfirmModal = (course) => {
-    setSelectedCourse(course);
+  const openConfirmModal = (unit) => {
+    if (!unit.is_open_for_registration) return; // frozen — button shouldn't even be clickable, but guard anyway
+    setSelectedUnit(unit);
     setConfirmModalOpen(true);
   };
 
   if (loading) {
     return <LoadingSpinner text="Loading supplementary units..." />;
   }
+
+  const openCount = outstandingUnits.filter((u) => u.is_open_for_registration).length;
+  const frozenCount = outstandingUnits.length - openCount;
+  const openTotalFee = openCount * 3000;
+
+  const formatSemester = (sem) => {
+    if (!sem) return "N/A";
+    return `${sem.academic_year_detail?.year || "N/A"} S${sem.semester_number}`;
+  };
 
   return (
     <div>
@@ -108,8 +117,7 @@ export default function Supplementary() {
         <div className="mu-alert mu-alert-info" style={{ marginBottom: 24 }}>
           <i className="bi bi-calendar3" />
           <div>
-            <strong>Current Semester:</strong> {currentSemester.academic_year_detail?.year || "N/A"} - 
-            Semester {currentSemester.semester_number}
+            <strong>Current Semester:</strong> {formatSemester(currentSemester)}
             {currentSemester.is_current && (
               <span className="mu-badge mu-badge-success" style={{ marginLeft: 8 }}>
                 <i className="bi bi-check-circle" style={{ marginRight: 4 }} />
@@ -130,9 +138,12 @@ export default function Supplementary() {
         </div>
         <div className="mu-card-body">
           <p style={{ color: "var(--mu-gray-600)", margin: 0 }}>
-            Supplementary units are courses that you need to retake or complete additional assessments for.
-            Registering for a supplementary unit will generate an invoice for the supplementary fee.
-            You must pay the fee before you can sit for the supplementary examination.
+            Supplementary units are courses you need to retake or complete additional assessments for.
+            You can only register for a unit once it is <strong>actually being taught again</strong> —
+            not in the same semester you failed it. Units still waiting to be re-offered are shown
+            <strong> frozen</strong> below; they'll unlock automatically the moment the unit next appears
+            on a lecturer's timetable, even if that ends up being a different year/semester slot after a
+            curriculum change (e.g. failing a unit in Year 1 Sem 1 but it's next offered as a 2.1 unit).
           </p>
           <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
             <span className="mu-badge mu-badge-primary">
@@ -154,8 +165,8 @@ export default function Supplementary() {
             <i className="bi bi-arrow-repeat" />
           </div>
           <div className="mu-stat-label">Outstanding Units</div>
-          <div className="mu-stat-value">{outstandingCourses.length}</div>
-          {outstandingCourses.length > 0 && (
+          <div className="mu-stat-value">{outstandingUnits.length}</div>
+          {outstandingUnits.length > 0 && (
             <div className="mu-stat-change up" style={{ color: "var(--mu-warning)" }}>
               <i className="bi bi-exclamation-triangle" />
               Needs attention
@@ -163,14 +174,28 @@ export default function Supplementary() {
           )}
         </div>
         <div className="mu-stat-card">
+          <div className="mu-stat-icon green">
+            <i className="bi bi-unlock" />
+          </div>
+          <div className="mu-stat-label">Open for Registration</div>
+          <div className="mu-stat-value">{openCount}</div>
+        </div>
+        <div className="mu-stat-card">
+          <div className="mu-stat-icon gray">
+            <i className="bi bi-lock" />
+          </div>
+          <div className="mu-stat-label">Frozen (Waiting)</div>
+          <div className="mu-stat-value">{frozenCount}</div>
+        </div>
+        <div className="mu-stat-card">
           <div className="mu-stat-icon blue">
             <i className="bi bi-cash-coin" />
           </div>
-          <div className="mu-stat-label">Total Fee</div>
+          <div className="mu-stat-label">Fee Due Now</div>
           <div className="mu-stat-value">
-            KES {(outstandingCourses.length * 3000).toLocaleString()}
+            KES {openTotalFee.toLocaleString()}
           </div>
-          {outstandingCourses.length > 0 && (
+          {openCount > 0 && (
             <div className="mu-stat-change up" style={{ color: "var(--mu-danger)" }}>
               <i className="bi bi-credit-card" />
               Pay to register
@@ -187,11 +212,11 @@ export default function Supplementary() {
             Outstanding Supplementary Units
           </h4>
           <span className="mu-badge mu-badge-primary">
-            {outstandingCourses.length} Units
+            {outstandingUnits.length} Units
           </span>
         </div>
         <div className="mu-card-body" style={{ padding: 0 }}>
-          {outstandingCourses.length > 0 ? (
+          {outstandingUnits.length > 0 ? (
             <div className="mu-table-wrapper">
               <table className="mu-table mu-table-hover">
                 <thead>
@@ -199,48 +224,87 @@ export default function Supplementary() {
                     <th>Course Code</th>
                     <th>Course Name</th>
                     <th style={{ textAlign: "center" }}>Credit Hours</th>
+                    <th>Failed In</th>
                     <th style={{ textAlign: "center" }}>Fee</th>
+                    <th style={{ textAlign: "center" }}>Status</th>
                     <th style={{ textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {outstandingCourses.map((course) => (
-                    <tr key={course.id}>
-                      <td>
-                        <strong>{course.code}</strong>
-                      </td>
-                      <td>{course.name}</td>
-                      <td style={{ textAlign: "center" }}>
-                        <span className="mu-badge mu-badge-primary">
-                          {course.credit_hours}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <span className="mu-badge mu-badge-info">
-                          KES 3,000
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <button
-                          className="mu-btn mu-btn-sm mu-btn-primary"
-                          onClick={() => openConfirmModal(course)}
-                          disabled={registering === course.id}
-                        >
-                          {registering === course.id ? (
-                            <>
-                              <i className="bi bi-arrow-repeat mu-animate-spin" />
-                              Registering...
-                            </>
+                  {outstandingUnits.map((unit) => {
+                    const course = unit.course;
+                    const isOpen = unit.is_open_for_registration;
+                    return (
+                      <tr key={course.id}>
+                        <td>
+                          <strong>{course.code}</strong>
+                        </td>
+                        <td>{course.name}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="mu-badge mu-badge-primary">
+                            {course.credit_hours}
+                          </span>
+                        </td>
+                        <td>{formatSemester(unit.failed_semester)}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="mu-badge mu-badge-info">
+                            KES 3,000
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {isOpen ? (
+                            <span className="mu-badge mu-badge-success">
+                              <i className="bi bi-unlock" style={{ marginRight: 4 }} />
+                              Open
+                            </span>
                           ) : (
-                            <>
-                              <i className="bi bi-plus-circle" />
-                              Register
-                            </>
+                            <span
+                              className="mu-badge mu-badge-gray"
+                              title={unit.note || "Not yet available"}
+                            >
+                              <i className="bi bi-lock" style={{ marginRight: 4 }} />
+                              Frozen
+                            </span>
                           )}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {isOpen ? (
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-primary"
+                              onClick={() => openConfirmModal(unit)}
+                              disabled={registering === course.id}
+                            >
+                              {registering === course.id ? (
+                                <>
+                                  <i className="bi bi-arrow-repeat mu-animate-spin" />
+                                  Registering...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="bi bi-plus-circle" />
+                                  Register
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              className="mu-btn mu-btn-sm mu-btn-outline-secondary"
+                              disabled
+                              title={unit.note || "This unit is not yet offered again."}
+                            >
+                              <i className="bi bi-lock" />
+                              Frozen
+                            </button>
+                          )}
+                          {!isOpen && unit.note && (
+                            <div style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-400)", marginTop: 4, maxWidth: 200 }}>
+                              {unit.note}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -252,27 +316,27 @@ export default function Supplementary() {
             </div>
           )}
         </div>
-        {outstandingCourses.length > 0 && (
+        {outstandingUnits.length > 0 && (
           <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
               <i className="bi bi-info-circle" style={{ marginRight: 4 }} />
-              Total fee: KES {(outstandingCourses.length * 3000).toLocaleString()}
+              Fee due now (open units only): KES {openTotalFee.toLocaleString()}
             </span>
             <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
               <i className="bi bi-clock-history" style={{ marginRight: 4 }} />
-              Register before semester deadline
+              Frozen units unlock automatically once re-offered
             </span>
           </div>
         )}
       </div>
 
-    
+
       {/* Confirm Modal */}
       <Modal
         isOpen={confirmModalOpen}
         onClose={() => {
           setConfirmModalOpen(false);
-          setSelectedCourse(null);
+          setSelectedUnit(null);
         }}
         title="Confirm Supplementary Registration"
         size="md"
@@ -291,19 +355,19 @@ export default function Supplementary() {
           <div style={{ marginTop: 12, padding: 12, background: "var(--mu-gray-50)", borderRadius: "var(--mu-radius-sm)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--mu-font-size-sm)" }}>
               <span style={{ color: "var(--mu-gray-500)" }}>Course:</span>
-              <span><strong>{selectedCourse?.code}</strong></span>
+              <span><strong>{selectedUnit?.course?.code}</strong></span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--mu-font-size-sm)", marginTop: 4 }}>
               <span style={{ color: "var(--mu-gray-500)" }}>Name:</span>
-              <span>{selectedCourse?.name}</span>
+              <span>{selectedUnit?.course?.name}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--mu-font-size-sm)", marginTop: 4 }}>
               <span style={{ color: "var(--mu-gray-500)" }}>Fee:</span>
               <span><span className="mu-badge mu-badge-info">KES 3,000</span></span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--mu-font-size-sm)", marginTop: 4 }}>
-              <span style={{ color: "var(--mu-gray-500)" }}>Semester:</span>
-              <span>{currentSemester?.academic_year_detail?.year || "N/A"} S{currentSemester?.semester_number}</span>
+              <span style={{ color: "var(--mu-gray-500)" }}>Registering For:</span>
+              <span>{formatSemester(currentSemester)}</span>
             </div>
           </div>
           <div className="mu-alert mu-alert-warning" style={{ marginTop: 12, textAlign: "left" }}>

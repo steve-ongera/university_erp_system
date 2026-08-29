@@ -282,10 +282,6 @@ class AdmissionService:
 
 
 # ======================================================================
-# UNIT REGISTRATION
-# ======================================================================
-
-# ======================================================================
 # UNIT REGISTRATION (Enhanced)
 # ======================================================================
 
@@ -297,7 +293,11 @@ class UnitRegistrationService:
         Auto-register a student for every CurriculumUnit mapped to their
         current (year, semester) on THEIR curriculum_version, plus any
         outstanding supplementary/repeat units they still owe from
-        earlier semesters.
+        earlier semesters — but only the ones actually being taught
+        this semester (see SupplementaryService.outstanding_units_with_availability).
+        Units still frozen (not yet re-offered since the student failed
+        them) are skipped here; they'll be picked up automatically in
+        whichever future semester they're next allocated to a lecturer.
         """
         # Get current curriculum units
         curriculum_units = m.CurriculumUnit.objects.filter(
@@ -307,12 +307,12 @@ class UnitRegistrationService:
         )
 
         created = []
-        
+
         # Register normal units
         for unit in curriculum_units:
             reg, created_flag = m.UnitRegistration.objects.get_or_create(
-                student=student, 
-                course=unit.course, 
+                student=student,
+                course=unit.course,
                 semester=semester,
                 defaults={
                     "registration_type": m.UnitRegistration.RegType.NORMAL,
@@ -322,12 +322,21 @@ class UnitRegistrationService:
             if created_flag:
                 created.append(reg)
 
-        # Pull forward any pending supplementary/repeat units
-        pending = SupplementaryService.outstanding_units(student)
-        for course in pending:
+        # Pull forward any pending supplementary/repeat units — but ONLY
+        # ones actually being taught this semester. A unit is never open
+        # for supplementary registration in the same semester it was
+        # failed in, and stays frozen until a LecturerUnitAllocation for
+        # that course exists in the current semester (regardless of
+        # which programme year/semester slot a curriculum change may
+        # have moved it to).
+        pending_rows = SupplementaryService.outstanding_units_with_availability(student)
+        for row in pending_rows:
+            if not row["is_open_for_registration"]:
+                continue
+            course = row["course"]
             reg, created_flag = m.UnitRegistration.objects.get_or_create(
-                student=student, 
-                course=course, 
+                student=student,
+                course=course,
                 semester=semester,
                 defaults={
                     "registration_type": m.UnitRegistration.RegType.SUPPLEMENTARY,
@@ -352,17 +361,17 @@ class UnitRegistrationService:
         currently teaching that course.
         """
         allocation = m.LecturerUnitAllocation.objects.filter(
-            course=registration.course, 
-            semester=registration.semester, 
+            course=registration.course,
+            semester=registration.semester,
             is_active=True
         ).first()
 
         enrollment, _ = m.Enrollment.objects.get_or_create(
-            student=registration.student, 
-            course=registration.course, 
+            student=registration.student,
+            course=registration.course,
             semester=registration.semester,
             defaults={
-                "lecturer_allocation": allocation, 
+                "lecturer_allocation": allocation,
                 "registration": registration,
                 "is_active": True
             },
@@ -413,6 +422,12 @@ class GradingService:
         cls._write_transcript_entry(grade)
         if grade.requires_supplementary:
             SupplementaryService.flag_unit(grade)
+
+        # Keep the stored Student.cumulative_gpa field in sync every time
+        # a grade is published — nothing else in the codebase ever wrote
+        # to it, which is why it was always null/stale.
+        cls.recompute_cumulative_gpa(grade.enrollment.student)
+
         return grade
 
     @staticmethod
@@ -433,6 +448,33 @@ class GradingService:
             is_supplementary=grade.is_supplementary_result,
         )
 
+    @staticmethod
+    def compute_cumulative_gpa(student: m.Student):
+        """
+        Live GPA calculation from every published Grade this student has:
+        sum(quality_points) / sum(credit_hours). Used both to refresh the
+        stored Student.cumulative_gpa field and as a serializer fallback
+        for any student whose stored value hasn't been backfilled yet.
+        """
+        grades = m.Grade.objects.filter(
+            enrollment__student=student, published_at__isnull=False
+        ).select_related("enrollment__course")
+
+        total_quality_points = sum(
+            (g.quality_points for g in grades if g.quality_points is not None), Decimal("0")
+        )
+        total_credit_hours = sum(
+            (g.enrollment.course.credit_hours for g in grades if g.quality_points is not None), 0
+        )
+        return round(float(total_quality_points) / total_credit_hours, 2) if total_credit_hours else None
+
+    @classmethod
+    def recompute_cumulative_gpa(cls, student: m.Student):
+        gpa = cls.compute_cumulative_gpa(student)
+        student.cumulative_gpa = gpa
+        student.save(update_fields=["cumulative_gpa"])
+        return gpa
+
 
 # ======================================================================
 # SUPPLEMENTARY EXAMS
@@ -448,12 +490,31 @@ class SupplementaryService:
     altogether. LecturerUnitAllocation.roster() already folds these
     students in automatically once UnitRegistrationService creates their
     Enrollment.
+
+    IMPORTANT: a unit is never open for supplementary registration in the
+    SAME semester it was failed in (that exam has already happened), and
+    is only open once a LecturerUnitAllocation for that course exists in
+    the CURRENT semester — i.e. "whenever it's next actually taught",
+    regardless of which programme year/semester slot that ends up being.
+
+    NOTE: outstanding_units() and outstanding_units_with_availability()
+    ALWAYS include a unit that is still owed, whether or not it's
+    currently open for registration. "Outstanding" and "open for
+    registration" are two different questions — freezing a unit never
+    removes it from the outstanding count, it only blocks registration
+    until the unit is next taught.
     """
 
     SUPPLEMENTARY_FEE = Decimal("3000.00")  # override via settings/FeeStructure if it should vary
 
     @staticmethod
     def outstanding_units(student: m.Student):
+        """
+        Raw list of Course objects still outstanding (failed + not yet
+        cleared by a passing supplementary sitting) — no timing gate.
+        Kept for backward compatibility with anything that just needs
+        "what does this student still owe", not "can they register today".
+        """
         failed_course_ids = (
             m.Grade.objects.filter(
                 enrollment__student=student, requires_supplementary=True,
@@ -467,6 +528,66 @@ class SupplementaryService:
             .values_list("enrollment__course", flat=True)
         )
         return m.Course.objects.filter(id__in=failed_course_ids)
+
+    @staticmethod
+    def outstanding_units_with_availability(student: m.Student):
+        """
+        Same outstanding list as above, but each entry is annotated with
+        whether it can be registered for RIGHT NOW, plus why not if it
+        can't. This is what the student-facing Supplementary page (and
+        the pull-forward auto-registration) should actually use.
+
+        Every failed-and-not-yet-cleared unit appears here exactly once,
+        regardless of is_open_for_registration — freezing a unit does
+        NOT remove it from this list.
+        """
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+
+        failing_grades = (
+            m.Grade.objects.filter(enrollment__student=student, requires_supplementary=True)
+            .exclude(
+                enrollment__course__in=m.Grade.objects.filter(
+                    enrollment__student=student, is_supplementary_result=True, is_pass=True
+                ).values_list("enrollment__course", flat=True)
+            )
+            .select_related("enrollment__course", "enrollment__semester__academic_year")
+            .order_by("enrollment__course_id", "-enrollment__semester_id")
+        )
+
+        seen_course_ids = set()
+        results = []
+        for grade in failing_grades:
+            course = grade.enrollment.course
+            if course.id in seen_course_ids:
+                continue
+            seen_course_ids.add(course.id)
+
+            failed_semester = grade.enrollment.semester
+            is_open = False
+            note = None
+            offering_allocation = None
+
+            if not current_semester:
+                note = "No active semester found."
+            elif current_semester.id == failed_semester.id:
+                note = "You failed this unit this semester. You must wait until it is offered again."
+            else:
+                offering_allocation = m.LecturerUnitAllocation.objects.filter(
+                    course=course, semester=current_semester, is_active=True
+                ).first()
+                is_open = offering_allocation is not None
+                if not is_open:
+                    note = "This unit is not being taught this semester yet. You'll be able to register once it's offered again."
+
+            results.append({
+                "course": course,
+                "failed_semester": failed_semester,
+                "current_semester": current_semester,
+                "is_open_for_registration": is_open,
+                "note": note,
+                "offering_allocation": offering_allocation,
+            })
+        return results
 
     @staticmethod
     def flag_unit(grade: m.Grade):
@@ -486,6 +607,27 @@ class SupplementaryService:
     @staticmethod
     @transaction.atomic
     def register_supplementary(student: m.Student, course: m.Course, semester: m.Semester) -> m.UnitRegistration:
+        # Guard 1: the unit must actually be taught this semester.
+        allocation = m.LecturerUnitAllocation.objects.filter(
+            course=course, semester=semester, is_active=True
+        ).first()
+        if not allocation:
+            raise ValueError(
+                f"{course.code} is not being offered this semester. "
+                "You'll be able to register once it's next taught."
+            )
+
+        # Guard 2: never allow registering in the exact semester it was failed.
+        failed_this_semester = m.Grade.objects.filter(
+            enrollment__student=student, enrollment__course=course,
+            enrollment__semester=semester, requires_supplementary=True,
+        ).exists()
+        if failed_this_semester:
+            raise ValueError(
+                f"You cannot register a supplementary for {course.code} in the same "
+                "semester you failed it. Wait until it is next offered."
+            )
+
         invoice = SupplementaryService.create_supplementary_invoice(student, course, semester)
         registration, _ = m.UnitRegistration.objects.update_or_create(
             student=student, course=course, semester=semester,

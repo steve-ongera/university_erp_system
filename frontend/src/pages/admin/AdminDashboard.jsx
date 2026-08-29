@@ -410,48 +410,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mu-dashboard-grid-3" style={{ marginTop: 24 }}>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-person-plus" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Admit Student</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Register new student
-            </p>
-            <Link to="/students" className="mu-btn mu-btn-sm mu-btn-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-plus-circle" />
-              Admit
-            </Link>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-arrow-up-circle" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Run Promotion</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              End of semester promotion
-            </p>
-            <button className="mu-btn mu-btn-sm mu-btn-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-play" />
-              Run
-            </button>
-          </div>
-        </div>
-        <div className="mu-card">
-          <div className="mu-card-body" style={{ textAlign: "center" }}>
-            <i className="bi bi-file-earmark-text" style={{ fontSize: 24, color: "var(--mu-primary-500)" }} />
-            <h4 style={{ margin: "8px 0 4px" }}>Generate Report</h4>
-            <p style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)", margin: 0 }}>
-              Academic reports
-            </p>
-            <Link to="/reports" className="mu-btn mu-btn-sm mu-btn-outline-primary" style={{ marginTop: 8 }}>
-              <i className="bi bi-download" />
-              Generate
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

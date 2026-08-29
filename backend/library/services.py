@@ -229,7 +229,7 @@ class ReservationService:
 # ======================================================================
 
 class FineService:
-    REPLACEMENT_FEE = Decimal("2500.00")   # override per-book later if needed
+    REPLACEMENT_FEE = Decimal("2500.00")   
     DAMAGE_FEE = Decimal("500.00")
 
     @staticmethod
@@ -280,7 +280,7 @@ class LibraryReportService:
         from django.db.models import Count, Sum, Q
         from django.db.models.functions import TruncDate
  
-        # ---- existing stat-card totals (unchanged) ----
+        
         total_books = lm.Book.objects.filter(is_active=True).count()
         total_copies = lm.BookCopy.objects.filter(is_active=True).count()
         available_copies = lm.BookCopy.objects.filter(status=lm.BookCopy.Status.AVAILABLE).count()
@@ -299,8 +299,7 @@ class LibraryReportService:
             .values("title", "loan_count")[:5]
         )
  
-        # ---- NEW: circulation trend — loans issued per day, last 14 days ----
-        # Chart 1 (line): shows whether circulation desk activity is rising/falling.
+      
         since_date = (timezone.now() - timezone.timedelta(days=13)).date()
         trend_qs = (
             lm.BookLoan.objects.filter(borrowed_at__date__gte=since_date)
@@ -317,8 +316,6 @@ class LibraryReportService:
             for i in range(14)
         ]
  
-        # ---- NEW: catalog composition by category ----
-        # Chart 2 (bar): what the collection is actually made of.
         category_distribution = list(
             lm.BookCategory.objects.annotate(
                 book_count=Count("books", filter=Q(books__is_active=True))
@@ -331,9 +328,7 @@ class LibraryReportService:
         if uncategorised:
             category_distribution.append({"name": "Uncategorised", "book_count": uncategorised})
  
-        # ---- NEW: outstanding fines broken down by reason ----
-        # Chart 3 (pie): overdue vs lost vs damaged — tells the librarian
-        # whether the fines pile is mostly late returns or replacement costs.
+
         fines_breakdown = list(
             lm.LibraryFine.objects.filter(is_paid=False, is_waived=False)
             .values("reason")

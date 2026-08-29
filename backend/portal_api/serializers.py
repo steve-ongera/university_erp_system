@@ -87,7 +87,18 @@ class GradeTranscriptSerializer(serializers.ModelSerializer):
 
     def get_programme_year(self, obj):
         allocation = obj.enrollment.lecturer_allocation
-        return allocation.year if allocation else None
+        if allocation:
+            return allocation.year
+        # Fall back to the curriculum map itself — this stays correct even
+        # when no LecturerUnitAllocation was ever linked to this Enrollment
+        # (historical data, or an allocation that was later deactivated),
+        # since CurriculumUnit is the actual (curriculum_version, course)
+        # -> (year, semester) source of truth.
+        curriculum_unit = m.CurriculumUnit.objects.filter(
+            curriculum_version=obj.enrollment.student.curriculum_version,
+            course=obj.enrollment.course,
+        ).first()
+        return curriculum_unit.year if curriculum_unit else None
 
     def get_credit_hours(self, obj):
         return obj.enrollment.course.credit_hours
@@ -201,13 +212,23 @@ class StaffSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     user_detail = UserSerializer(source="user", read_only=True)
     programme_detail = ProgrammeSerializer(source="programme", read_only=True)
+    cumulative_gpa = serializers.SerializerMethodField()
 
     class Meta:
         model = m.Student
         fields = "__all__"
         read_only_fields = ["registration_number"]
 
-
+    def get_cumulative_gpa(self, obj):
+        # Prefer the stored value once GradingService starts keeping it
+        # current; fall back to a live computation for any student whose
+        # grades were entered before this field was wired up.
+        if obj.cumulative_gpa is not None:
+            return float(obj.cumulative_gpa)
+        from .services import GradingService
+        return GradingService.compute_cumulative_gpa(obj)
+    
+    
 class AdmitStudentSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()

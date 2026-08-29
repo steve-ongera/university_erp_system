@@ -372,20 +372,19 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="transcript")
     def transcript(self, request, pk=None):
         """
-        Full academic transcript for this student, deduplicated to the
-        effective (latest) result per course/semester. TranscriptEntry
-        is append-only — a supplementary sitting adds a NEW row rather
-        than overwriting the original failing attempt — so raw
-        `student.transcript_entries.all()` would show a unit twice
-        (e.g. an original 'E' fail alongside its passing supplementary
-        'B') and would double-count it in GPA math. TranscriptService
-        collapses that down to one row per (course, academic_year,
-        semester_number), preferring the highest version / the
-        supplementary result on ties.
+        Full academic transcript for this student, built directly from
+        Grade (the single source of truth — one row per Enrollment, so
+        admin corrections show up immediately with no dedup step and no
+        possibility of a stale duplicate). GradeTranscriptSerializer
+        presents a Grade row in transcript shape (course_detail,
+        academic_year_detail, semester_number, programme_year, etc.) —
+        NOT TranscriptEntrySerializer, which is for the separate,
+        append-only TranscriptEntry audit log and expects fields
+        (like semester_number) that don't exist directly on Grade.
         """
         student = self.get_object()
         entries = services.TranscriptService.effective_entries(student)
-        return Response(s.TranscriptEntrySerializer(entries, many=True).data)
+        return Response(s.GradeTranscriptSerializer(entries, many=True).data)
 
     @action(detail=True, methods=["get"], url_path="fee-summary")
     def fee_summary(self, request, pk=None):
@@ -396,8 +395,8 @@ class StudentViewSet(viewsets.ModelViewSet):
             "wallet_credit": summary["wallet_credit"],
             "open_invoices": s.InvoiceSerializer(summary["open_invoices"], many=True).data,
         })
-
-
+        
+        
 class MyProfileStudentView(APIView):
     """Student self-service: view own profile without exposing the admin StudentViewSet."""
     permission_classes = [permissions.IsAuthenticated]
