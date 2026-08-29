@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { adminApi, studentsApi, gradesApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Modal from "../../components/Modal";
+import muLogo from "../../assets/mut_logo.png";
 
 // ----------------------------------------------------------------------
 // Constants
@@ -92,6 +93,175 @@ function printReport({ title, subtitle, columns, rows }) {
       </body>
     </html>
   `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+// ----------------------------------------------------------------------
+// PDF Transcript Generation
+// ----------------------------------------------------------------------
+function downloadTranscriptPDF(student, transcript, feeSummary) {
+  const win = window.open("", "_blank", "width=900,height=700");
+  if (!win) return;
+
+  // Group transcript by semester
+  const getSemesterDisplay = (entry) => {
+    if (entry.academic_year_detail?.year) {
+      return `${entry.academic_year_detail.year} S${entry.semester_number}`;
+    }
+    return `Y${entry.programme_year} S${entry.semester_number}`;
+  };
+
+  const groups = {};
+  transcript.forEach(entry => {
+    const key = getSemesterDisplay(entry);
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(entry);
+  });
+
+  // Calculate semester GPA
+  const calculateSemesterGPA = (entries) => {
+    if (!entries || entries.length === 0) return null;
+    let totalPoints = 0;
+    let totalCredits = 0;
+    entries.forEach(entry => {
+      const points = parseFloat(entry.quality_points) || 0;
+      const credits = parseFloat(entry.credit_hours) || 0;
+      totalPoints += points;
+      totalCredits += credits;
+    });
+    return totalCredits > 0 ? (totalPoints / totalCredits) : null;
+  };
+
+  // Calculate CGPA
+  const calculateCGPA = (entries) => {
+    let totalPoints = 0;
+    let totalCredits = 0;
+    entries.forEach(entry => {
+      const points = parseFloat(entry.quality_points) || 0;
+      const credits = parseFloat(entry.credit_hours) || 0;
+      totalPoints += points;
+      totalCredits += credits;
+    });
+    return totalCredits > 0 ? (totalPoints / totalCredits) : null;
+  };
+
+  const cgpa = calculateCGPA(transcript);
+
+  // Build HTML
+  let semesterHTML = '';
+  Object.keys(groups).forEach((semesterKey) => {
+    const entries = groups[semesterKey];
+    const semesterGPA = calculateSemesterGPA(entries);
+    semesterHTML += `
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h4 style="margin: 0; color: #1B5E20;">${semesterKey}</h4>
+          ${semesterGPA !== null ? `<span style="background: #2E7D32; color: #fff; padding: 2px 12px; border-radius: 4px; font-size: 12px;">GPA: ${semesterGPA.toFixed(2)}</span>` : ''}
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px;">
+          <thead>
+            <tr style="background: #E8F5E9;">
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: left;">Course Code</th>
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: left;">Course Name</th>
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">Credit Hrs</th>
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">Grade</th>
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">Grade Points</th>
+              <th style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">Quality Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(entry => `
+              <tr>
+                <td style="padding: 4px 10px; border: 1px solid #ddd;">${entry.course_detail?.code || 'N/A'}</td>
+                <td style="padding: 4px 10px; border: 1px solid #ddd;">${entry.course_detail?.name || 'Unknown'}</td>
+                <td style="padding: 4px 10px; border: 1px solid #ddd; text-align: center;">${entry.credit_hours || 'N/A'}</td>
+                <td style="padding: 4px 10px; border: 1px solid #ddd; text-align: center;"><strong>${entry.letter_grade || 'N/A'}</strong></td>
+                <td style="padding: 4px 10px; border: 1px solid #ddd; text-align: center;">${entry.grade_points?.toFixed(2) || 'N/A'}</td>
+                <td style="padding: 4px 10px; border: 1px solid #ddd; text-align: center;">${entry.quality_points?.toFixed(2) || 'N/A'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  const studentName = `${student.user_detail?.first_name || ''} ${student.user_detail?.last_name || ''}`.trim() || 'N/A';
+  const regNumber = student.registration_number || 'N/A';
+  const programme = student.programme_detail?.name || 'N/A';
+  const currentYear = student.current_year || 1;
+  const currentSemester = student.current_semester || 1;
+
+  win.document.write(`
+    <html>
+      <head>
+        <title>Academic Transcript - ${studentName}</title>
+        <style>
+          body { font-family: 'Times New Roman', Arial, sans-serif; padding: 40px; color: #1a1a1a; max-width: 1000px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #2E7D32; padding-bottom: 16px; }
+          .logo { width: 80px; height: 80px; object-fit: contain; }
+          .university-name { font-size: 20px; font-weight: 700; color: #1B5E20; margin: 8px 0 2px; }
+          .university-sub { font-size: 14px; color: #2E7D32; margin: 0; }
+          .document-title { font-size: 18px; font-weight: 700; color: #1B5E20; margin: 16px 0 4px; text-transform: uppercase; letter-spacing: 2px; }
+          .student-info { display: flex; flex-wrap: wrap; gap: 12px 24px; background: #f5f7fa; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; }
+          .student-info .label { color: #666; font-weight: 600; }
+          .student-info .value { font-weight: 500; }
+          .cgpa-box { background: #E8F5E9; padding: 12px 16px; border-radius: 6px; text-align: center; margin-top: 16px; border: 2px solid #2E7D32; }
+          .cgpa-box .label { font-size: 14px; font-weight: 600; color: #1B5E20; }
+          .cgpa-box .value { font-size: 22px; font-weight: 700; color: #1B5E20; }
+          .footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; }
+          @media print {
+            body { padding: 20px; }
+            .student-info { background: #f5f7fa; }
+            .cgpa-box { background: #E8F5E9; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="${muLogo}" alt="Muranga University" class="logo" />
+          <div class="university-name">MURANG'A UNIVERSITY OF TECHNOLOGY</div>
+          <div class="university-sub">Office of the Registrar</div>
+          <div class="document-title">Academic Transcript</div>
+        </div>
+
+        <div class="student-info">
+          <div><span class="label">Name:</span> <span class="value">${studentName}</span></div>
+          <div><span class="label">Registration Number:</span> <span class="value">${regNumber}</span></div>
+          <div><span class="label">Programme:</span> <span class="value">${programme}</span></div>
+          <div><span class="label">Current Year:</span> <span class="value">${currentYear}</span></div>
+          <div><span class="label">Current Semester:</span> <span class="value">${currentSemester}</span></div>
+          <div><span class="label">Admission Date:</span> <span class="value">${student.admission_date || 'N/A'}</span></div>
+        </div>
+
+        ${semesterHTML}
+
+        <div class="cgpa-box">
+          <div class="label">Cumulative GPA (CGPA)</div>
+          <div class="value">${cgpa !== null ? cgpa.toFixed(2) : 'N/A'}</div>
+        </div>
+
+        ${feeSummary ? `
+          <div style="margin-top: 16px; font-size: 12px; border-top: 1px solid #ddd; padding-top: 12px;">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+              <span><strong>Fee Status:</strong> ${feeSummary.total_outstanding > 0 ? 'Outstanding Balance: Ksh ' + feeSummary.total_outstanding : 'Fees Fully Paid'}</span>
+              <span><strong>Wallet Credit:</strong> Ksh ${feeSummary.wallet_credit}</span>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>This is a computer-generated transcript. It is valid without signature.</p>
+          <p>Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+        </div>
+      </body>
+    </html>
+  `);
+
   win.document.close();
   win.focus();
   win.print();
@@ -495,6 +665,10 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
     });
   };
 
+  const handleDownloadFullTranscriptPDF = () => {
+    downloadTranscriptPDF(student, transcript, feeSummary);
+  };
+
   return (
     <Modal isOpen={true} onClose={onClose} title="Student Details" size="xl">
       {/* Header */}
@@ -510,9 +684,17 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
             {student.cumulative_gpa && <span className="mu-badge mu-badge-info">GPA {student.cumulative_gpa}</span>}
           </div>
         </div>
-        <button className="mu-btn mu-btn-outline-primary" onClick={() => onEditRequest(student)}>
-          <i className="bi bi-pencil" /> Edit Bio Data
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {transcript && transcript.length > 0 && (
+            <button className="mu-btn mu-btn-primary" onClick={handleDownloadFullTranscriptPDF}>
+              <i className="bi bi-file-pdf" />
+              Download Full Transcript (PDF)
+            </button>
+          )}
+          <button className="mu-btn mu-btn-outline-primary" onClick={() => onEditRequest(student)}>
+            <i className="bi bi-pencil" /> Edit Bio Data
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -733,19 +915,6 @@ export default function StudentsManagement() {
     }
   }, [page, debouncedSearch, programmeFilter, yearFilter, statusFilter]);
 
-  // ---------------------------------------------------------------
-  // Fetch orchestration
-  // ---------------------------------------------------------------
-  // Same fix as AdminReportings: a filter change must never let
-  // `fetchStudents()` fire with a stale `page` value, or DRF's
-  // PageNumberPagination 404s once the narrower result set no longer
-  // has that many pages (e.g. staying on page 3 while typing a search
-  // that only matches 1 page of students). We key the filter "scope"
-  // as a single string; whenever it changes we reset the page and
-  // skip this run's fetch — the page-state change then re-triggers
-  // this same effect (via `fetchStudents`'s dependency on `page`),
-  // and on that run the scope key matches so we fetch for real with
-  // page already reset to 1.
   const filterScopeKey = [debouncedSearch, programmeFilter, yearFilter, statusFilter].join("|");
   const prevFilterScopeKey = useRef(filterScopeKey);
 
@@ -754,11 +923,10 @@ export default function StudentsManagement() {
       prevFilterScopeKey.current = filterScopeKey;
       if (page !== 1) {
         setPage(1);
-        return; // wait for the page reset to re-trigger this effect
+        return;
       }
     }
     fetchStudents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchStudents, filterScopeKey]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
@@ -849,11 +1017,9 @@ export default function StudentsManagement() {
           <div className="mu-table-wrapper">
             <table className="mu-table">
               <thead>
-                {/* Filter Row */}
                 <tr style={{ background: "var(--mu-gray-50)" }}>
                   <th colSpan={8} style={{ padding: "8px 12px" }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                      {/* Search - First */}
                       <div style={{ display: "flex", alignItems: "center", gap: 4, flex: "1 1 220px" }}>
                         <div style={{ position: "relative", width: "100%" }}>
                           <i className="bi bi-search" style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--mu-gray-400)" }} />
@@ -874,18 +1040,11 @@ export default function StudentsManagement() {
                         </div>
                       </div>
 
-                      {/* Programme Filter */}
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Programme:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 130, 
-                            padding: "3px 8px", 
-                            fontSize: "var(--mu-font-size-xs)",
-                            minHeight: "auto",
-                            height: 28
-                          }}
+                          style={{ width: 130, padding: "3px 8px", fontSize: "var(--mu-font-size-xs)", minHeight: "auto", height: 28 }}
                           value={programmeFilter}
                           onChange={(e) => setProgrammeFilter(e.target.value)}
                         >
@@ -894,18 +1053,11 @@ export default function StudentsManagement() {
                         </select>
                       </div>
 
-                      {/* Year Filter */}
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Year:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 90, 
-                            padding: "3px 8px", 
-                            fontSize: "var(--mu-font-size-xs)",
-                            minHeight: "auto",
-                            height: 28
-                          }}
+                          style={{ width: 90, padding: "3px 8px", fontSize: "var(--mu-font-size-xs)", minHeight: "auto", height: 28 }}
                           value={yearFilter}
                           onChange={(e) => setYearFilter(e.target.value)}
                         >
@@ -914,18 +1066,11 @@ export default function StudentsManagement() {
                         </select>
                       </div>
 
-                      {/* Status Filter */}
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Status:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 100, 
-                            padding: "3px 8px", 
-                            fontSize: "var(--mu-font-size-xs)",
-                            minHeight: "auto",
-                            height: 28
-                          }}
+                          style={{ width: 100, padding: "3px 8px", fontSize: "var(--mu-font-size-xs)", minHeight: "auto", height: 28 }}
                           value={statusFilter}
                           onChange={(e) => setStatusFilter(e.target.value)}
                         >
@@ -934,7 +1079,6 @@ export default function StudentsManagement() {
                         </select>
                       </div>
 
-                      {/* Reset */}
                       <button
                         className="mu-btn mu-btn-secondary"
                         style={{ padding: "2px 10px", fontSize: "var(--mu-font-size-xs)", height: 28, minHeight: "auto" }}
@@ -944,12 +1088,10 @@ export default function StudentsManagement() {
                         Reset
                       </button>
 
-                      {/* Results count */}
                       <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", marginLeft: "auto" }}>
                         {count} student(s)
                       </span>
 
-                      {/* View Mode Toggle */}
                       <div style={{ display: "flex", gap: 4 }}>
                         <button
                           className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
@@ -971,7 +1113,6 @@ export default function StudentsManagement() {
                     </div>
                   </th>
                 </tr>
-                {/* Column Headers */}
                 <tr>
                   <th>Registration</th>
                   <th>Name</th>
@@ -1060,7 +1201,6 @@ export default function StudentsManagement() {
           </div>
         </div>
 
-        {/* Pagination */}
         {!loading && students.length > 0 && (
           <div className="mu-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-500)" }}>
@@ -1078,7 +1218,6 @@ export default function StudentsManagement() {
         )}
       </div>
 
-      {/* Modals */}
       {detailStudent && (
         <StudentDetailModal
           student={detailStudent}
