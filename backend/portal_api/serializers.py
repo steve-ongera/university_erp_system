@@ -260,10 +260,18 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     student_detail = StudentSerializer(source="student", read_only=True)
     course_detail = CourseSerializer(source="course", read_only=True)
     semester_detail = SemesterSerializer(source="semester", read_only=True)
+    programme_year = serializers.SerializerMethodField()
+    programme_semester = serializers.SerializerMethodField()
 
     class Meta:
         model = m.Enrollment
         fields = "__all__"
+
+    def get_programme_year(self, obj):
+        return obj.lecturer_allocation.year if obj.lecturer_allocation else None
+
+    def get_programme_semester(self, obj):
+        return obj.lecturer_allocation.programme_semester if obj.lecturer_allocation else None
 
 
 
