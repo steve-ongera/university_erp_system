@@ -239,6 +239,12 @@ class AdmitStudentSerializer(serializers.Serializer):
     sponsor_type = serializers.ChoiceField(choices=m.Student.SponsorType.choices,
                                             default=m.Student.SponsorType.SELF)
 
+    # --- KCSE / prior school record ---
+    kcse_index_number = serializers.CharField(required=False, allow_blank=True, default="")
+    previous_school = serializers.CharField(required=False, allow_blank=True, default="")
+    kcse_mean_grade = serializers.CharField(required=False, allow_blank=True, default="")
+    kcse_points = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True, default=None)
+
     def create(self, validated_data):
         return services.AdmissionService.admit_student(
             full_name_first=validated_data["first_name"],
@@ -248,6 +254,10 @@ class AdmitStudentSerializer(serializers.Serializer):
             intake=validated_data["intake"],
             curriculum_version=validated_data["curriculum_version"],
             sponsor_type=validated_data["sponsor_type"],
+            kcse_index_number=validated_data.get("kcse_index_number", ""),
+            previous_school=validated_data.get("previous_school", ""),
+            kcse_mean_grade=validated_data.get("kcse_mean_grade", ""),
+            kcse_points=validated_data.get("kcse_points"),
         )
 
 

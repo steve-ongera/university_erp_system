@@ -491,6 +491,17 @@ class Student(models.Model):
     guardian_phone = models.CharField(max_length=15, blank=True)
     emergency_contact = models.CharField(max_length=15, blank=True)
 
+    # --- Prior (KCSE / high school) academic record — ADD THESE ---
+    kcse_index_number = models.CharField(
+        max_length=30, blank=True, unique=False, db_index=True,
+        help_text="KCSE index number, e.g. 12345678001/2024.")
+    previous_school = models.CharField(max_length=150, blank=True,
+                                        help_text="Secondary school the student joined from.")
+    kcse_mean_grade = models.CharField(max_length=5, blank=True,
+                                        help_text="Overall KCSE mean grade, e.g. B+.")
+    kcse_points = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True,
+                                       help_text="KCSE mean points, e.g. 9.50.")
+
     class Meta:
         indexes = [models.Index(fields=["registration_number"])]
 

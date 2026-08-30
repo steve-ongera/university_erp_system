@@ -13,6 +13,7 @@ const STATUS_OPTIONS = ["active", "deferred", "graduated", "suspended", "discont
 const SPONSOR_OPTIONS = ["government", "self", "employer", "scholarship", "bursary"];
 const GENDER_OPTIONS = ["male", "female", "other"];
 const PAGE_SIZE = 25;
+const DEFAULT_STUDENT_PASSWORD = "password123";
 
 const STATUS_BADGE = {
   active: "success",
@@ -105,7 +106,6 @@ function downloadTranscriptPDF(student, transcript, feeSummary) {
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) return;
 
-  // Group transcript by semester
   const getSemesterDisplay = (entry) => {
     if (entry.academic_year_detail?.year) {
       return `${entry.academic_year_detail.year} S${entry.semester_number}`;
@@ -122,7 +122,6 @@ function downloadTranscriptPDF(student, transcript, feeSummary) {
     groups[key].push(entry);
   });
 
-  // Calculate semester GPA
   const calculateSemesterGPA = (entries) => {
     if (!entries || entries.length === 0) return null;
     let totalPoints = 0;
@@ -136,7 +135,6 @@ function downloadTranscriptPDF(student, transcript, feeSummary) {
     return totalCredits > 0 ? (totalPoints / totalCredits) : null;
   };
 
-  // Calculate CGPA
   const calculateCGPA = (entries) => {
     let totalPoints = 0;
     let totalCredits = 0;
@@ -151,7 +149,6 @@ function downloadTranscriptPDF(student, transcript, feeSummary) {
 
   const cgpa = calculateCGPA(transcript);
 
-  // Build HTML
   let semesterHTML = '';
   Object.keys(groups).forEach((semesterKey) => {
     const entries = groups[semesterKey];
@@ -328,11 +325,17 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
           guardian_name: student.guardian_name || "",
           guardian_phone: student.guardian_phone || "",
           emergency_contact: student.emergency_contact || "",
+          kcse_index_number: student.kcse_index_number || "",
+          previous_school: student.previous_school || "",
+          kcse_mean_grade: student.kcse_mean_grade || "",
+          kcse_points: student.kcse_points ?? "",
         }
       : {
           first_name: "", last_name: "", gender: "male",
           programme: "", intake: "", curriculum_version: "",
           sponsor_type: "self",
+          kcse_index_number: "", previous_school: "",
+          kcse_mean_grade: "", kcse_points: "",
         }
   );
   const [curriculumVersions, setCurriculumVersions] = useState([]);
@@ -366,6 +369,10 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
           guardian_name: form.guardian_name,
           guardian_phone: form.guardian_phone,
           emergency_contact: form.emergency_contact,
+          kcse_index_number: form.kcse_index_number,
+          previous_school: form.previous_school,
+          kcse_mean_grade: form.kcse_mean_grade,
+          kcse_points: form.kcse_points === "" ? null : Number(form.kcse_points),
         });
         onSaved(data, "Student updated.");
       } else {
@@ -382,8 +389,15 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
           intake: form.intake,
           curriculum_version: form.curriculum_version,
           sponsor_type: form.sponsor_type,
+          kcse_index_number: form.kcse_index_number,
+          previous_school: form.previous_school,
+          kcse_mean_grade: form.kcse_mean_grade,
+          kcse_points: form.kcse_points === "" ? null : Number(form.kcse_points),
         });
-        onSaved(data, `Student admitted. Registration No: ${data.registration_number}`);
+        onSaved(
+          data,
+          `Student admitted. Registration No: ${data.registration_number}. Default password: ${DEFAULT_STUDENT_PASSWORD} (must change on first login). Fee invoice raised automatically.`
+        );
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Something went wrong. Check the form and try again.");
@@ -446,9 +460,43 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
                 </select>
               </div>
             </div>
+
+            {/* --- KCSE / prior school record --- */}
+            <div style={{ margin: "16px 0 8px", fontWeight: 600, fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-600)" }}>
+              <i className="bi bi-mortarboard" style={{ marginRight: 6 }} />
+              Prior Academic Record (KCSE)
+            </div>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>KCSE Index Number</label>
+                <input className="mu-input" placeholder="e.g. 12345678001/2024"
+                       value={form.kcse_index_number} onChange={handleChange("kcse_index_number")} />
+              </div>
+              <div className="mu-form-group">
+                <label>Previous School</label>
+                <input className="mu-input" placeholder="School name"
+                       value={form.previous_school} onChange={handleChange("previous_school")} />
+              </div>
+            </div>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>KCSE Mean Grade</label>
+                <input className="mu-input" placeholder="e.g. B+"
+                       value={form.kcse_mean_grade} onChange={handleChange("kcse_mean_grade")} />
+              </div>
+              <div className="mu-form-group">
+                <label>KCSE Mean Points</label>
+                <input type="number" step="0.01" min={0} max={12} className="mu-input" placeholder="e.g. 9.50"
+                       value={form.kcse_points} onChange={handleChange("kcse_points")} />
+              </div>
+            </div>
+
             <div className="mu-alert mu-alert-info" style={{ marginTop: 12 }}>
               <i className="bi bi-info-circle" />
-              A login account is created automatically (username = registration number, temporary password = registration number without slashes; the student must change it on first login).
+              A login account is created automatically (username = registration number, default password ={" "}
+              <strong>{DEFAULT_STUDENT_PASSWORD}</strong>; the student must change it on first login). A
+              Year&nbsp;1&nbsp;/&nbsp;Semester&nbsp;1 fee invoice is raised automatically — if no fee structure is
+              configured for this programme/year/semester yet, admission will be cancelled and an error shown below.
             </div>
           </>
         )}
@@ -491,6 +539,32 @@ function StudentFormModal({ mode, student, programmes, intakes, onClose, onSaved
               <div className="mu-form-group">
                 <label>Emergency Contact</label>
                 <input className="mu-input" value={form.emergency_contact} onChange={handleChange("emergency_contact")} />
+              </div>
+            </div>
+
+            <div style={{ margin: "16px 0 8px", fontWeight: 600, fontSize: "var(--mu-font-size-sm)", color: "var(--mu-gray-600)" }}>
+              <i className="bi bi-mortarboard" style={{ marginRight: 6 }} />
+              Prior Academic Record (KCSE)
+            </div>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>KCSE Index Number</label>
+                <input className="mu-input" value={form.kcse_index_number} onChange={handleChange("kcse_index_number")} />
+              </div>
+              <div className="mu-form-group">
+                <label>Previous School</label>
+                <input className="mu-input" value={form.previous_school} onChange={handleChange("previous_school")} />
+              </div>
+            </div>
+            <div className="mu-dashboard-grid-2" style={{ gap: 12, marginBottom: 0 }}>
+              <div className="mu-form-group">
+                <label>KCSE Mean Grade</label>
+                <input className="mu-input" value={form.kcse_mean_grade} onChange={handleChange("kcse_mean_grade")} />
+              </div>
+              <div className="mu-form-group">
+                <label>KCSE Mean Points</label>
+                <input type="number" step="0.01" min={0} max={12} className="mu-input"
+                       value={form.kcse_points} onChange={handleChange("kcse_points")} />
               </div>
             </div>
           </>
@@ -734,6 +808,12 @@ function StudentDetailModal({ student, semesters, onClose, onEditRequest }) {
               <div className="mu-form-group"><label>Guardian Phone</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.guardian_phone || "—"}</div></div>
               <div className="mu-form-group"><label>Emergency Contact</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.emergency_contact || "—"}</div></div>
               <div className="mu-form-group"><label>Total Credit Hours</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.total_credit_hours_earned || 0}</div></div>
+
+              {/* --- KCSE / prior school record --- */}
+              <div className="mu-form-group"><label>KCSE Index No.</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.kcse_index_number || "—"}</div></div>
+              <div className="mu-form-group"><label>Previous School</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.previous_school || "—"}</div></div>
+              <div className="mu-form-group"><label>KCSE Mean Grade</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.kcse_mean_grade || "—"}</div></div>
+              <div className="mu-form-group"><label>KCSE Points</label><div className="mu-input" style={{ background: "var(--mu-gray-50)" }}>{student.kcse_points ?? "—"}</div></div>
             </div>
           )}
 
@@ -933,7 +1013,7 @@ export default function StudentsManagement() {
 
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 4000);
+    setTimeout(() => setToast(""), 6000);
   };
 
   const handleDelete = async () => {
@@ -966,8 +1046,13 @@ export default function StudentsManagement() {
         status: s.status,
         gpa: s.cumulative_gpa || "",
         admission_date: s.admission_date,
+        kcse_index_number: s.kcse_index_number || "",
+        previous_school: s.previous_school || "",
+        kcse_mean_grade: s.kcse_mean_grade || "",
+        kcse_points: s.kcse_points ?? "",
       })),
-      ["registration_number", "name", "programme", "year", "semester", "status", "gpa", "admission_date"]
+      ["registration_number", "name", "programme", "year", "semester", "status", "gpa", "admission_date",
+       "kcse_index_number", "previous_school", "kcse_mean_grade", "kcse_points"]
     );
   };
 
@@ -1026,7 +1111,7 @@ export default function StudentsManagement() {
                           <input
                             type="text"
                             className="mu-input"
-                            placeholder="Search by reg no. or name..."
+                            placeholder="Search by reg no., name, KCSE index..."
                             style={{ 
                               width: "100%", 
                               padding: "3px 8px 3px 26px", 

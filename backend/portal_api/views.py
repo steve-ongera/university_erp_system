@@ -341,7 +341,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     serializer_class = s.StudentSerializer
     permission_classes = [IsStaffRole]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ["registration_number", "user__first_name", "user__last_name", "user__email"]
+    search_fields = ["registration_number", "user__first_name", "user__last_name", "user__email",
+                      "kcse_index_number", "previous_school"]
     filterset_fields = ["programme", "current_year", "status"]
     ordering_fields = ["registration_number", "admission_date", "current_year", "current_semester"]
     ordering = ["-admission_date"]
@@ -364,9 +365,24 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="admit")
     def admit(self, request):
+        """
+        Admits a student, creates their login (username=reg no,
+        default password 'password123', must_change_password=True),
+        and auto-raises the Year1/Sem1 fee invoice — all inside one
+        atomic transaction. If no FeeStructure exists for this
+        programme/year/semester, the ENTIRE admission (user, student,
+        fee account) is rolled back and a 400 is returned instead of
+        leaving an orphaned student with no invoice.
+        """
         serializer = s.AdmitStudentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        student = serializer.save()
+        try:
+            student = serializer.save()
+        except ValueError as exc:
+            return Response(
+                {"detail": f"Admission cancelled — could not raise fee invoice: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(s.StudentSerializer(student).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="transcript")
@@ -395,8 +411,8 @@ class StudentViewSet(viewsets.ModelViewSet):
             "wallet_credit": summary["wallet_credit"],
             "open_invoices": s.InvoiceSerializer(summary["open_invoices"], many=True).data,
         })
-        
-        
+
+
 class MyProfileStudentView(APIView):
     """Student self-service: view own profile without exposing the admin StudentViewSet."""
     permission_classes = [permissions.IsAuthenticated]
@@ -406,7 +422,6 @@ class MyProfileStudentView(APIView):
         if not profile:
             return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
         return Response(s.StudentSerializer(profile).data)
-
 
 
 class LecturerViewSet(viewsets.ModelViewSet):

@@ -246,17 +246,22 @@ class AuthService:
 # ======================================================================
 
 class AdmissionService:
+    DEFAULT_STUDENT_PASSWORD = "password123"
+
     @staticmethod
     @transaction.atomic
     def admit_student(*, full_name_first, full_name_last, gender, programme: m.Programme,
                        intake: m.Intake, curriculum_version: m.CurriculumVersion,
-                       sponsor_type=m.Student.SponsorType.SELF, extra_user_fields=None) -> m.Student:
+                       sponsor_type=m.Student.SponsorType.SELF,
+                       kcse_index_number="", previous_school="",
+                       kcse_mean_grade="", kcse_points=None,
+                       extra_user_fields=None) -> m.Student:
         admission_year = int(intake.name.split()[-1])
         reg_no = utils.generate_registration_number(programme, admission_year, m.Student)
 
         user = m.User.objects.create_user(
             username=reg_no,
-            password=reg_no.replace("/", ""),  # temp password; must_change_password=True forces reset
+            password=AdmissionService.DEFAULT_STUDENT_PASSWORD,
             first_name=full_name_first,
             last_name=full_name_last,
             gender=gender,
@@ -276,8 +281,21 @@ class AdmissionService:
             current_semester=1,
             sponsor_type=sponsor_type,
             admission_date=timezone.now().date(),
+            kcse_index_number=kcse_index_number,
+            previous_school=previous_school,
+            kcse_mean_grade=kcse_mean_grade,
+            kcse_points=kcse_points,
         )
         m.StudentFeeAccount.objects.create(student=student)
+
+        # --- Auto-raise the Year1/Sem1 invoice. If no FeeStructure is
+        # configured, this raises ValueError, which — because the whole
+        # method is @transaction.atomic — rolls back EVERYTHING above
+        # (user, student, fee account). The admin sees a clean error and
+        # no orphaned student/account is left behind; nothing is
+        # half-created without an invoice.
+        FeeService.raise_semester_invoice(student, intake.starting_semester)
+
         return student
 
 
