@@ -183,6 +183,7 @@ export const hostelApi = {
   book: (payload) => api.post("/hostel-bookings/", payload),
   myBookings: () => api.get("/hostel-bookings/"),
   hostels: () => api.get("/hostels/"),
+  layout: (hostelId) => api.get(`/hostels/${hostelId}/layout/`),
   rooms: () => api.get("/rooms/"),
   status: () => api.get("/me/hostel-status/"),
 };

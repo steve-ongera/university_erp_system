@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 from rest_framework import serializers
+from django.db.models import Q, Count, Sum, Prefetch
 
 from . import models as m
 from . import serializers as s
@@ -1042,17 +1043,36 @@ class HostelBookingViewSet(viewsets.ModelViewSet):
     ordering = ["-booked_at"]
 
     def get_queryset(self):
+        qs = super().get_queryset()
         user = self.request.user
         if user.user_type == "student":
-            return m.HostelBooking.objects.filter(student__user=user)
-        return super().get_queryset()
+            return m.HostelBooking.objects.filter(student__user=user).select_related(
+                "bed__room__hostel", "student__user"
+            )
+        return qs
 
     def create(self, request, *args, **kwargs):
-        student = request.user.student_profile
-        bed = m.Bed.objects.get(pk=request.data["bed"])
-        semester = m.Semester.objects.get(pk=request.data["semester"])
+        """
+        Student self-service booking. Only `bed` is required in the
+        payload — the current semester is derived server-side rather
+        than trusted from the client, since a missing/undefined field
+        client-side was the original cause of a 500 here.
+        """
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
+
         try:
-            booking = services.HostelService.book_bed(student, bed, semester)
+            bed = m.Bed.objects.select_related("room__hostel").get(pk=request.data["bed"])
+        except (m.Bed.DoesNotExist, KeyError, ValueError, TypeError):
+            return Response({"detail": "Valid bed is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+        if not current_semester:
+            return Response({"detail": "No active semester found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            booking = services.HostelService.book_bed(student, bed, current_semester)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(s.HostelBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
@@ -1087,7 +1107,6 @@ class HostelBookingViewSet(viewsets.ModelViewSet):
             permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
     def cancel(self, request, pk=None):
         return Response(s.HostelBookingSerializer(services.HostelService.cancel(self.get_object())).data)
-
 
 # ======================================================================
 # REPORTING / CLEARANCE
@@ -1923,7 +1942,7 @@ class MyTimetableView(APIView):
 # ======================================================================
 
 class MyHostelStatusView(APIView):
-    """Current-year hostel booking (if any) + whether the student has reported (gates fresh bookings)."""
+    """Current-year hostel booking (if any), reporting status, and Y1S1 booking eligibility."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -1932,22 +1951,29 @@ class MyHostelStatusView(APIView):
             return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
 
         current_year = m.AcademicYear.objects.filter(is_current=True).first()
+        current_semester = m.Semester.objects.filter(is_current=True).first()
+
         booking = None
         if current_year:
             booking = m.HostelBooking.objects.filter(
                 student=student, academic_year=current_year
             ).select_related("bed__room__hostel").first()
 
-        current_semester = m.Semester.objects.filter(is_current=True).first()
         has_reported = False
         if current_semester:
             has_reported = m.StudentReporting.objects.filter(
                 student=student, semester=current_semester, status=m.StudentReporting.Status.APPROVED
             ).exists()
 
+        is_year1_sem1 = student.current_year == 1 and student.current_semester == 1
+
         return Response({
             "academic_year": s.AcademicYearSerializer(current_year).data if current_year else None,
+            "semester": s.SemesterSerializer(current_semester).data if current_semester else None,
             "has_reported": has_reported,
+            "is_year1_sem1": is_year1_sem1,
+            "is_eligible": is_year1_sem1 and has_reported,
+            "gender": student.user.gender,
             "booking": s.HostelBookingSerializer(booking).data if booking else None,
         })
 
@@ -2251,6 +2277,64 @@ class HostelViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name"]
     ordering = ["name"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.user_type == "student":
+            student = getattr(user, "student_profile", None)
+            if not student:
+                return qs.none()
+            # Female students only see girls'/mixed hostels, male students
+            # only see boys'/mixed — see HostelService.allowed_hostel_types.
+            return qs.filter(hostel_type__in=services.HostelService.allowed_hostel_types(student))
+        return qs
+
+    @action(detail=True, methods=["get"], url_path="layout")
+    def layout(self, request, pk=None):
+        """
+        Room-by-room, bed-by-bed occupancy for this hostel, scoped to the
+        current academic year — powers the visual room/bed picker on the
+        student booking page. Booked beds come back with is_available=False
+        so the frontend can render them frozen/disabled.
+        """
+        hostel = self.get_object()
+        user = request.user
+
+        if user.user_type == "student":
+            student = getattr(user, "student_profile", None)
+            if not student or not services.HostelService.hostel_matches_gender(hostel, student):
+                return Response({"detail": "This hostel is not available for your gender."},
+                                 status=status.HTTP_403_FORBIDDEN)
+
+        academic_year = m.AcademicYear.objects.filter(is_current=True).first()
+        if not academic_year:
+            return Response({"detail": "No active academic year found."}, status=status.HTTP_404_NOT_FOUND)
+
+        rooms = (
+            hostel.rooms.filter(is_active=True)
+            .prefetch_related(
+                Prefetch("beds", queryset=m.Bed.objects.filter(academic_year=academic_year).order_by("bed_number"))
+            )
+            .order_by("room_number")
+        )
+
+        return Response({
+            "hostel": s.HostelSerializer(hostel).data,
+            "academic_year": academic_year.year,
+            "rooms": [
+                {
+                    "id": room.id,
+                    "room_number": room.room_number,
+                    "capacity": room.capacity,
+                    "beds": [
+                        {"id": bed.id, "bed_number": bed.bed_number, "is_available": bed.is_available}
+                        for bed in room.beds.all()
+                    ],
+                }
+                for room in rooms
+            ],
+        })
+
 
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = m.Room.objects.select_related("hostel")
@@ -2274,13 +2358,19 @@ class BedViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = m.Bed.objects.select_related("room__hostel")
+        user = self.request.user
 
-        # Staff managing inventory need to see occupied beds too;
-        # students booking only ever see free ones.
-        if self.request.user.user_type in {"admin", "hostel_warden"}:
+        if user.user_type in {"admin", "hostel_warden"}:
             return qs
 
-        return qs.filter(is_available=True)
+        qs = qs.filter(is_available=True)
+        if user.user_type == "student":
+            student = getattr(user, "student_profile", None)
+            if not student:
+                return qs.none()
+            qs = qs.filter(room__hostel__hostel_type__in=services.HostelService.allowed_hostel_types(student))
+        return qs
+
     
     
 class HostelDashboardView(APIView):

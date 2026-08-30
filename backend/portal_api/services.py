@@ -1169,6 +1169,43 @@ class DefermentService:
 # ======================================================================
 
 class HostelService:
+    """
+    Booking rules
+    -------------
+    - Only Year-1 Semester-1 students who have reported (StudentReporting
+      APPROVED) for the current semester may self-book — see
+      is_eligible_to_book().
+    - A student may only book into a hostel whose hostel_type matches
+      their gender (girls -> GIRLS/MIXED, boys -> BOYS/MIXED, anything
+      else -> MIXED only) — see allowed_hostel_types() /
+      hostel_matches_gender(). This is enforced here in book_bed(), not
+      just filtered client-side, so it can't be bypassed by posting a
+      bed id directly.
+    - A bed is frozen (is_available=False) the instant it's booked, in
+      the same transaction as the booking row, so it can't be re-booked
+      by a second request reading stale availability.
+    """
+
+    @staticmethod
+    def allowed_hostel_types(student: m.Student):
+        """
+        Which Hostel.HostelType values this student may book into, based
+        on gender. Mixed hostels are open to everyone; girls'/boys'
+        hostels are gender-locked. A student with gender="other" (or
+        blank) only sees mixed hostels, since there's no dedicated
+        hostel type for them yet.
+        """
+        gender = student.user.gender
+        if gender == m.User.Gender.FEMALE:
+            return [m.Hostel.HostelType.GIRLS, m.Hostel.HostelType.MIXED]
+        if gender == m.User.Gender.MALE:
+            return [m.Hostel.HostelType.BOYS, m.Hostel.HostelType.MIXED]
+        return [m.Hostel.HostelType.MIXED]
+
+    @staticmethod
+    def hostel_matches_gender(hostel: m.Hostel, student: m.Student) -> bool:
+        return hostel.hostel_type in HostelService.allowed_hostel_types(student)
+
     @staticmethod
     def is_eligible_to_book(student: m.Student, semester: m.Semester) -> bool:
         """Only students who have REPORTED for Year-1 Semester-1 of their intake may book."""
@@ -1181,30 +1218,53 @@ class HostelService:
     @staticmethod
     @transaction.atomic
     def book_bed(student: m.Student, bed: m.Bed, semester: m.Semester) -> m.HostelBooking:
+        """
+        Self-service booking path (student-facing). Validates eligibility,
+        gender match, academic-year match, and availability, then creates
+        the booking and freezes the bed — all inside one transaction.
+        """
         if not HostelService.is_eligible_to_book(student, semester):
             raise ValueError("Only reported Year-1 Semester-1 students may book a hostel bed.")
-        if not bed.is_available:
-            raise ValueError("Selected bed is not available.")
+
+        hostel = bed.room.hostel
+        if not HostelService.hostel_matches_gender(hostel, student):
+            raise ValueError("This hostel is not available for your gender.")
+
+        if bed.academic_year_id != semester.academic_year_id:
+            raise ValueError("This bed does not belong to the current academic year.")
+
+        # Re-fetch and lock the row so a concurrent request for the same
+        # bed can't pass this check before either transaction commits.
+        locked_bed = m.Bed.objects.select_for_update().get(pk=bed.pk)
+        if not locked_bed.is_available:
+            raise ValueError("This bed has already been booked. Please select another.")
 
         booking = m.HostelBooking.objects.create(
-            student=student, bed=bed, academic_year=semester.academic_year,
+            student=student, bed=locked_bed, academic_year=semester.academic_year,
             status=m.HostelBooking.Status.APPROVED,
         )
-        bed.is_available = False
-        bed.save(update_fields=["is_available"])
+        locked_bed.is_available = False
+        locked_bed.save(update_fields=["is_available"])
         return booking
-    
+
     @staticmethod
     @transaction.atomic
     def manual_book(student, bed, academic_year, status=None):
+        """
+        Staff/admin override path — no eligibility or gender gate, since
+        a warden may need to place a student manually (e.g. a transfer or
+        an exception case). Still respects bed availability and freezes
+        the bed the same way.
+        """
         status = status or m.HostelBooking.Status.APPROVED
-        if not bed.is_available:
+        locked_bed = m.Bed.objects.select_for_update().get(pk=bed.pk)
+        if not locked_bed.is_available:
             raise ValueError("Selected bed is not available.")
         booking = m.HostelBooking.objects.create(
-            student=student, bed=bed, academic_year=academic_year, status=status
+            student=student, bed=locked_bed, academic_year=academic_year, status=status
         )
-        bed.is_available = False
-        bed.save(update_fields=["is_available"])
+        locked_bed.is_available = False
+        locked_bed.save(update_fields=["is_available"])
         return booking
 
     @staticmethod
@@ -1254,7 +1314,6 @@ class HostelService:
             "bookings_by_status": by_status,
             "recent_bookings": recent_bookings,  # serialized in the view
         }
-
 
 # ======================================================================
 # CLEARANCE (graduation etc.)
