@@ -39,6 +39,7 @@ router.register(r"grades", v.GradeViewSet, basename="grades")
 
 # Lecture notes  (NEW)
 router.register(r"lecture-notes", v.LectureNoteViewSet, basename="lecture-notes")
+router.register(r"promotion-runs", v.PromotionRunViewSet, basename="promotion-run")
 
 # Fees
 router.register(r"fee-structures", v.FeeStructureViewSet)

@@ -243,7 +243,8 @@ export const adminApi = {
   rooms: (params) => api.get("/rooms/", { params }),
   beds: (params) => api.get("/beds/", { params }),
   hostelBookings: (params) => api.get("/hostel-bookings/", { params }),
-  runPromotion: () => api.post("/admin-ops/run-promotion/"),
+  runPromotion: (payload) => api.post("/admin-ops/run-promotion/", payload),
+  promotionRuns: (params) => api.get("/promotion-runs/", { params }),
   unitRegistrations: (params) => api.get("/unit-registrations/", { params }),
   reports: () => api.get("/reports/"),
   reportings: (params) => api.get("/student-reportings/", { params }),
@@ -304,6 +305,7 @@ export const adminApi = {
   securityDashboard: () => api.get("/security/dashboard/"),
   unlockUser: (id, notes) => api.post(`/users/${id}/unlock/`, { notes }),
   lockUser: (id, notes) => api.post(`/users/${id}/lock/`, { notes }),
+  
 };
 
 export const communicationApi = {
