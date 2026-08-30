@@ -1103,3 +1103,70 @@ class LectureNote(models.Model):
 
     def __str__(self):
         return f"{self.lecturer_allocation.course.code} - {self.title}"
+    
+    
+    
+class PromotionRun(models.Model):
+    """One promotion batch — scoped by faculty/programme, run at a point in time."""
+    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="promotion_runs")
+    programme = models.ForeignKey(Programme, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="promotion_runs")
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="promotion_runs")
+    triggered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    bypass_result_check = models.BooleanField(default=False)
+    bypass_reason = models.TextField(blank=True)
+    run_at = models.DateTimeField(auto_now_add=True)
+
+    promoted_count = models.IntegerField(default=0)
+    graduated_count = models.IntegerField(default=0)
+    suspended_count = models.IntegerField(default=0)
+    skipped_count = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["-run_at"]
+
+    def __str__(self):
+        scope = self.programme.code if self.programme else (self.faculty.code if self.faculty else "ALL")
+        return f"Promotion run {scope} — {self.run_at:%Y-%m-%d %H:%M}"
+
+
+class PromotionRecord(models.Model):
+    """
+    One student's outcome in a promotion run. The uniqueness guard is on
+    (student, from_year, from_semester) GLOBALLY (not per-run) — a
+    student who was already promoted OUT of Y1S1 can never be promoted
+    out of Y1S1 again, no matter which run/date tries it.
+    """
+    class Action(models.TextChoices):
+        PROMOTED = "promoted", "Promoted"
+        GRADUATED = "graduated", "Graduated"
+        SUSPENDED = "suspended", "Suspended"
+        SKIPPED = "skipped", "Skipped"
+        ALREADY_PROMOTED = "already_promoted", "Already Promoted (skipped)"
+
+    run = models.ForeignKey(PromotionRun, on_delete=models.CASCADE, related_name="records")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="promotion_records")
+    from_year = models.IntegerField()
+    from_semester = models.IntegerField()
+    to_year = models.IntegerField(null=True, blank=True)
+    to_semester = models.IntegerField(null=True, blank=True)
+    action = models.CharField(max_length=20, choices=Action.choices)
+    reason = models.CharField(max_length=255, blank=True)
+    outstanding_supplementary_count = models.IntegerField(default=0)
+    was_bypassed = models.BooleanField(
+        default=False,
+        help_text="True if this student was promoted despite outstanding/incomplete results "
+                   "because the run had bypass_result_check=True.")
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True)
+    invoice_error = models.CharField(max_length=255, blank=True)
+    email_sent = models.BooleanField(default=False)
+    email_error = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["student", "from_year", "from_semester"])]
+
+    def __str__(self):
+        return f"{self.student.registration_number}: {self.action} (Y{self.from_year}S{self.from_semester})"
