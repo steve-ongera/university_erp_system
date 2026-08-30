@@ -834,3 +834,34 @@ class AdminLoginAttemptSerializer(serializers.ModelSerializer):
         fields = "__all__"
         
   
+  
+class PromotionRecordSerializer(serializers.ModelSerializer):
+    student_detail = StudentSerializer(source="student", read_only=True)
+
+    class Meta:
+        model = m.PromotionRecord
+        fields = "__all__"
+
+
+class PromotionRunSerializer(serializers.ModelSerializer):
+    faculty_detail = FacultySerializer(source="faculty", read_only=True)
+    programme_detail = ProgrammeSerializer(source="programme", read_only=True)
+    triggered_by_detail = UserSerializer(source="triggered_by", read_only=True)
+    records = PromotionRecordSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = m.PromotionRun
+        fields = "__all__"
+
+
+class RunPromotionRequestSerializer(serializers.Serializer):
+    academic_year = serializers.PrimaryKeyRelatedField(queryset=m.AcademicYear.objects.all())
+    faculty = serializers.PrimaryKeyRelatedField(queryset=m.Faculty.objects.all(), required=False, allow_null=True)
+    programme = serializers.PrimaryKeyRelatedField(queryset=m.Programme.objects.all(), required=False, allow_null=True)
+    bypass_result_check = serializers.BooleanField(default=False)
+    bypass_reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, data):
+        if data.get("bypass_result_check") and not data.get("bypass_reason"):
+            raise serializers.ValidationError("bypass_reason is required when bypass_result_check is true.")
+        return data

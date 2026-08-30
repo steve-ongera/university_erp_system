@@ -928,44 +928,174 @@ class FeeService:
 # ======================================================================
 # PROMOTION (auto move students to next year/semester)
 # ======================================================================
+from django.core.mail import send_mail
+
 
 class PromotionService:
     MAX_CARRIED_SUPPLEMENTARIES = 4
 
     @classmethod
     @transaction.atomic
-    def promote_student(cls, student: m.Student):
+    def _promote_one(cls, student: m.Student, run: m.PromotionRun) -> m.PromotionRecord:
+        from_year, from_sem = student.current_year, student.current_semester
+
+        # --- Guard: never promote the same student out of the same slot twice ---
+        already = m.PromotionRecord.objects.filter(
+            student=student, from_year=from_year, from_semester=from_sem,
+            action__in=[m.PromotionRecord.Action.PROMOTED, m.PromotionRecord.Action.GRADUATED],
+        ).exists()
+        if already:
+            return m.PromotionRecord.objects.create(
+                run=run, student=student, from_year=from_year, from_semester=from_sem,
+                action=m.PromotionRecord.Action.ALREADY_PROMOTED,
+                reason="Student was already promoted out of this year/semester in an earlier run.",
+            )
+
         if student.status != m.Student.Status.ACTIVE:
-            return {"student": student, "action": "skipped", "reason": f"status={student.status}"}
+            return m.PromotionRecord.objects.create(
+                run=run, student=student, from_year=from_year, from_semester=from_sem,
+                action=m.PromotionRecord.Action.SKIPPED, reason=f"status={student.status}",
+            )
 
         outstanding = SupplementaryService.outstanding_units(student)
-        if cls.MAX_CARRIED_SUPPLEMENTARIES is not None and outstanding.count() > cls.MAX_CARRIED_SUPPLEMENTARIES:
+        outstanding_count = outstanding.count()
+
+        if outstanding_count > cls.MAX_CARRIED_SUPPLEMENTARIES and not run.bypass_result_check:
             student.status = m.Student.Status.SUSPENDED
             student.save(update_fields=["status"])
-            return {"student": student, "action": "suspended",
-                     "reason": f"{outstanding.count()} outstanding supplementaries"}
+            record = m.PromotionRecord.objects.create(
+                run=run, student=student, from_year=from_year, from_semester=from_sem,
+                action=m.PromotionRecord.Action.SUSPENDED,
+                reason=f"{outstanding_count} outstanding supplementary units "
+                       f"(max allowed is {cls.MAX_CARRIED_SUPPLEMENTARIES}).",
+                outstanding_supplementary_count=outstanding_count,
+            )
+            cls._notify_student(student, record)
+            return record
+
+        was_bypassed = run.bypass_result_check and outstanding_count > cls.MAX_CARRIED_SUPPLEMENTARIES
 
         programme = student.programme
-        prev_year, prev_sem = student.current_year, student.current_semester
         next_year, next_sem = utils.next_year_semester(
-            student.current_year, student.current_semester, programme.semesters_per_year
+            from_year, from_sem, programme.semesters_per_year
         )
 
         if next_year > programme.duration_years:
             student.status = m.Student.Status.GRADUATED
             student.save(update_fields=["status"])
-            return {"student": student, "action": "graduated", "reason": f"Completed Y{prev_year}S{prev_sem}"}
+            record = m.PromotionRecord.objects.create(
+                run=run, student=student, from_year=from_year, from_semester=from_sem,
+                action=m.PromotionRecord.Action.GRADUATED,
+                reason=f"Completed Y{from_year}S{from_sem}",
+                outstanding_supplementary_count=outstanding_count, was_bypassed=was_bypassed,
+            )
+            cls._notify_student(student, record)
+            return record
 
         student.current_year, student.current_semester = next_year, next_sem
         student.save(update_fields=["current_year", "current_semester"])
-        return {"student": student, "action": "promoted",
-                 "reason": f"Y{prev_year}S{prev_sem} -> Y{next_year}S{next_sem}"}
+
+        record = m.PromotionRecord.objects.create(
+            run=run, student=student, from_year=from_year, from_semester=from_sem,
+            to_year=next_year, to_semester=next_sem,
+            action=m.PromotionRecord.Action.PROMOTED,
+            reason=f"Y{from_year}S{from_sem} -> Y{next_year}S{next_sem}",
+            outstanding_supplementary_count=outstanding_count, was_bypassed=was_bypassed,
+        )
+
+        # --- Raise the new semester's invoice; never let this block the promotion ---
+        try:
+            invoice = FeeService.raise_semester_invoice(student, run.academic_year.semesters.filter(
+                semester_number=next_sem).first() or student.enrollments.first() and None)
+        except Exception:
+            invoice = None
+        try:
+            target_semester = m.Semester.objects.filter(
+                academic_year=run.academic_year, semester_number=next_sem
+            ).first()
+            if target_semester:
+                invoice = FeeService.raise_semester_invoice(student, target_semester)
+                record.invoice = invoice
+            else:
+                record.invoice_error = "No Semester record for the target academic year/semester."
+        except ValueError as exc:
+            record.invoice_error = str(exc)
+        record.save(update_fields=["invoice", "invoice_error"])
+
+        cls._notify_student(student, record)
+        return record
+
+    @staticmethod
+    def _notify_student(student: m.Student, record: m.PromotionRecord):
+        if not student.user.email:
+            record.email_error = "No email on file."
+            record.save(update_fields=["email_error"])
+            return
+
+        if record.action in (m.PromotionRecord.Action.PROMOTED, m.PromotionRecord.Action.GRADUATED):
+            if record.was_bypassed:
+                subject = "Provisional Promotion Notice"
+                body = (
+                    f"Dear {student.user.get_full_name()},\n\n"
+                    f"You have been provisionally promoted to Y{record.to_year}S{record.to_semester} "
+                    f"pending final confirmation of your Y{record.from_year}S{record.from_semester} results. "
+                    f"This promotion may be reversed if your final results show more than "
+                    f"{PromotionService.MAX_CARRIED_SUPPLEMENTARIES} outstanding supplementary units.\n\n"
+                    f"Murang'a University Student Portal"
+                )
+            elif record.action == m.PromotionRecord.Action.GRADUATED:
+                subject = "Congratulations — You Have Graduated"
+                body = f"Dear {student.user.get_full_name()},\n\nYou have completed {student.programme.name}. Congratulations!"
+            else:
+                subject = "You Have Been Promoted"
+                body = (
+                    f"Dear {student.user.get_full_name()},\n\n"
+                    f"You have been promoted to Y{record.to_year}S{record.to_semester}. "
+                    f"An invoice for the new semester has been raised on your account."
+                )
+        else:
+            subject = "Promotion Not Processed"
+            body = (
+                f"Dear {student.user.get_full_name()},\n\n"
+                f"You were not promoted this cycle. Reason: {record.reason}\n"
+                f"Please clear outstanding units/fees and contact the Registrar's office if you have questions."
+            )
+
+        try:
+            send_mail(subject, body, getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@muranga.ac.ke"),
+                       [student.user.email], fail_silently=False)
+            record.email_sent = True
+        except Exception as exc:
+            record.email_error = str(exc)[:255]
+        record.save(update_fields=["email_sent", "email_error"])
 
     @classmethod
-    def promote_all_active(cls):
-        return [cls.promote_student(s) for s in m.Student.objects.filter(status=m.Student.Status.ACTIVE)]
+    @transaction.atomic
+    def run_promotion(cls, *, academic_year: m.AcademicYear, faculty: m.Faculty = None,
+                       programme: m.Programme = None, bypass_result_check: bool = False,
+                       bypass_reason: str = "", triggered_by: m.User = None) -> m.PromotionRun:
+        run = m.PromotionRun.objects.create(
+            faculty=faculty, programme=programme, academic_year=academic_year,
+            triggered_by=triggered_by, bypass_result_check=bypass_result_check,
+            bypass_reason=bypass_reason,
+        )
+        qs = m.Student.objects.filter(status=m.Student.Status.ACTIVE)
+        if programme:
+            qs = qs.filter(programme=programme)
+        elif faculty:
+            qs = qs.filter(programme__faculty=faculty)
 
+        counts = {"promoted": 0, "graduated": 0, "suspended": 0, "skipped": 0, "already_promoted": 0}
+        for student in qs.select_related("programme", "user"):
+            record = cls._promote_one(student, run)
+            counts[record.action] = counts.get(record.action, 0) + 1
 
+        run.promoted_count = counts["promoted"]
+        run.graduated_count = counts["graduated"]
+        run.suspended_count = counts["suspended"]
+        run.skipped_count = counts["skipped"] + counts.get("already_promoted", 0)
+        run.save(update_fields=["promoted_count", "graduated_count", "suspended_count", "skipped_count"])
+        return run
 
 # ======================================================================
 # DEFERMENT / RESUMPTION

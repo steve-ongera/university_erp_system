@@ -1301,19 +1301,26 @@ class RunPromotionView(APIView):
     permission_classes = [IsRole.for_roles("admin", "registrar")]
 
     def post(self, request):
-        results = services.PromotionService.promote_all_active()
-        summary = {"promoted": 0, "graduated": 0, "suspended": 0, "skipped": 0}
-        detail = []
-        for r in results:
-            summary[r["action"]] = summary.get(r["action"], 0) + 1
-            detail.append({
-                "student_id": str(r["student"].id), "registration_number": r["student"].registration_number,
-                "action": r["action"], "reason": r["reason"],
-                "current_year": r["student"].current_year, "current_semester": r["student"].current_semester,
-                "status": r["student"].status,
-            })
-        return Response({"summary": summary, "results": detail})
+        serializer = s.RunPromotionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        run = services.PromotionService.run_promotion(
+            academic_year=data["academic_year"], faculty=data.get("faculty"),
+            programme=data.get("programme"), bypass_result_check=data["bypass_result_check"],
+            bypass_reason=data.get("bypass_reason", ""), triggered_by=request.user,
+        )
+        return Response(s.PromotionRunSerializer(run).data, status=status.HTTP_201_CREATED)
 
+
+class PromotionRunViewSet(viewsets.ReadOnlyModelViewSet):
+    """History of past promotion runs — 'students that were promoted' list lives here."""
+    queryset = m.PromotionRun.objects.select_related("faculty", "programme", "academic_year", "triggered_by")
+    serializer_class = s.PromotionRunSerializer
+    permission_classes = [IsRole.for_roles("admin", "registrar")]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["faculty", "programme", "academic_year", "bypass_result_check"]
+    ordering_fields = ["run_at"]
+    ordering = ["-run_at"]
 
 
 class ReportsView(APIView):
