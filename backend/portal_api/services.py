@@ -1696,3 +1696,73 @@ class ExamOfficeReportService:
         }
         
         
+
+
+class AdminDashboardService:
+    """Real data sources for the Admin Dashboard charts — no random/sample fallbacks."""
+
+    @staticmethod
+    def reporting_trends(num_years=3):
+        """
+        Actual StudentReporting counts per semester, across the last
+        `num_years` academic years (chronological order) — feeds the
+        single-line 'Student Reporting Trends' chart.
+        """
+        academic_years = list(m.AcademicYear.objects.order_by("-start_date")[:num_years])
+        academic_years.reverse()
+        ay_ids = [ay.id for ay in academic_years]
+
+        semesters = (
+            m.Semester.objects.filter(academic_year_id__in=ay_ids)
+            .select_related("academic_year")
+            .order_by("academic_year__start_date", "semester_number")
+        )
+
+        trends = []
+        for sem in semesters:
+            total_reported = m.StudentReporting.objects.filter(
+                semester=sem, status=m.StudentReporting.Status.APPROVED
+            ).count()
+
+            trends.append({
+                "semester": f"{sem.academic_year.year} S{sem.semester_number}",
+                "academic_year": sem.academic_year.year,
+                "semester_number": sem.semester_number,
+                "total_reported": total_reported,
+            })
+        return trends
+
+    @staticmethod
+    def department_gender_stats():
+        """
+        Per-department total + male/female split, for the combined
+        bar (total students) + line (male/female) chart.
+        """
+        departments = m.Department.objects.filter(is_active=True)
+        rows = []
+        for dept in departments:
+            qs = m.Student.objects.filter(programme__department=dept)
+            total = qs.count()
+            if total == 0:
+                continue
+            male = qs.filter(user__gender=m.User.Gender.MALE).count()
+            female = qs.filter(user__gender=m.User.Gender.FEMALE).count()
+            rows.append({
+                "name": dept.name,
+                "code": dept.code,
+                "student_count": total,
+                "male_count": male,
+                "female_count": female,
+            })
+        rows.sort(key=lambda r: r["student_count"], reverse=True)
+        return rows
+
+    @staticmethod
+    def programme_distribution():
+        distribution = []
+        for programme in m.Programme.objects.filter(is_active=True):
+            count = m.Student.objects.filter(programme=programme).count()
+            if count > 0:
+                distribution.append({"name": programme.name, "code": programme.code, "count": count})
+        distribution.sort(key=lambda x: x["count"], reverse=True)
+        return distribution

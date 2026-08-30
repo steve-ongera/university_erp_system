@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import { adminApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
-// Chart.js imports
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,14 +12,15 @@ import {
   LineElement,
   BarElement,
   ArcElement,
+  BarController,
+  LineController,
   Title,
   Tooltip,
   Legend,
   Filler,
 } from "chart.js";
-import { Line, Bar, Doughnut } from "react-chartjs-2";
+import { Line, Chart, Doughnut } from "react-chartjs-2";
 
-// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -28,6 +28,8 @@ ChartJS.register(
   LineElement,
   BarElement,
   ArcElement,
+  BarController,
+  LineController,
   Title,
   Tooltip,
   Legend,
@@ -44,7 +46,7 @@ const EMPTY_STATE = {
     graduatedStudents: 0,
   },
   recentStudents: [],
-  enrollmentTrends: [],
+  reportingTrends: [],
   programmeDistribution: [],
   departmentStats: [],
 };
@@ -60,8 +62,6 @@ export default function AdminDashboard() {
       setLoading(true);
       setError("");
       try {
-        // Single call — the backend already computes stats, trends,
-        // programme distribution and department stats server-side.
         const { data } = await adminApi.dashboard(); // GET /admin/dashboard/
 
         setDashboardData({
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
             graduatedStudents: data.stats.graduated_students,
           },
           recentStudents: data.recent_students || [],
-          enrollmentTrends: data.enrollment_trends || [],
+          reportingTrends: data.reporting_trends || [],
           programmeDistribution: data.programme_distribution || [],
           departmentStats: data.department_stats || [],
         });
@@ -97,13 +97,13 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  // Chart Data Configurations
-  const lineChartData = {
-    labels: dashboardData.enrollmentTrends.map((d) => d.semester),
+  // ---- Chart 1: Student Reporting Trends — single line, real StudentReporting data ----
+  const reportingChartData = {
+    labels: dashboardData.reportingTrends.map((d) => d.semester),
     datasets: [
       {
-        label: "Total Students",
-        data: dashboardData.enrollmentTrends.map((d) => d.total_students),
+        label: "Students Reported",
+        data: dashboardData.reportingTrends.map((d) => d.total_reported),
         borderColor: "#3b6ce0",
         backgroundColor: "rgba(59, 108, 224, 0.1)",
         fill: true,
@@ -113,34 +113,22 @@ export default function AdminDashboard() {
         pointBorderWidth: 2,
         pointRadius: 4,
       },
-      {
-        label: "New Students",
-        data: dashboardData.enrollmentTrends.map((d) => d.new_students),
-        borderColor: "#1a8a5a",
-        backgroundColor: "rgba(26, 138, 90, 0.1)",
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: "#1a8a5a",
-        pointBorderColor: "#fff",
-        pointBorderWidth: 2,
-        pointRadius: 4,
-      },
     ],
   };
 
-  const barChartData = {
-    labels: dashboardData.departmentStats.map((d) => d.code || d.name?.substring(0, 10) || "N/A"),
-    datasets: [
-      {
-        label: "Students per Department",
-        data: dashboardData.departmentStats.map((d) => d.student_count || 0),
-        backgroundColor: ["#3b6ce0", "#1a8a5a", "#c97d2a", "#7c3aed", "#c23b3b"],
-        borderRadius: 6,
-        barThickness: 40,
-      },
-    ],
+  const reportingChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "top", labels: { usePointStyle: true, padding: 20, font: { size: 12, weight: "500" } } },
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+    },
   };
 
+  // ---- Chart 2: Programme Distribution ----
   const doughnutData = {
     labels: dashboardData.programmeDistribution.map((d) => d.name),
     datasets: [
@@ -154,31 +142,6 @@ export default function AdminDashboard() {
     ],
   };
 
-  const lineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: { usePointStyle: true, padding: 20, font: { size: 12, weight: "500" } },
-      },
-    },
-    scales: {
-      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 } } },
-      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-    },
-  };
-
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 } } },
-      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-    },
-  };
-
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -186,6 +149,58 @@ export default function AdminDashboard() {
       legend: { position: "bottom", labels: { usePointStyle: true, padding: 15, font: { size: 11 } } },
     },
     cutout: "60%",
+  };
+
+  // ---- Chart 3: Students per Department — bar (total) + line overlay (male/female) ----
+  const departmentComboData = {
+    labels: dashboardData.departmentStats.map((d) => d.code || d.name?.substring(0, 10) || "N/A"),
+    datasets: [
+      {
+        type: "bar",
+        label: "Total Students",
+        data: dashboardData.departmentStats.map((d) => d.student_count || 0),
+        backgroundColor: "#3b6ce0",
+        borderRadius: 6,
+        barThickness: 32,
+        order: 2,
+      },
+      {
+        type: "line",
+        label: "Male",
+        data: dashboardData.departmentStats.map((d) => d.male_count || 0),
+        borderColor: "#1a8a5a",
+        backgroundColor: "#1a8a5a",
+        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: "#1a8a5a",
+        borderWidth: 2,
+        order: 1,
+      },
+      {
+        type: "line",
+        label: "Female",
+        data: dashboardData.departmentStats.map((d) => d.female_count || 0),
+        borderColor: "#c23b3b",
+        backgroundColor: "#c23b3b",
+        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: "#c23b3b",
+        borderWidth: 2,
+        order: 0,
+      },
+    ],
+  };
+
+  const departmentComboOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "top", labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+    },
   };
 
   const getStatusBadge = (status) => {
@@ -206,12 +221,10 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      {/* Page Header */}
       <div className="mu-page-header">
         <div>
           <h1>
-            <i className="bi bi-speedometer2" />
-            Admin Dashboard
+            <i className="bi bi-speedometer2" /> Admin Dashboard
           </h1>
           <div className="mu-breadcrumb">
             Home <span className="separator">/</span> Admin <span className="separator">/</span> Dashboard
@@ -219,73 +232,56 @@ export default function AdminDashboard() {
         </div>
         <div className="mu-page-header-actions">
           <Link to="/reports" className="mu-btn mu-btn-outline-primary">
-            <i className="bi bi-bar-chart" />
-            View Reports
+            <i className="bi bi-bar-chart" /> View Reports
           </Link>
           <Link to="/students" className="mu-btn mu-btn-primary">
-            <i className="bi bi-people" />
-            Manage Students
+            <i className="bi bi-people" /> Manage Students
           </Link>
         </div>
       </div>
 
       {error && (
         <div className="mu-alert mu-alert-danger">
-          <i className="bi bi-exclamation-triangle" />
-          {error}
+          <i className="bi bi-exclamation-triangle" /> {error}
         </div>
       )}
 
       {/* Stats Cards */}
       <div className="mu-dashboard-grid">
         <div className="mu-stat-card">
-          <div className="mu-stat-icon blue">
-            <i className="bi bi-people" />
-          </div>
+          <div className="mu-stat-icon blue"><i className="bi bi-people" /></div>
           <div className="mu-stat-label">Total Students</div>
           <div className="mu-stat-value">{dashboardData.stats.totalStudents}</div>
           <div className="mu-stat-change up">
-            <i className="bi bi-arrow-up" />
-            {dashboardData.stats.activeStudents} Active
+            <i className="bi bi-arrow-up" /> {dashboardData.stats.activeStudents} Active
           </div>
         </div>
         <div className="mu-stat-card">
-          <div className="mu-stat-icon green">
-            <i className="bi bi-person-badge" />
-          </div>
+          <div className="mu-stat-icon green"><i className="bi bi-person-badge" /></div>
           <div className="mu-stat-label">Total Staff</div>
           <div className="mu-stat-value">{dashboardData.stats.totalStaff}</div>
           <div className="mu-stat-change up">
-            <i className="bi bi-people" />
-            Across {dashboardData.stats.totalDepartments} Departments
+            <i className="bi bi-people" /> Across {dashboardData.stats.totalDepartments} Departments
           </div>
         </div>
         <div className="mu-stat-card">
-          <div className="mu-stat-icon gold">
-            <i className="bi bi-mortarboard" />
-          </div>
+          <div className="mu-stat-icon gold"><i className="bi bi-mortarboard" /></div>
           <div className="mu-stat-label">Programmes</div>
           <div className="mu-stat-value">{dashboardData.stats.totalProgrammes}</div>
           <div className="mu-stat-change up">
-            <i className="bi bi-building" />
-            {dashboardData.stats.totalDepartments} Departments
+            <i className="bi bi-building" /> {dashboardData.stats.totalDepartments} Departments
           </div>
         </div>
         <div className="mu-stat-card">
-          <div className="mu-stat-icon purple">
-            <i className="bi bi-award" />
-          </div>
+          <div className="mu-stat-icon purple"><i className="bi bi-award" /></div>
           <div className="mu-stat-label">Graduated</div>
           <div className="mu-stat-value">{dashboardData.stats.graduatedStudents}</div>
           <div className="mu-stat-change up">
-            <i className="bi bi-check-circle" />
-            Total Graduates
+            <i className="bi bi-check-circle" /> Total Graduates
           </div>
         </div>
         <div className="mu-stat-card">
-          <div className="mu-stat-icon red">
-            <i className="bi bi-clock" />
-          </div>
+          <div className="mu-stat-icon red"><i className="bi bi-clock" /></div>
           <div className="mu-stat-label">Deferred</div>
           <div className="mu-stat-value">
             {dashboardData.stats.totalStudents -
@@ -293,8 +289,7 @@ export default function AdminDashboard() {
               dashboardData.stats.graduatedStudents}
           </div>
           <div className="mu-stat-change down">
-            <i className="bi bi-pause-circle" />
-            Not Active
+            <i className="bi bi-pause-circle" /> Not Active
           </div>
         </div>
       </div>
@@ -303,11 +298,17 @@ export default function AdminDashboard() {
       <div className="mu-dashboard-grid-3" style={{ marginBottom: 24 }}>
         <div className="mu-card" style={{ gridColumn: "span 2" }}>
           <div className="mu-card-header">
-            <h4>Enrollment Trends</h4>
-            <span className="mu-badge mu-badge-primary">6 Semesters</span>
+            <h4>Student Reporting Trends</h4>
+            <span className="mu-badge mu-badge-primary">Last 3 Academic Years</span>
           </div>
           <div className="mu-card-body" style={{ height: 280 }}>
-            <Line data={lineChartData} options={lineChartOptions} />
+            {dashboardData.reportingTrends.length > 0 ? (
+              <Line data={reportingChartData} options={reportingChartOptions} />
+            ) : (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                No reporting data available yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -317,21 +318,33 @@ export default function AdminDashboard() {
             <span className="mu-badge mu-badge-primary">Top 5</span>
           </div>
           <div className="mu-card-body" style={{ height: 280 }}>
-            <Doughnut data={doughnutData} options={doughnutOptions} />
+            {dashboardData.programmeDistribution.length > 0 ? (
+              <Doughnut data={doughnutData} options={doughnutOptions} />
+            ) : (
+              <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+                No programme data available yet.
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Bar Chart */}
+      {/* Department combo chart: total students (bar) + male/female split (lines) */}
       <div className="mu-card" style={{ marginBottom: 24 }}>
         <div className="mu-card-header">
-          <h4>Students per Department</h4>
+          <h4>Students per Department — Gender Split</h4>
           <span className="mu-badge mu-badge-primary">
             {dashboardData.departmentStats.length} Departments
           </span>
         </div>
-        <div className="mu-card-body" style={{ height: 280 }}>
-          <Bar data={barChartData} options={barChartOptions} />
+        <div className="mu-card-body" style={{ height: 300 }}>
+          {dashboardData.departmentStats.length > 0 ? (
+            <Chart type="bar" data={departmentComboData} options={departmentComboOptions} />
+          ) : (
+            <div style={{ padding: 48, textAlign: "center", color: "var(--mu-gray-400)" }}>
+              No department data available yet.
+            </div>
+          )}
         </div>
       </div>
 
@@ -340,12 +353,9 @@ export default function AdminDashboard() {
         <div className="mu-card-header">
           <h4>Recent Student Admissions</h4>
           <div style={{ display: "flex", gap: 8 }}>
-            <span className="mu-badge mu-badge-primary">
-              {dashboardData.recentStudents.length} Students
-            </span>
+            <span className="mu-badge mu-badge-primary">{dashboardData.recentStudents.length} Students</span>
             <Link to="/students" className="mu-btn mu-btn-sm mu-btn-outline-primary">
-              View All
-              <i className="bi bi-chevron-right" />
+              View All <i className="bi bi-chevron-right" />
             </Link>
           </div>
         </div>
@@ -355,43 +365,25 @@ export default function AdminDashboard() {
               <table className="mu-table mu-table-hover">
                 <thead>
                   <tr>
-                    <th>Registration</th>
-                    <th>Name</th>
-                    <th>Programme</th>
-                    <th>Year</th>
-                    <th>Status</th>
-                    <th>Admission Date</th>
-                    <th>Action</th>
+                    <th>Registration</th><th>Name</th><th>Programme</th><th>Year</th>
+                    <th>Status</th><th>Admission Date</th><th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dashboardData.recentStudents.map((student) => (
                     <tr key={student.id}>
-                      <td>
-                        <strong>{student.registration_number || "N/A"}</strong>
-                      </td>
-                      <td>
-                        {student.user_detail?.first_name || ""} {student.user_detail?.last_name || ""}
-                      </td>
+                      <td><strong>{student.registration_number || "N/A"}</strong></td>
+                      <td>{student.user_detail?.first_name || ""} {student.user_detail?.last_name || ""}</td>
                       <td>{student.programme_detail?.code || "N/A"}</td>
-                      <td>
-                        Y{student.current_year || 1} S{student.current_semester || 1}
-                      </td>
+                      <td>Y{student.current_year || 1} S{student.current_semester || 1}</td>
                       <td>
                         <span className={`mu-badge mu-badge-${getStatusBadge(student.status)}`}>
                           {student.status || "Active"}
                         </span>
                       </td>
+                      <td>{student.admission_date ? new Date(student.admission_date).toLocaleDateString() : "N/A"}</td>
                       <td>
-                        {student.admission_date
-                          ? new Date(student.admission_date).toLocaleDateString()
-                          : "N/A"}
-                      </td>
-                      <td>
-                        <Link
-                          to={`/students/${student.id}`}
-                          className="mu-btn mu-btn-sm mu-btn-outline-primary"
-                        >
+                        <Link to={`/students/${student.id}`} className="mu-btn mu-btn-sm mu-btn-outline-primary">
                           <i className="bi bi-eye" />
                         </Link>
                       </td>
@@ -409,7 +401,6 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
-
     </div>
   );
 }
