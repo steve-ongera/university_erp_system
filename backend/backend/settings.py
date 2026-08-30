@@ -17,8 +17,25 @@ SECRET_KEY = 'django-insecure-jevja*r)(tikp%^0d3=6&p-k0!z(vtvj!#5ehie2(a&cu8mkqr
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "192.168.201.92",
+]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://192.168.201.92:5173",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://192.168.201.92:5173",
+]
 
 # Application definition
 
@@ -39,6 +56,7 @@ INSTALLED_APPS = [
     "notifications",
     "library",
 ]
+
 
 
 MIDDLEWARE = [
@@ -121,10 +139,6 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
 }
-
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000"
-).split(",")
 
 # Bank/ERP webhook shared secret — validate this header at the gateway
 # (nginx) or inside BankPaymentWebhookView before trusting a payment.
