@@ -365,12 +365,42 @@ class FeeStructureSerializer(serializers.ModelSerializer):
     class Meta:
         model = m.FeeStructure
         fields = "__all__"
+        # DRF auto-adds a UniqueTogetherValidator for unique_together fields,
+        # which only produces a generic "must make a unique set" message with
+        # no way for the frontend to act on it. We disable that default and
+        # do the check ourselves in validate() so we can hand back the
+        # actual conflicting record.
+        validators = []
 
     def get_total_fee(self, obj):
         return obj.total_fee()
 
     def get_net_fee(self, obj):
         return obj.net_fee()
+
+    def validate(self, attrs):
+        programme = attrs.get("programme", getattr(self.instance, "programme", None))
+        academic_year = attrs.get("academic_year", getattr(self.instance, "academic_year", None))
+        year = attrs.get("year", getattr(self.instance, "year", None))
+        semester = attrs.get("semester", getattr(self.instance, "semester", None))
+
+        qs = m.FeeStructure.objects.filter(
+            programme=programme, academic_year=academic_year, year=year, semester=semester,
+        )
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        existing = qs.select_related("programme", "academic_year").first()
+        if existing:
+            raise serializers.ValidationError({
+                "non_field_errors": [
+                    "A fee structure already exists for this programme, academic year, year and semester."
+                ],
+                # Full duplicate record so the frontend can offer "edit
+                # existing" without a second request.
+                "duplicate_fee_structure": FeeStructureSerializer(existing).data,
+            })
+        return attrs
 
 
 class InvoiceSerializer(serializers.ModelSerializer):

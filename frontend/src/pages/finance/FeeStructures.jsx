@@ -25,11 +25,13 @@ function unwrapList(data) {
 function summarizeErrors(err) {
   const data = err?.response?.data;
   if (!data || typeof data !== "object") return null;
-  const parts = Object.entries(data).map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(" ") : msgs}`);
+  const parts = Object.entries(data)
+    .filter(([field]) => field !== "duplicate_fee_structure") // handled separately, not a plain message
+    .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(" ") : msgs}`);
   return parts.join(" ");
 }
 
-function FeeStructureFormModal({ mode, feeStructure, programmes, academicYears, onClose, onSaved }) {
+function FeeStructureFormModal({ mode, feeStructure, programmes, academicYears, onClose, onSaved, onEditExisting }) {
   const isEdit = mode === "edit";
   const [form, setForm] = useState({
     programme: feeStructure?.programme || "",
@@ -42,12 +44,20 @@ function FeeStructureFormModal({ mode, feeStructure, programmes, academicYears, 
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [duplicateMatch, setDuplicateMatch] = useState(null); // holds the conflicting record, if the server reports one
 
-  const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const handleChange = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+    // Once the user changes anything, the previous duplicate warning may no
+    // longer apply — clear it rather than leave a stale "Edit existing" button.
+    setDuplicateMatch(null);
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setDuplicateMatch(null);
     if (!form.programme || !form.academic_year || !form.tuition_fee) {
       setError("Programme, academic year and tuition fee are required.");
       return;
@@ -64,7 +74,17 @@ function FeeStructureFormModal({ mode, feeStructure, programmes, academicYears, 
         : (await financeApi.createFeeStructure(payload)).data;
       onSaved(data, isEdit ? "Fee structure updated." : "Fee structure created.");
     } catch (err) {
-      setError(err.response?.data?.detail || summarizeErrors(err) || "Could not save fee structure.");
+      const responseData = err?.response?.data;
+      if (responseData?.duplicate_fee_structure) {
+        const existing = responseData.duplicate_fee_structure;
+        setDuplicateMatch(existing);
+        setError(
+          `A fee structure already exists for this programme, academic year, year and semester ` +
+          `(Ksh ${Number(existing.net_fee).toLocaleString()} net fee).`
+        );
+      } else {
+        setError(responseData?.detail || summarizeErrors(err) || "Could not save fee structure.");
+      }
     } finally {
       setSaving(false);
     }
@@ -73,7 +93,23 @@ function FeeStructureFormModal({ mode, feeStructure, programmes, academicYears, 
   return (
     <Modal isOpen={true} onClose={onClose} title={isEdit ? "Edit Fee Structure" : "Add Fee Structure"} size="lg">
       <form onSubmit={handleSubmit}>
-        {error && <div className="mu-alert mu-alert-danger"><i className="bi bi-exclamation-triangle" /> {error}</div>}
+        {error && (
+          <div
+            className="mu-alert mu-alert-danger"
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
+          >
+            <span><i className="bi bi-exclamation-triangle" /> {error}</span>
+            {duplicateMatch && (
+              <button
+                type="button"
+                className="mu-btn mu-btn-sm mu-btn-secondary"
+                onClick={() => onEditExisting(duplicateMatch)}
+              >
+                <i className="bi bi-pencil" /> Edit existing
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="mu-form-group">
           <label>Programme</label>
@@ -502,9 +538,9 @@ export default function FeeStructures() {
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Programme:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 130, 
-                            padding: "3px 8px", 
+                          style={{
+                            width: 130,
+                            padding: "3px 8px",
                             fontSize: "var(--mu-font-size-xs)",
                             minHeight: "auto",
                             height: 28
@@ -522,9 +558,9 @@ export default function FeeStructures() {
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Year:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 110, 
-                            padding: "3px 8px", 
+                          style={{
+                            width: 110,
+                            padding: "3px 8px",
                             fontSize: "var(--mu-font-size-xs)",
                             minHeight: "auto",
                             height: 28
@@ -542,9 +578,9 @@ export default function FeeStructures() {
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>P Year:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 90, 
-                            padding: "3px 8px", 
+                          style={{
+                            width: 90,
+                            padding: "3px 8px",
                             fontSize: "var(--mu-font-size-xs)",
                             minHeight: "auto",
                             height: 28
@@ -562,9 +598,9 @@ export default function FeeStructures() {
                         <span style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-500)", fontWeight: 500 }}>Sem:</span>
                         <select
                           className="mu-select"
-                          style={{ 
-                            width: 90, 
-                            padding: "3px 8px", 
+                          style={{
+                            width: 90,
+                            padding: "3px 8px",
                             fontSize: "var(--mu-font-size-xs)",
                             minHeight: "auto",
                             height: 28
@@ -729,6 +765,7 @@ export default function FeeStructures() {
           programmes={programmes} academicYears={academicYears}
           onClose={() => setFormModal(null)}
           onSaved={(_d, msg) => { setFormModal(null); showToast(msg); fetchItems(); }}
+          onEditExisting={(existing) => setFormModal({ mode: "edit", feeStructure: existing })}
         />
       )}
 

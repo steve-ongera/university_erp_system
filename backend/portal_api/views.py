@@ -921,7 +921,7 @@ class FeeStructureViewSet(viewsets.ModelViewSet):
     search_fields = ["programme__name", "programme__code"]
     ordering_fields = ["year", "semester", "tuition_fee"]
     ordering = ["-id"]
-    
+
     @action(detail=True, methods=["get"], url_path="students",
             permission_classes=[IsRole.for_roles("admin", "finance", "registrar")])
     def students(self, request, pk=None):
