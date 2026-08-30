@@ -15,59 +15,118 @@ function RoomBedGrid({ rooms, selectedBedId, onSelectBed }) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      {rooms.map((room) => (
-        <div key={room.id} className="mu-card" style={{ margin: 0 }}>
-          <div className="mu-card-body" style={{ padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <strong>Room {room.room_number}</strong>
-              <span style={{ fontSize: 12, color: "var(--mu-gray-500)" }}>Capacity: {room.capacity}</span>
+    <div className="mu-room-grid">
+      {rooms.map((room) => {
+        const beds = room.beds || [];
+        const totalBeds = room.capacity || 0;
+        const availableBeds = beds.filter(b => b.is_available).length;
+
+        return (
+          <div key={room.id} className="mu-card mu-room-card-compact">
+            {/* Room Header */}
+            <div className="mu-room-header-compact">
+              <div className="room-title">
+                <i className="bi bi-door-open" />
+                <span>Room {room.room_number}</span>
+              </div>
+              <div className="room-availability">
+                <i className="bi bi-people" />
+                {availableBeds}/{totalBeds}
+              </div>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {room.beds.length === 0 ? (
-                <span style={{ fontSize: 12, color: "var(--mu-gray-400)" }}>No beds set up for this room.</span>
-              ) : (
-                room.beds.map((bed) => {
-                  const isSelected = String(bed.id) === String(selectedBedId);
-                  const isFrozen = !bed.is_available;
-                  return (
-                    <button
-                      key={bed.id}
-                      type="button"
-                      disabled={isFrozen}
-                      onClick={() => onSelectBed(bed, room)}
-                      title={isFrozen ? "Already booked" : `Bed ${bed.bed_number} — available`}
-                      style={{
-                        width: 68,
-                        height: 68,
-                        borderRadius: 8,
-                        border: isSelected ? "2px solid var(--mu-primary-500)" : "1px solid var(--mu-gray-200)",
-                        background: isFrozen ? "var(--mu-gray-100)" : isSelected ? "var(--mu-primary-50)" : "#fff",
-                        color: isFrozen ? "var(--mu-gray-400)" : "var(--mu-gray-700)",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 2,
-                        fontSize: 11,
-                        cursor: isFrozen ? "not-allowed" : "pointer",
-                        transition: "background 0.15s, border-color 0.15s",
-                      }}
-                    >
-                      <i className={`bi ${isFrozen ? "bi-lock-fill" : "bi-bed"}`} style={{ fontSize: 18 }} />
-                      <span>{bed.bed_number}</span>
-                    </button>
-                  );
-                })
-              )}
+
+            {/* Room Body */}
+            <div className="mu-room-body-compact">
+              {/* Floor Plan */}
+              <div className="mu-floor-plan-compact">
+                {beds.length === 0 ? (
+                  <div style={{
+                    gridColumn: "1 / -1",
+                    textAlign: "center",
+                    color: "var(--mu-gray-400)",
+                    fontSize: 10,
+                    padding: "12px 0",
+                  }}>
+                    <i className="bi bi-bed" style={{ fontSize: 16, display: "block", marginBottom: 2 }} />
+                    No beds
+                  </div>
+                ) : (
+                  beds.map((bed) => {
+                    const isSelected = String(bed.id) === String(selectedBedId);
+                    const isFrozen = !bed.is_available;
+
+                    return (
+                      <button
+                        key={bed.id}
+                        type="button"
+                        disabled={isFrozen}
+                        onClick={() => onSelectBed(bed, room)}
+                        title={isFrozen ? "Already booked" : `Bed ${bed.bed_number} — available`}
+                        className={`mu-bed-btn-compact ${
+                          isSelected ? "mu-bed-btn-selected" :
+                          isFrozen ? "mu-bed-btn-booked" :
+                          "mu-bed-btn-available"
+                        }`}
+                      >
+                        <div style={{ position: "relative" }}>
+                          {isFrozen ? (
+                            <i className="bi bi-lock-fill bed-icon" />
+                          ) : (
+                            <i className="bi bi-bed bed-icon" />
+                          )}
+                          {isSelected && (
+                            <div className="mu-bed-checkmark-compact">✓</div>
+                          )}
+                        </div>
+                        <span className="bed-number">Bed {bed.bed_number}</span>
+                        {!isFrozen && (
+                          <span className="bed-status" style={{ color: "var(--mu-success)" }}>
+                            ● Avail
+                          </span>
+                        )}
+                        {isFrozen && (
+                          <span className="bed-status" style={{ color: "var(--mu-gray-500)" }}>
+                            ● Booked
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Room Footer */}
+              <div className="mu-room-footer-compact">
+                <span>
+                  <i className="bi bi-grid" />
+                  {totalBeds} beds
+                </span>
+                <span className="available-count">
+                  <i className="bi bi-check-circle" />
+                  {availableBeds} available
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-      <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--mu-gray-500)", marginTop: 4 }}>
-        <span><i className="bi bi-bed" /> Available</span>
-        <span><i className="bi bi-lock-fill" /> Already booked (frozen)</span>
-        <span style={{ color: "var(--mu-primary-500)" }}><i className="bi bi-check-circle" /> Selected</span>
+        );
+      })}
+
+      {/* Legend */}
+      <div className="mu-legend-compact">
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-available" />
+          Available
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-booked" />
+          <i className="bi bi-lock-fill" style={{ fontSize: 9 }} />
+          Booked
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-selected" />
+          <i className="bi bi-check-circle" style={{ color: "var(--mu-primary-500)", fontSize: 9 }} />
+          Selected
+        </span>
       </div>
     </div>
   );
@@ -100,8 +159,6 @@ export default function HostelBooking() {
         hostelApi.hostels(),
       ]);
       setStatus(statusRes.data);
-      // HostelViewSet already filters to gender-appropriate hostels
-      // server-side for student accounts, so no client-side filtering needed.
       setHostels(Array.isArray(hostelsRes.data) ? hostelsRes.data : hostelsRes.data.results || []);
     } catch (err) {
       console.error("Error fetching hostel status:", err);
@@ -136,7 +193,7 @@ export default function HostelBooking() {
   };
 
   const handleSelectBed = (bed, room) => {
-    if (!bed.is_available) return; // frozen — should already be disabled, this is a belt-and-braces guard
+    if (!bed.is_available) return;
     setSelectedBed(bed);
     setSelectedRoom(room);
   };
@@ -150,9 +207,6 @@ export default function HostelBooking() {
     setError("");
     setSuccess("");
     try {
-      // Only `bed` is required now — the backend derives the current
-      // semester itself, so there's no risk of a missing/undefined field
-      // silently dropping out of the request body.
       await hostelApi.book({ bed: selectedBed.id });
       setSuccess("Hostel booking submitted successfully.");
       setConfirmModalOpen(false);
@@ -165,8 +219,6 @@ export default function HostelBooking() {
     } catch (err) {
       console.error("Error booking bed:", err);
       setError(err.response?.data?.detail || "Failed to book bed. It may have just been taken by another student.");
-      // Refresh the layout in case the bed we picked was booked by someone
-      // else in the meantime — it should now show as frozen.
       if (selectedHostelId) loadLayout(selectedHostelId);
     } finally {
       setBooking(false);
@@ -374,7 +426,7 @@ export default function HostelBooking() {
 
               {selectedHostelId && (
                 <div style={{ marginTop: 16 }}>
-                  <h5 style={{ marginBottom: 10 }}>
+                  <h5 style={{ marginBottom: 10, fontSize: "var(--mu-font-size-base)" }}>
                     <i className="bi bi-grid-3x3-gap" style={{ marginRight: 6 }} />
                     Rooms &amp; Beds — {layoutHostel?.name}
                   </h5>

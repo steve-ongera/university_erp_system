@@ -3835,3 +3835,478 @@ hr {
     gap: 0;
   }
 }
+
+/* ==========================================================================
+   HOSTEL BOOKING - COMPACT ROOM GRID
+   ========================================================================== */
+
+/* Room Grid Container - Smaller cards */
+.mu-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* Room Card - Compact version */
+.mu-room-card-compact {
+  overflow: hidden;
+  margin: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: var(--mu-radius-sm);
+}
+
+.mu-room-card-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mu-shadow-md);
+}
+
+/* Room Header - Smaller */
+.mu-room-header-compact {
+  background: linear-gradient(135deg, var(--mu-primary-600), var(--mu-primary-700));
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+}
+
+.mu-room-header-compact .room-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mu-room-header-compact .room-title .bi {
+  font-size: 14px;
+}
+
+.mu-room-header-compact .room-availability {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.mu-room-header-compact .room-availability .bi {
+  font-size: 11px;
+  margin-right: 3px;
+}
+
+/* Room Body - Compact padding */
+.mu-room-body-compact {
+  padding: 10px 12px 12px;
+}
+
+/* Floor Plan - Smaller beds */
+.mu-floor-plan-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  background: var(--mu-gray-50);
+  border-radius: var(--mu-radius-sm);
+  padding: 8px;
+  min-height: 80px;
+  border: 1px dashed var(--mu-gray-300);
+  position: relative;
+}
+
+/* Bed Button - Compact size */
+.mu-bed-btn-compact {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: var(--mu-radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 9px;
+  padding: 2px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid var(--mu-gray-200);
+  background: #fff;
+  color: var(--mu-gray-700);
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mu-bed-btn-compact:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.mu-bed-btn-compact .bed-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.mu-bed-btn-compact .bed-number {
+  font-weight: 500;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.mu-bed-btn-compact .bed-status {
+  font-size: 6px;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Bed States */
+.mu-bed-btn-available {
+  border-color: var(--mu-gray-200);
+  background: #fff;
+}
+
+.mu-bed-btn-available:hover:not(:disabled) {
+  border-color: var(--mu-primary-300);
+  background: var(--mu-primary-50);
+  transform: scale(1.05);
+  box-shadow: var(--mu-shadow-sm);
+}
+
+.mu-bed-btn-selected {
+  border: 2px solid var(--mu-primary-500);
+  background: var(--mu-primary-50);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.mu-bed-btn-booked {
+  border-color: var(--mu-gray-300);
+  background: var(--mu-gray-200);
+  color: var(--mu-gray-400);
+}
+
+.mu-bed-btn-booked .bed-icon {
+  color: var(--mu-gray-500);
+}
+
+/* Selected checkmark - Smaller */
+.mu-bed-checkmark-compact {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  background: var(--mu-primary-500);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Room Footer - Compact */
+.mu-room-footer-compact {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--mu-gray-500);
+  border-top: 1px solid var(--mu-gray-200);
+  padding-top: 6px;
+}
+
+.mu-room-footer-compact .bi {
+  font-size: 10px;
+  margin-right: 3px;
+}
+
+.mu-room-footer-compact .available-count {
+  color: var(--mu-success);
+}
+
+/* Legend - Compact */
+.mu-legend-compact {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--mu-gray-500);
+  padding: 8px 0;
+  border-top: 1px solid var(--mu-gray-200);
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mu-legend-compact .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mu-legend-compact .legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.mu-legend-compact .legend-dot-available {
+  background: #fff;
+  border: 1px solid var(--mu-gray-200);
+}
+
+.mu-legend-compact .legend-dot-booked {
+  background: var(--mu-gray-200);
+  border: 1px solid var(--mu-gray-300);
+}
+
+.mu-legend-compact .legend-dot-selected {
+  background: var(--mu-primary-50);
+  border: 2px solid var(--mu-primary-500);
+}
+
+.mu-legend-compact .bi {
+  font-size: 9px;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+/* Tablets and small laptops */
+@media (max-width: 1024px) {
+  .mu-room-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .mu-floor-plan-compact {
+    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    gap: 5px;
+    padding: 6px;
+    min-height: 70px;
+  }
+
+  .mu-bed-btn-compact {
+    min-height: 38px;
+    min-width: 38px;
+  }
+
+  .mu-bed-btn-compact .bed-icon {
+    font-size: 12px;
+  }
+
+  .mu-bed-btn-compact .bed-number {
+    font-size: 7px;
+  }
+
+  .mu-room-header-compact .room-title {
+    font-size: 12px;
+  }
+
+  .mu-room-header-compact .room-availability {
+    font-size: 9px;
+  }
+}
+
+/* Tablets and large phones */
+@media (max-width: 768px) {
+  .mu-room-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .mu-room-header-compact {
+    padding: 6px 10px;
+  }
+
+  .mu-room-header-compact .room-title {
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .mu-room-header-compact .room-title .bi {
+    font-size: 12px;
+  }
+
+  .mu-room-header-compact .room-availability {
+    font-size: 8px;
+  }
+
+  .mu-room-body-compact {
+    padding: 8px 10px 10px;
+  }
+
+  .mu-floor-plan-compact {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 4px;
+    padding: 5px;
+    min-height: 60px;
+  }
+
+  .mu-bed-btn-compact {
+    min-height: 34px;
+    min-width: 34px;
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  .mu-bed-btn-compact .bed-icon {
+    font-size: 10px;
+  }
+
+  .mu-bed-btn-compact .bed-number {
+    font-size: 6px;
+  }
+
+  .mu-bed-btn-compact .bed-status {
+    font-size: 5px;
+  }
+
+  .mu-bed-checkmark-compact {
+    width: 12px;
+    height: 12px;
+    font-size: 6px;
+    top: -2px;
+    right: -2px;
+  }
+
+  .mu-room-footer-compact {
+    font-size: 9px;
+    padding-top: 5px;
+    margin-top: 6px;
+  }
+
+  .mu-room-footer-compact .bi {
+    font-size: 9px;
+  }
+
+  .mu-legend-compact {
+    font-size: 9px;
+    gap: 8px;
+    padding: 6px 0;
+  }
+
+  .mu-legend-compact .legend-dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .mu-room-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .mu-room-header-compact {
+    padding: 5px 8px;
+  }
+
+  .mu-room-header-compact .room-title {
+    font-size: 10px;
+    gap: 3px;
+  }
+
+  .mu-room-header-compact .room-title .bi {
+    font-size: 10px;
+  }
+
+  .mu-room-header-compact .room-availability {
+    font-size: 7px;
+  }
+
+  .mu-room-body-compact {
+    padding: 6px 8px 8px;
+  }
+
+  .mu-floor-plan-compact {
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    gap: 3px;
+    padding: 4px;
+    min-height: 50px;
+    border-radius: 3px;
+  }
+
+  .mu-bed-btn-compact {
+    min-height: 28px;
+    min-width: 28px;
+    border-radius: 3px;
+    padding: 1px;
+    gap: 0;
+  }
+
+  .mu-bed-btn-compact .bed-icon {
+    font-size: 8px;
+  }
+
+  .mu-bed-btn-compact .bed-number {
+    font-size: 5px;
+  }
+
+  .mu-bed-btn-compact .bed-status {
+    display: none;
+  }
+
+  .mu-bed-checkmark-compact {
+    width: 10px;
+    height: 10px;
+    font-size: 5px;
+    top: -2px;
+    right: -2px;
+  }
+
+  .mu-room-footer-compact {
+    font-size: 8px;
+    padding-top: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .mu-room-footer-compact .bi {
+    font-size: 8px;
+    margin-right: 2px;
+  }
+
+  .mu-legend-compact {
+    font-size: 8px;
+    gap: 6px;
+    padding: 4px 0;
+  }
+
+  .mu-legend-compact .legend-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .mu-legend-compact .bi {
+    font-size: 8px;
+  }
+}
+
+/* Very small phones (320px and below) */
+@media (max-width: 360px) {
+  .mu-room-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .mu-floor-plan-compact {
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    gap: 4px;
+  }
+
+  .mu-bed-btn-compact {
+    min-height: 32px;
+    min-width: 32px;
+  }
+
+  .mu-bed-btn-compact .bed-icon {
+    font-size: 10px;
+  }
+
+  .mu-bed-btn-compact .bed-number {
+    font-size: 6px;
+  }
+}
