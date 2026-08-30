@@ -1843,3 +1843,114 @@ class AdminDashboardService:
                 distribution.append({"name": programme.name, "code": programme.code, "count": count})
         distribution.sort(key=lambda x: x["count"], reverse=True)
         return distribution
+    
+    
+
+class HostelInventoryService:
+    """
+    Bulk room/bed provisioning for the hostel warden. This is additive to
+    the existing per-room RoomViewSet/BedViewSet CRUD — manual add/edit/
+    delete of a single room or bed still works exactly as before. This
+    class exists purely to make provisioning hundreds of rooms/beds at
+    once fast, instead of one request per room/bed from the frontend.
+
+    Both methods are idempotent: re-running either never touches or
+    duplicates rooms/beds that already exist.
+    """
+
+    BED_LETTERS = "ABCDEFGHIJKL"
+
+    @classmethod
+    @transaction.atomic
+    def bulk_generate_rooms(cls, *, hostel: m.Hostel, academic_year: m.AcademicYear,
+                             room_count: int, beds_per_room: int,
+                             start_room_number: int = 1, prefix: str = "") -> dict:
+        """
+        Creates up to `room_count` NEW rooms for `hostel` (skipping any
+        room_number that already exists on this hostel), each with
+        `beds_per_room` beds provisioned for `academic_year`. Room
+        capacity is set to beds_per_room. Room numbers are generated
+        sequentially as f"{prefix}{n}" starting at start_room_number,
+        walking forward past any numbers that collide with existing rooms.
+        """
+        if room_count <= 0:
+            raise ValueError("Number of rooms must be greater than zero.")
+        if beds_per_room <= 0 or beds_per_room > len(cls.BED_LETTERS):
+            raise ValueError(f"Beds per room must be between 1 and {len(cls.BED_LETTERS)}.")
+
+        existing_numbers = set(
+            m.Room.objects.filter(hostel=hostel).values_list("room_number", flat=True)
+        )
+
+        created_rooms = []
+        number = start_room_number
+        # Bound the search so a pathological input (e.g. thousands of
+        # pre-existing rooms all colliding) can't loop forever.
+        safety_limit = start_room_number + room_count * 20
+
+        while len(created_rooms) < room_count and number < safety_limit:
+            room_number = f"{prefix}{number}"
+            number += 1
+            if room_number in existing_numbers:
+                continue
+            room = m.Room.objects.create(
+                hostel=hostel, room_number=room_number, capacity=beds_per_room, is_active=True,
+            )
+            existing_numbers.add(room_number)
+            created_rooms.append(room)
+
+        if len(created_rooms) < room_count:
+            raise ValueError(
+                f"Could only create {len(created_rooms)} of {room_count} requested rooms — "
+                "too many room-number collisions with existing rooms. Try a different prefix "
+                "or starting number."
+            )
+
+        beds_created = 0
+        bed_letters = cls.BED_LETTERS[:beds_per_room]
+        for room in created_rooms:
+            m.Bed.objects.bulk_create([
+                m.Bed(room=room, academic_year=academic_year, bed_number=letter, is_available=True)
+                for letter in bed_letters
+            ])
+            beds_created += len(bed_letters)
+
+        return {
+            "rooms_created": len(created_rooms),
+            "beds_created": beds_created,
+            "room_numbers": [r.room_number for r in created_rooms],
+        }
+
+    @classmethod
+    @transaction.atomic
+    def generate_beds_for_year(cls, *, hostel: m.Hostel, academic_year: m.AcademicYear) -> dict:
+        """
+        For every active room already in `hostel` (created in a prior
+        year, or manually), ensures it has beds for `academic_year`
+        matching that room's own `capacity` — the bulk equivalent of
+        clicking "Generate Missing Beds" on every room at once. Never
+        creates or modifies rooms; only tops up missing beds for the
+        given year.
+        """
+        rooms = m.Room.objects.filter(hostel=hostel, is_active=True)
+        beds_created = 0
+        rooms_touched = 0
+
+        for room in rooms:
+            existing_bed_numbers = set(
+                m.Bed.objects.filter(room=room, academic_year=academic_year).values_list("bed_number", flat=True)
+            )
+            needed = max(room.capacity - len(existing_bed_numbers), 0)
+            if needed <= 0:
+                continue
+            letters = [l for l in cls.BED_LETTERS[:room.capacity] if l not in existing_bed_numbers][:needed]
+            if not letters:
+                continue
+            m.Bed.objects.bulk_create([
+                m.Bed(room=room, academic_year=academic_year, bed_number=letter, is_available=True)
+                for letter in letters
+            ])
+            beds_created += len(letters)
+            rooms_touched += 1
+
+        return {"rooms_touched": rooms_touched, "beds_created": beds_created}

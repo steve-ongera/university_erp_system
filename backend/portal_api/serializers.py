@@ -905,3 +905,15 @@ class RunPromotionRequestSerializer(serializers.Serializer):
         if data.get("bypass_result_check") and not data.get("bypass_reason"):
             raise serializers.ValidationError("bypass_reason is required when bypass_result_check is true.")
         return data
+    
+    
+class BulkGenerateRoomsSerializer(serializers.Serializer):
+    academic_year = serializers.PrimaryKeyRelatedField(queryset=m.AcademicYear.objects.all())
+    room_count = serializers.IntegerField(min_value=1, max_value=2000)
+    beds_per_room = serializers.IntegerField(min_value=1, max_value=12)
+    start_room_number = serializers.IntegerField(min_value=1, default=1)
+    prefix = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class GenerateBedsForYearSerializer(serializers.Serializer):
+    academic_year = serializers.PrimaryKeyRelatedField(queryset=m.AcademicYear.objects.all())

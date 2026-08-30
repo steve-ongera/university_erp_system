@@ -64,7 +64,7 @@ function HostelFormModal({ mode, hostel, onClose, onSaved }) {
 }
 
 // ----------------------------------------------------------------------
-// Room Add/Edit
+// Room Add/Edit (manual, single room)
 // ----------------------------------------------------------------------
 function RoomFormModal({ mode, room, hostel, onClose, onSaved }) {
   const isEdit = mode === "edit";
@@ -110,7 +110,158 @@ function RoomFormModal({ mode, room, hostel, onClose, onSaved }) {
 }
 
 // ----------------------------------------------------------------------
-// Rooms Modal (list + CRUD, per hostel) with nested Beds modal
+// Bulk Generate Rooms (new hostel setup — creates rooms + their beds)
+// ----------------------------------------------------------------------
+function BulkGenerateRoomsModal({ hostel, academicYear, onClose, onGenerated }) {
+  const [roomCount, setRoomCount] = useState(10);
+  const [bedsPerRoom, setBedsPerRoom] = useState(4);
+  const [startRoomNumber, setStartRoomNumber] = useState(1);
+  const [prefix, setPrefix] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setResult(null);
+    if (!academicYear) { setError("Select an academic year first."); return; }
+    if (!roomCount || Number(roomCount) < 1) { setError("Enter how many rooms to create."); return; }
+    if (!bedsPerRoom || Number(bedsPerRoom) < 1) { setError("Enter beds per room."); return; }
+    setSaving(true);
+    try {
+      const { data } = await hostelWardenApi.bulkGenerateRooms(hostel.id, {
+        academic_year: academicYear.id,
+        room_count: Number(roomCount),
+        beds_per_room: Number(bedsPerRoom),
+        start_room_number: Number(startRoomNumber) || 1,
+        prefix,
+      });
+      setResult(data);
+      onGenerated();
+    } catch (err) {
+      setError(err.response?.data?.detail || summarizeErrors(err) || "Could not generate rooms.");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={`Bulk Generate Rooms — ${hostel.name}`} onClose={onClose} width={460}>
+      <form onSubmit={handleSubmit}>
+        {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+        {result && (
+          <div className="mu-alert mu-alert-success" style={{ marginBottom: 16 }}>
+            Created {result.rooms_created} room(s) and {result.beds_created} bed(s) for {academicYear.year}.
+          </div>
+        )}
+        {!result && (
+          <div className="mu-alert mu-alert-info" style={{ marginBottom: 16, fontSize: 13 }}>
+            <i className="bi bi-info-circle" /> Generating for academic year <strong>{academicYear?.year || "—"}</strong>.
+            Room numbers that already exist on this hostel are skipped automatically.
+          </div>
+        )}
+
+        {!result && (
+          <>
+            <Field label="Number of Rooms to Create">
+              <input type="number" min={1} max={2000} className="mu-input" value={roomCount} onChange={(e) => setRoomCount(e.target.value)} />
+            </Field>
+
+            <div style={{ marginTop: 12 }}>
+              <Field label="Beds per Room">
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {[2, 4].map((n) => (
+                    <button
+                      key={n} type="button"
+                      className={`mu-btn mu-btn-sm ${Number(bedsPerRoom) === n ? "mu-btn-primary" : "mu-btn-outline-primary"}`}
+                      onClick={() => setBedsPerRoom(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <input
+                    type="number" min={1} max={12} className="mu-input" style={{ width: 90 }}
+                    value={bedsPerRoom} onChange={(e) => setBedsPerRoom(e.target.value)}
+                  />
+                </div>
+              </Field>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+              <Field label="Starting Room Number">
+                <input type="number" min={1} className="mu-input" value={startRoomNumber} onChange={(e) => setStartRoomNumber(e.target.value)} />
+              </Field>
+              <Field label="Prefix (optional)">
+                <input className="mu-input" placeholder="e.g. A-" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
+              </Field>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, color: "#888" }}>
+              Example: prefix "A-" with starting number 1 produces rooms A-1, A-2, A-3...
+            </div>
+          </>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+          <button type="button" className="mu-btn mu-btn-outline-primary" onClick={onClose}>{result ? "Close" : "Cancel"}</button>
+          {!result && (
+            <button type="submit" className="mu-btn mu-btn-primary" disabled={saving}>
+              {saving ? "Generating..." : "Generate"}
+            </button>
+          )}
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Generate Beds For Year (existing rooms — roll into a new year)
+// ----------------------------------------------------------------------
+function GenerateBedsForYearModal({ hostel, academicYear, onClose, onGenerated }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const { data } = await hostelWardenApi.generateBedsForYear(hostel.id, { academic_year: academicYear.id });
+      setResult(data);
+      onGenerated();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Could not generate beds.");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={`Generate Beds — ${hostel.name}`} onClose={onClose} width={420}>
+      {error && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+      {result ? (
+        <div className="mu-alert mu-alert-success">
+          Topped up {result.rooms_touched} room(s) with {result.beds_created} new bed(s) for {academicYear.year}.
+        </div>
+      ) : (
+        <p style={{ marginTop: 0 }}>
+          This creates beds for <strong>{academicYear?.year}</strong> on every existing active room in{" "}
+          <strong>{hostel.name}</strong> that doesn't already have a full set, based on each room's own capacity.
+          No rooms are created or modified — use this when rolling into a new academic year without
+          changing your room layout.
+        </p>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+        <button className="mu-btn mu-btn-outline-primary" onClick={onClose}>{result ? "Close" : "Cancel"}</button>
+        {!result && (
+          <button className="mu-btn mu-btn-primary" onClick={handleConfirm} disabled={saving}>
+            {saving ? "Generating..." : "Generate Beds"}
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Beds Modal (per room — unchanged: view/generate-missing/delete a bed)
 // ----------------------------------------------------------------------
 function BedsModal({ room, academicYear, onClose, showToast }) {
   const [beds, setBeds] = useState([]);
@@ -195,6 +346,9 @@ function BedsModal({ room, academicYear, onClose, showToast }) {
   );
 }
 
+// ----------------------------------------------------------------------
+// Rooms Modal (list + CRUD, per hostel) with bulk-generate entry points
+// ----------------------------------------------------------------------
 function RoomsModal({ hostel, academicYears, onClose, showToast }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -202,6 +356,7 @@ function RoomsModal({ hostel, academicYears, onClose, showToast }) {
   const [roomForm, setRoomForm] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [bedsRoom, setBedsRoom] = useState(null);
+  const [bulkModal, setBulkModal] = useState(null); // "rooms" | "beds" | null
 
   const load = useCallback(() => {
     setLoading(true);
@@ -227,23 +382,37 @@ function RoomsModal({ hostel, academicYears, onClose, showToast }) {
 
   const selectedYear = academicYears.find((y) => y.id === academicYearId);
 
+  const handleBulkGenerated = () => {
+    showToast("Rooms/beds generated.");
+    setBulkModal(null);
+    load();
+  };
+
   return (
-    <Modal title={`Rooms — ${hostel.name}`} onClose={onClose} width={620}>
+    <Modal title={`Rooms — ${hostel.name}`} onClose={onClose} width={680}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
         <div style={{ width: 200 }}>
-          <Field label="Manage Beds For Year">
+          <Field label="Manage For Academic Year">
             <select className="mu-input" value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)}>
               {academicYears.map((y) => <option key={y.id} value={y.id}>{y.year}</option>)}
             </select>
           </Field>
         </div>
-        <button className="mu-btn mu-btn-sm mu-btn-primary" onClick={() => setRoomForm({ mode: "add" })}>
-          <i className="bi bi-plus-circle" /> Add Room
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setBulkModal("beds")} disabled={!selectedYear}>
+            <i className="bi bi-magic" /> Generate Beds For Year
+          </button>
+          <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setBulkModal("rooms")} disabled={!selectedYear}>
+            <i className="bi bi-grid-3x3-gap-fill" /> Bulk Generate Rooms
+          </button>
+          <button className="mu-btn mu-btn-sm mu-btn-primary" onClick={() => setRoomForm({ mode: "add" })}>
+            <i className="bi bi-plus-circle" /> Add Room
+          </button>
+        </div>
       </div>
 
       {loading ? <LoadingSpinner text="Loading rooms..." /> : rooms.length === 0 ? (
-        <EmptyState icon="bi-door-closed" label="No rooms yet" />
+        <EmptyState icon="bi-door-closed" label="No rooms yet" hint="Add one manually, or use Bulk Generate Rooms above." />
       ) : (
         <div className="mu-table-wrapper">
           <table className="mu-table">
@@ -286,6 +455,20 @@ function RoomsModal({ hostel, academicYears, onClose, showToast }) {
       )}
       {bedsRoom && selectedYear && (
         <BedsModal room={bedsRoom} academicYear={selectedYear} onClose={() => setBedsRoom(null)} showToast={showToast} />
+      )}
+      {bulkModal === "rooms" && selectedYear && (
+        <BulkGenerateRoomsModal
+          hostel={hostel} academicYear={selectedYear}
+          onClose={() => setBulkModal(null)}
+          onGenerated={handleBulkGenerated}
+        />
+      )}
+      {bulkModal === "beds" && selectedYear && (
+        <GenerateBedsForYearModal
+          hostel={hostel} academicYear={selectedYear}
+          onClose={() => setBulkModal(null)}
+          onGenerated={handleBulkGenerated}
+        />
       )}
     </Modal>
   );

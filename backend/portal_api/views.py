@@ -2284,19 +2284,11 @@ class HostelViewSet(viewsets.ModelViewSet):
             student = getattr(user, "student_profile", None)
             if not student:
                 return qs.none()
-            # Female students only see girls'/mixed hostels, male students
-            # only see boys'/mixed — see HostelService.allowed_hostel_types.
             return qs.filter(hostel_type__in=services.HostelService.allowed_hostel_types(student))
         return qs
 
     @action(detail=True, methods=["get"], url_path="layout")
     def layout(self, request, pk=None):
-        """
-        Room-by-room, bed-by-bed occupancy for this hostel, scoped to the
-        current academic year — powers the visual room/bed picker on the
-        student booking page. Booked beds come back with is_available=False
-        so the frontend can render them frozen/disabled.
-        """
         hostel = self.get_object()
         user = request.user
 
@@ -2334,6 +2326,45 @@ class HostelViewSet(viewsets.ModelViewSet):
                 for room in rooms
             ],
         })
+
+    @action(detail=True, methods=["post"], url_path="bulk-generate-rooms",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def bulk_generate_rooms(self, request, pk=None):
+        """
+        Provisions a brand-new hostel: creates N rooms with M beds each
+        for the given academic year, in one call. See
+        HostelInventoryService.bulk_generate_rooms for the numbering /
+        collision-skipping rules.
+        """
+        hostel = self.get_object()
+        serializer = s.BulkGenerateRoomsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            result = services.HostelInventoryService.bulk_generate_rooms(
+                hostel=hostel, academic_year=data["academic_year"],
+                room_count=data["room_count"], beds_per_room=data["beds_per_room"],
+                start_room_number=data["start_room_number"], prefix=data.get("prefix", ""),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="generate-beds-for-year",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def generate_beds_for_year(self, request, pk=None):
+        """
+        Rolls existing rooms into a new academic year: tops up beds on
+        every already-existing room to match that room's own capacity,
+        without creating or changing any rooms.
+        """
+        hostel = self.get_object()
+        serializer = s.GenerateBedsForYearSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = services.HostelInventoryService.generate_beds_for_year(
+            hostel=hostel, academic_year=serializer.validated_data["academic_year"],
+        )
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class RoomViewSet(viewsets.ModelViewSet):
