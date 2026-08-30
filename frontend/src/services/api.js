@@ -174,6 +174,9 @@ export const gradesApi = {
 export const feesApi = {
   myFeeSummary: () => api.get("/me/fee-summary/"),
   invoices: () => api.get("/invoices/"),
+  payInvoice: (invoiceId, phoneNumber = "") =>
+    api.post(`/invoices/${invoiceId}/pay/`, { phone_number: phoneNumber }),
+  paymentReceipt: (paymentId) => api.get(`/fee-payments/${paymentId}/receipt/`),
   payments: () => api.get("/fee-payments/"),
   feeStructures: () => api.get("/fee-structures/"),
 };

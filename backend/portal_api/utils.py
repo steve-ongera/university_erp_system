@@ -10,6 +10,10 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
+import qrcode
+import base64
+from io import BytesIO
+
 
 # ----------------------------------------------------------------------
 # Registration numbers
@@ -155,3 +159,21 @@ def natural_sort_key(value: str):
     """
     return [int(chunk) if chunk.isdigit() else chunk.lower()
             for chunk in re.split(r"(\d+)", value or "")]
+    
+    
+    
+
+def generate_qr_code_base64(data: str) -> str:
+    """
+    Generates a QR code PNG for `data` and returns it as a base64 data URI
+    (e.g. "data:image/png;base64,...") that can be dropped straight into
+    an <img src="..."> on the frontend — no file storage needed.
+    """
+    qr = qrcode.QRCode(version=1, box_size=6, border=2)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{encoded}"

@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { feesApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import Modal from "../../components/Modal";
+
+function ReceiptRow({ label, value, bold }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "var(--mu-font-size-sm)" }}>
+      <span style={{ color: "var(--mu-gray-500)" }}>{label}:</span>
+      <span style={{ fontWeight: bold ? 700 : 500 }}>{value}</span>
+    </div>
+  );
+}
 
 export default function FeesPayments() {
   const [loading, setLoading] = useState(true);
@@ -9,30 +19,93 @@ export default function FeesPayments() {
   const [payments, setPayments] = useState([]);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const [summaryRes, paymentsRes] = await Promise.all([
-          feesApi.myFeeSummary(),
-          feesApi.payments(),
-        ]);
-        setSummary(summaryRes.data || { total_outstanding: 0, wallet_credit: 0, open_invoices: [] });
-        setPayments(Array.isArray(paymentsRes.data) ? paymentsRes.data : []);
-      } catch (err) {
-        console.error("Error fetching fees:", err);
-        setError("Failed to load your fee information.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  // Pay modal
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payTargetInvoiceId, setPayTargetInvoiceId] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
+
+  // Receipt modal
+  const [receipt, setReceipt] = useState(null);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [summaryRes, paymentsRes] = await Promise.all([
+        feesApi.myFeeSummary(),
+        feesApi.payments(),
+      ]);
+      setSummary(summaryRes.data || { total_outstanding: 0, wallet_credit: 0, open_invoices: [] });
+      setPayments(Array.isArray(paymentsRes.data) ? paymentsRes.data : []);
+    } catch (err) {
+      console.error("Error fetching fees:", err);
+      setError("Failed to load your fee information.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const openPayModal = (invoiceId = "") => {
+    const defaultId = invoiceId || summary.open_invoices?.[0]?.id || "";
+    setPayTargetInvoiceId(defaultId ? String(defaultId) : "");
+    setPhoneNumber("");
+    setPayError("");
+    setPayModalOpen(true);
+  };
+
+  const selectedInvoice = summary.open_invoices?.find(
+    (inv) => String(inv.id) === String(payTargetInvoiceId)
+  );
+
+  const handlePay = async () => {
+    if (!payTargetInvoiceId) {
+      setPayError("Select an invoice to pay.");
+      return;
+    }
+    if (!phoneNumber.trim()) {
+      setPayError("Enter the M-Pesa phone number to receive the STK push.");
+      return;
+    }
+    setPaying(true);
+    setPayError("");
+    try {
+      const { data } = await feesApi.payInvoice(payTargetInvoiceId, phoneNumber.trim());
+      setPayModalOpen(false);
+      setReceipt(data);
+      setReceiptModalOpen(true);
+      await fetchData();
+    } catch (err) {
+      console.error("Error paying invoice:", err);
+      setPayError(err.response?.data?.detail || "Payment failed. Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const viewReceipt = async (paymentId) => {
+    setError("");
+    try {
+      const { data } = await feesApi.paymentReceipt(paymentId);
+      setReceipt(data);
+      setReceiptModalOpen(true);
+    } catch (err) {
+      console.error("Error fetching receipt:", err);
+      setError("Failed to load receipt for this payment.");
+    }
+  };
+
+  const handlePrintReceipt = () => window.print();
 
   if (loading) {
     return <LoadingSpinner text="Loading your fees..." />;
   }
+
+  const hasOpenInvoices = (summary.open_invoices?.length || 0) > 0;
 
   return (
     <div>
@@ -49,7 +122,7 @@ export default function FeesPayments() {
         </div>
         <div className="mu-page-header-actions">
           {summary.total_outstanding > 0 && (
-            <button className="mu-btn mu-btn-primary">
+            <button className="mu-btn mu-btn-primary" onClick={() => openPayModal()} disabled={!hasOpenInvoices}>
               <i className="bi bi-credit-card" />
               Pay Now
             </button>
@@ -117,6 +190,7 @@ export default function FeesPayments() {
                     <th>Semester</th>
                     <th style={{ textAlign: "right" }}>Amount Due</th>
                     <th style={{ textAlign: "right" }}>Balance</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,6 +211,19 @@ export default function FeesPayments() {
                       </td>
                       <td style={{ textAlign: "right", fontWeight: 600, color: invoice.balance > 0 ? "var(--mu-danger)" : "var(--mu-success)" }}>
                         KES {Number(invoice.balance).toLocaleString()}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {invoice.balance > 0 ? (
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-primary"
+                            onClick={() => openPayModal(invoice.id)}
+                          >
+                            <i className="bi bi-phone" />
+                            Pay
+                          </button>
+                        ) : (
+                          <span className="mu-badge mu-badge-success">Paid</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -172,6 +259,7 @@ export default function FeesPayments() {
                     <th>Reference</th>
                     <th>Receipt No.</th>
                     <th>Status</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,6 +305,17 @@ export default function FeesPayments() {
                           </span>
                         )}
                       </td>
+                      <td style={{ textAlign: "right" }}>
+                        {payment.receipt_number && (
+                          <button
+                            className="mu-btn mu-btn-sm mu-btn-outline"
+                            onClick={() => viewReceipt(payment.id)}
+                          >
+                            <i className="bi bi-receipt" />
+                            Receipt
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -230,6 +329,110 @@ export default function FeesPayments() {
           )}
         </div>
       </div>
+
+      {/* Pay Modal */}
+      <Modal
+        isOpen={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        title="Pay Invoice via M-Pesa"
+        size="md"
+        confirmText={paying ? "Sending..." : "Send STK Push"}
+        onConfirm={handlePay}
+        isLoading={paying}
+      >
+        <div>
+          <div className="mu-alert mu-alert-info" style={{ marginBottom: 16 }}>
+            <i className="bi bi-info-circle" />
+            M-Pesa integration is in test mode — this payment will be marked
+            as completed immediately without a real STK push being sent.
+          </div>
+
+          {payError && (
+            <div className="mu-alert mu-alert-danger" style={{ marginBottom: 16 }}>
+              <i className="bi bi-exclamation-triangle" />
+              {payError}
+            </div>
+          )}
+
+          <div className="mu-form-group">
+            <label>Invoice</label>
+            <select
+              className="mu-select"
+              value={payTargetInvoiceId}
+              onChange={(e) => setPayTargetInvoiceId(e.target.value)}
+            >
+              <option value="">Select an invoice...</option>
+              {summary.open_invoices?.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.description || inv.invoice_type} — KES {Number(inv.balance).toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mu-form-group">
+            <label>M-Pesa Phone Number</label>
+            <input
+              type="tel"
+              className="mu-input"
+              placeholder="07XXXXXXXX"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+          </div>
+
+          {selectedInvoice && (
+            <div style={{ background: "var(--mu-gray-50)", borderRadius: "var(--mu-radius-sm)", padding: 12, marginTop: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--mu-font-size-sm)" }}>
+                <span style={{ color: "var(--mu-gray-500)" }}>Amount to pay:</span>
+                <span style={{ fontWeight: 700 }}>KES {Number(selectedInvoice.balance).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Receipt Modal */}
+      <Modal
+        isOpen={receiptModalOpen}
+        onClose={() => setReceiptModalOpen(false)}
+        title="Payment Receipt"
+        size="md"
+        confirmText="Print Receipt"
+        onConfirm={handlePrintReceipt}
+      >
+        {receipt && (
+          <div style={{ textAlign: "center" }}>
+            <i className="bi bi-check-circle-fill" style={{ fontSize: 48, color: "var(--mu-success)", display: "block", marginBottom: 12 }} />
+            <h4 style={{ margin: "0 0 4px" }}>Payment Successful</h4>
+            <p style={{ color: "var(--mu-gray-500)", margin: "0 0 16px" }}>
+              Receipt No. <strong>{receipt.receipt_number}</strong>
+            </p>
+
+            <img
+              src={receipt.qr_code}
+              alt="Receipt QR Code"
+              style={{ width: 140, height: 140, margin: "0 auto 16px", display: "block" }}
+            />
+
+            <div style={{ textAlign: "left", background: "var(--mu-gray-50)", borderRadius: "var(--mu-radius-sm)", padding: 12 }}>
+              <ReceiptRow label="Student" value={`${receipt.student_name} (${receipt.registration_number})`} />
+              <ReceiptRow label="Invoice" value={receipt.invoice_description} />
+              <ReceiptRow label="Method" value={receipt.method?.toUpperCase()} />
+              <ReceiptRow label="Amount Paid" value={`KES ${Number(receipt.amount).toLocaleString()}`} bold />
+              <ReceiptRow label="Balance After" value={`KES ${Number(receipt.balance_after).toLocaleString()}`} />
+              <ReceiptRow
+                label="Date"
+                value={receipt.payment_date ? new Date(receipt.payment_date).toLocaleString() : "N/A"}
+              />
+            </div>
+
+            <p style={{ fontSize: "var(--mu-font-size-xs)", color: "var(--mu-gray-400)", marginTop: 12 }}>
+              Scan the QR code to verify this receipt at the Finance Office.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

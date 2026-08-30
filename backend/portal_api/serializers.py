@@ -917,3 +917,24 @@ class BulkGenerateRoomsSerializer(serializers.Serializer):
 
 class GenerateBedsForYearSerializer(serializers.Serializer):
     academic_year = serializers.PrimaryKeyRelatedField(queryset=m.AcademicYear.objects.all())
+    
+    
+    
+    
+class ReceiptSerializer(serializers.Serializer):
+    """Read-only shape returned after a payment — what the receipt/QR modal renders."""
+    receipt_number = serializers.CharField()
+    payment_date = serializers.DateTimeField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    method = serializers.CharField()
+    student_name = serializers.CharField()
+    registration_number = serializers.CharField()
+    invoice_description = serializers.CharField()
+    invoice_type = serializers.CharField()
+    invoice_id = serializers.IntegerField()
+    balance_after = serializers.DecimalField(max_digits=10, decimal_places=2)
+    qr_code = serializers.CharField()
+
+
+class PayInvoiceSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(required=False, allow_blank=True, default="")

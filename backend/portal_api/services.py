@@ -941,6 +941,69 @@ class FeeService:
         payment.save(update_fields=["student", "registration_number_on_slip", "reconciliation_notes"])
         FeeService.allocate_payment(payment)
         return payment
+    
+    @staticmethod
+    @transaction.atomic
+    def pay_invoice_via_mpesa(student: m.Student, invoice: m.Invoice, phone_number: str = "") -> m.FeePayment:
+        """
+        BYPASS MODE: Safaricom Daraja STK push isn't wired up yet, so this
+        immediately simulates a successful push for the invoice's FULL
+        outstanding balance and allocates it directly to THIS invoice —
+        not through allocate_payment()'s oldest-invoice-first logic,
+        since the student explicitly chose to pay this one.
+
+        TODO (real integration): replace the payment-creation block below
+        with (1) initiate_stk_push(phone_number, balance) -> CheckoutRequestID,
+        (2) return a "pending" response to the frontend, (3) on the Daraja
+        callback webhook, create the FeePayment + InvoiceAllocation exactly
+        as done here. The view/serializer contract can stay identical.
+        """
+        if invoice.student_id != student.id:
+            raise ValueError("This invoice does not belong to you.")
+
+        balance = FeeService.invoice_balance(invoice)
+        if balance <= 0:
+            raise ValueError("This invoice is already fully paid.")
+
+        payment = m.FeePayment.objects.create(
+            student=student,
+            method=m.FeePayment.Method.MPESA,
+            amount=balance,
+            payer_name_on_slip=student.user.get_full_name(),
+            registration_number_on_slip=student.registration_number,
+            bank_reference=f"MPESA-BYPASS-{student.registration_number}-{timezone.now().timestamp()}",
+            payment_date=timezone.now(),
+            reconciliation_notes="MPESA_STK_BYPASSED — simulated; no live Daraja integration yet."
+                                  + (f" Phone: {phone_number}" if phone_number else ""),
+        )
+        payment.receipt_number = utils.generate_receipt_number("MPR", m.FeePayment)
+        payment.save(update_fields=["receipt_number"])
+
+        m.InvoiceAllocation.objects.create(payment=payment, invoice=invoice, amount_applied=balance)
+        payment.is_reconciled = True
+        payment.save(update_fields=["is_reconciled"])
+        return payment
+
+    @staticmethod
+    def build_receipt(payment: m.FeePayment, invoice: m.Invoice) -> dict:
+        """Shapes a FeePayment + Invoice into the dict ReceiptSerializer expects, QR code included."""
+        verification_string = (
+            f"MU-RECEIPT|{payment.receipt_number}|{payment.student.registration_number}|"
+            f"{payment.amount}|{payment.payment_date.strftime('%Y-%m-%d %H:%M')}"
+        )
+        return {
+            "receipt_number": payment.receipt_number,
+            "payment_date": payment.payment_date,
+            "amount": payment.amount,
+            "method": payment.method,
+            "student_name": payment.student.user.get_full_name(),
+            "registration_number": payment.student.registration_number,
+            "invoice_description": invoice.description or invoice.get_invoice_type_display(),
+            "invoice_type": invoice.invoice_type,
+            "invoice_id": invoice.id,
+            "balance_after": FeeService.invoice_balance(invoice),
+            "qr_code": utils.generate_qr_code_base64(verification_string),
+        }
 
 
 # ======================================================================

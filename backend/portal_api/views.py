@@ -991,7 +991,33 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
             return m.Invoice.objects.filter(student__user=user)
         return super().get_queryset()
 
+    @action(detail=True, methods=["post"], url_path="pay")
+    def pay(self, request, pk=None):
+        """
+        Student-facing 'Pay' button (per-invoice or the general 'Pay Now').
+        BYPASS MODE: no real M-Pesa STK push fires yet — the invoice is
+        marked paid immediately, as if the push had succeeded, so the
+        pay -> receipt-with-QR flow can be built/tested before Daraja
+        credentials are wired in. See FeeService.pay_invoice_via_mpesa
+        for the TODO marking exactly what changes for the real integration.
+        """
+        invoice = self.get_object()
+        student = getattr(request.user, "student_profile", None)
+        if not student:
+            return Response({"detail": "Not a student."}, status=status.HTTP_403_FORBIDDEN)
 
+        serializer = s.PayInvoiceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            payment = services.FeeService.pay_invoice_via_mpesa(
+                student, invoice, phone_number=serializer.validated_data.get("phone_number", "")
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        receipt = services.FeeService.build_receipt(payment, invoice)
+        return Response(s.ReceiptSerializer(receipt).data, status=status.HTTP_201_CREATED)
 
 
 class BankPaymentWebhookView(APIView):
@@ -1026,6 +1052,61 @@ class MyFeeSummaryView(APIView):
             "wallet_credit": summary["wallet_credit"],
             "open_invoices": s.InvoiceSerializer(summary["open_invoices"], many=True).data,
         })
+
+
+class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = m.FeePayment.objects.select_related("student__user")
+    serializer_class = s.FeePaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["method", "is_reconciled", "student"]
+    search_fields = ["registration_number_on_slip", "payer_name_on_slip", "bank_reference", "receipt_number"]
+    ordering_fields = ["received_at", "payment_date", "amount"]
+    ordering = ["-received_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == "student":
+            return m.FeePayment.objects.filter(student__user=user)
+        return super().get_queryset()
+
+    @action(detail=True, methods=["get"], url_path="receipt")
+    def receipt(self, request, pk=None):
+        """Re-view/reprint a past receipt — e.g. student clicks 'Receipt' in Payment History."""
+        payment = self.get_object()
+        allocation = payment.allocations.select_related("invoice").first()
+        if not allocation:
+            return Response({"detail": "No invoice allocation found for this payment."},
+                             status=status.HTTP_404_NOT_FOUND)
+        receipt = services.FeeService.build_receipt(payment, allocation.invoice)
+        return Response(s.ReceiptSerializer(receipt).data)
+
+    @action(detail=False, methods=["get"], url_path="flagged",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def flagged(self, request):
+        qs = self.get_queryset().exclude(reconciliation_notes="")
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page or qs, many=True)
+        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="resolve",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def resolve(self, request, pk=None):
+        payment = self.get_object()
+        payment.reconciliation_notes = ""
+        payment.save(update_fields=["reconciliation_notes"])
+        return Response(s.FeePaymentSerializer(payment).data)
+
+    @action(detail=True, methods=["post"], url_path="reassign",
+            permission_classes=[IsRole.for_roles("admin", "finance")])
+    def reassign(self, request, pk=None):
+        payment = self.get_object()
+        try:
+            new_student = m.Student.objects.get(pk=request.data.get("student"))
+        except (m.Student.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Valid target student is required."}, status=status.HTTP_400_BAD_REQUEST)
+        payment = services.FeeService.reassign_payment(payment, new_student)
+        return Response(s.FeePaymentSerializer(payment).data)
 
 
 # ======================================================================
@@ -2192,50 +2273,6 @@ class InvoiceAllocationViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 
-class FeePaymentViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = m.FeePayment.objects.select_related("student__user")
-    serializer_class = s.FeePaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ["method", "is_reconciled", "student"]
-    search_fields = ["registration_number_on_slip", "payer_name_on_slip", "bank_reference", "receipt_number"]
-    ordering_fields = ["received_at", "payment_date", "amount"]
-    ordering = ["-received_at"]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.user_type == "student":
-            return m.FeePayment.objects.filter(student__user=user)
-        return super().get_queryset()
-
-    @action(detail=False, methods=["get"], url_path="flagged",
-            permission_classes=[IsRole.for_roles("admin", "finance")])
-    def flagged(self, request):
-        qs = self.get_queryset().exclude(reconciliation_notes="")
-        page = self.paginate_queryset(qs)
-        serializer = self.get_serializer(page or qs, many=True)
-        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
-
-    @action(detail=True, methods=["post"], url_path="resolve",
-            permission_classes=[IsRole.for_roles("admin", "finance")])
-    def resolve(self, request, pk=None):
-        payment = self.get_object()
-        payment.reconciliation_notes = ""
-        payment.save(update_fields=["reconciliation_notes"])
-        return Response(s.FeePaymentSerializer(payment).data)
-
-    @action(detail=True, methods=["post"], url_path="reassign",
-            permission_classes=[IsRole.for_roles("admin", "finance")])
-    def reassign(self, request, pk=None):
-        payment = self.get_object()
-        try:
-            new_student = m.Student.objects.get(pk=request.data.get("student"))
-        except (m.Student.DoesNotExist, ValueError, TypeError):
-            return Response({"detail": "Valid target student is required."}, status=status.HTTP_400_BAD_REQUEST)
-        payment = services.FeeService.reassign_payment(payment, new_student)
-        return Response(s.FeePaymentSerializer(payment).data)
-
-
 class HelbBursaryAwardViewSet(viewsets.ModelViewSet):
     queryset = m.HelbBursaryAward.objects.select_related("student__user")
     serializer_class = s.HelbBursaryAwardSerializer
@@ -2268,6 +2305,10 @@ class FinanceDashboardView(APIView):
 # HOSTEL
 # ======================================================================
 
+# ======================================================================
+# HOSTEL
+# ======================================================================
+
 class HostelViewSet(viewsets.ModelViewSet):
     queryset = m.Hostel.objects.all()
     serializer_class = s.HostelSerializer
@@ -2290,6 +2331,14 @@ class HostelViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="layout")
     def layout(self, request, pk=None):
+        """
+        Rooms + beds for the student-facing booking page. Rooms are
+        sorted with the same natural_sort_key used in floor_plan() below
+        — room_number is a CharField, so a plain .order_by("room_number")
+        sorts lexicographically ("1", "10", "100", "101", ... "2", "20"),
+        which is why rooms previously appeared out of numeric order on
+        the booking grid.
+        """
         hostel = self.get_object()
         user = request.user
 
@@ -2303,13 +2352,13 @@ class HostelViewSet(viewsets.ModelViewSet):
         if not academic_year:
             return Response({"detail": "No active academic year found."}, status=status.HTTP_404_NOT_FOUND)
 
-        rooms = (
+        rooms = list(
             hostel.rooms.filter(is_active=True)
             .prefetch_related(
                 Prefetch("beds", queryset=m.Bed.objects.filter(academic_year=academic_year).order_by("bed_number"))
             )
-            .order_by("room_number")
         )
+        rooms.sort(key=lambda r: utils.natural_sort_key(r.room_number))
 
         return Response({
             "hostel": s.HostelSerializer(hostel).data,
@@ -2442,6 +2491,20 @@ class RoomViewSet(viewsets.ModelViewSet):
     search_fields = ["room_number"]
     ordering_fields = ["room_number"]
     ordering = ["room_number"]
+
+    def get_queryset(self):
+        """
+        Same lexicographic-order problem as layout(): CharField
+        room_number sorts as text via .order_by(), so this list would
+        show "1, 10, 100, 101 ... 2, 20 ...". Since DRF's
+        OrderingFilter/ordering_fields drive .order_by() directly on the
+        queryset, we can't intercept it here with a Python sort the way
+        layout()/floor_plan() do — so if this endpoint is used to render
+        a room list anywhere, sort it client-side with the same natural
+        sort, or switch this to a non-paginated custom action like
+        floor_plan() if strict ordering is required.
+        """
+        return super().get_queryset()
 
 class BedViewSet(viewsets.ModelViewSet):
     queryset = m.Bed.objects.all()
