@@ -8,6 +8,7 @@ from django.db import transaction
 from decimal import Decimal
 from rest_framework import serializers
 from django.db.models import Q, Count, Sum, Prefetch
+from . import utils
 
 from . import models as m
 from . import serializers as s
@@ -2327,14 +2328,77 @@ class HostelViewSet(viewsets.ModelViewSet):
             ],
         })
 
+    @action(detail=True, methods=["get"], url_path="floor-plan",
+            permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
+    def floor_plan(self, request, pk=None):
+        """
+        Returns EVERY room in this hostel with its beds for the given
+        academic year, in ONE unpaginated response, naturally sorted by
+        room number. The generic /rooms/ and /beds/ list endpoints are
+        paginated — fine for normal browsing, but it silently truncates
+        a bulk-generated hostel with hundreds of rooms/beds down to a
+        single page, which made it look like rooms weren't all created
+        and beds showed 0/0. This endpoint bypasses pagination entirely
+        (custom @action methods aren't auto-paginated) so the admin
+        "Manage Rooms" floor plan always shows the true, complete state.
+        """
+        hostel = self.get_object()
+        academic_year_id = request.query_params.get("academic_year")
+        if not academic_year_id:
+            return Response({"detail": "academic_year query param is required."},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        rooms = list(hostel.rooms.filter(is_active=True).only(
+            "id", "room_number", "capacity", "is_active"
+        ))
+        rooms.sort(key=lambda r: utils.natural_sort_key(r.room_number))
+
+        beds = m.Bed.objects.filter(
+            room__hostel=hostel, academic_year_id=academic_year_id
+        ).only("id", "room_id", "bed_number", "is_available")
+
+        beds_by_room = {}
+        for bed in beds:
+            beds_by_room.setdefault(bed.room_id, []).append({
+                "id": bed.id, "bed_number": bed.bed_number, "is_available": bed.is_available,
+            })
+
+        data = []
+        for room in rooms:
+            room_beds = sorted(beds_by_room.get(room.id, []), key=lambda b: b["bed_number"])
+            data.append({
+                "id": room.id,
+                "room_number": room.room_number,
+                "capacity": room.capacity,
+                "is_active": room.is_active,
+                "total_beds": len(room_beds),
+                "occupied_beds": sum(1 for b in room_beds if not b["is_available"]),
+                "beds": room_beds,
+            })
+
+        return Response({
+            "academic_year": int(academic_year_id),
+            "total_rooms": len(data),
+            "rooms": data,
+        })
+
     @action(detail=True, methods=["post"], url_path="bulk-generate-rooms",
             permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
     def bulk_generate_rooms(self, request, pk=None):
         """
-        Provisions a brand-new hostel: creates N rooms with M beds each
-        for the given academic year, in one call. See
-        HostelInventoryService.bulk_generate_rooms for the numbering /
-        collision-skipping rules.
+        Provisions BRAND-NEW physical rooms (with M beds each, for the
+        given academic year) — intended to be used ONCE per hostel, when
+        the rooms are first built.
+
+        Room numbers are taken exactly as requested (start_room_number
+        .. start_room_number + room_count - 1, with `prefix` applied) —
+        no silent skipping. If any of those numbers already exist on
+        this hostel, the whole call is rejected with a 400 listing the
+        conflicting numbers, so nothing is created partially.
+
+        If you're only trying to add beds for a NEW academic year to
+        rooms that already exist, use `generate-beds-for-year` instead
+        — it never creates new Room rows.
         """
         hostel = self.get_object()
         serializer = s.BulkGenerateRoomsSerializer(data=request.data)
@@ -2354,9 +2418,11 @@ class HostelViewSet(viewsets.ModelViewSet):
             permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
     def generate_beds_for_year(self, request, pk=None):
         """
-        Rolls existing rooms into a new academic year: tops up beds on
-        every already-existing room to match that room's own capacity,
-        without creating or changing any rooms.
+        Rolls EXISTING rooms into a new academic year: tops up beds on
+        every already-existing active room to match that room's own
+        capacity, without creating or changing any rooms. This is the
+        correct action to use every year after the hostel's rooms have
+        already been built once via bulk-generate-rooms.
         """
         hostel = self.get_object()
         serializer = s.GenerateBedsForYearSerializer(data=request.data)

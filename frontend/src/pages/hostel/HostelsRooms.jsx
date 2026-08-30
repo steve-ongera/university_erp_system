@@ -1,5 +1,5 @@
 // src/pages/hostel/HostelsRooms.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { adminApi, hostelWardenApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import {
@@ -156,7 +156,10 @@ function BulkGenerateRoomsModal({ hostel, academicYear, onClose, onGenerated }) 
         {!result && (
           <div className="mu-alert mu-alert-info" style={{ marginBottom: 16, fontSize: 13 }}>
             <i className="bi bi-info-circle" /> Generating for academic year <strong>{academicYear?.year || "—"}</strong>.
-            Room numbers that already exist on this hostel are skipped automatically.
+            Room numbers are created exactly as entered (no skipping) — if any number already
+            exists on this hostel, the whole request is rejected and none are created, so you
+            can adjust the range or prefix and retry. If you're only adding beds for a new year
+            to rooms you already built, use "Generate Beds For Year" instead.
           </div>
         )}
 
@@ -261,7 +264,7 @@ function GenerateBedsForYearModal({ hostel, academicYear, onClose, onGenerated }
 }
 
 // ----------------------------------------------------------------------
-// Beds Modal (per room — unchanged: view/generate-missing/delete a bed)
+// Beds Modal (per room — view/generate-missing/delete a bed)
 // ----------------------------------------------------------------------
 function BedsModal({ room, academicYear, onClose, showToast }) {
   const [beds, setBeds] = useState([]);
@@ -347,58 +350,241 @@ function BedsModal({ room, academicYear, onClose, showToast }) {
 }
 
 // ----------------------------------------------------------------------
-// Rooms Modal (list + CRUD, per hostel) with bulk-generate entry points
+// Room Floor Plan — "real house" visual: rooms as doors, beds inside
+// ----------------------------------------------------------------------
+function RoomFloorPlan({ rooms, onOpenBeds, onEditRoom, onDeleteRoom }) {
+  if (rooms.length === 0) {
+    return <EmptyState icon="bi-door-closed" label="No rooms yet" hint="Add one manually, or use Bulk Generate Rooms above." />;
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+          gap: 14,
+        }}
+      >
+        {rooms.map((room) => {
+          const beds = room.beds || [];
+          const occupied = room.occupied_beds ?? beds.filter((b) => !b.is_available).length;
+          const total = room.total_beds ?? beds.length;
+          const isFull = total > 0 && occupied === total;
+          const hasNoBeds = total === 0;
+
+          return (
+            <div
+              key={room.id}
+              style={{
+                border: "2px solid #d8dee9",
+                borderRadius: 10,
+                background: "#fbfbfd",
+                overflow: "hidden",
+                opacity: room.is_active ? 1 : 0.5,
+              }}
+            >
+              {/* Door / header */}
+              <div
+                onClick={() => onOpenBeds(room)}
+                title="Click to manage beds in this room"
+                style={{
+                  background: isFull ? "#c23b3b" : hasNoBeds ? "#9aa2ad" : "#1a8a5a",
+                  color: "#fff",
+                  padding: "6px 10px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                  <i className="bi bi-door-closed-fill" /> {room.room_number}
+                </span>
+                <span style={{ fontSize: 11 }}>{occupied}/{total}</span>
+              </div>
+
+              {/* Beds inside the room */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: 6,
+                  padding: 10,
+                  minHeight: 60,
+                }}
+              >
+                {hasNoBeds ? (
+                  <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#999", textAlign: "center", padding: "10px 0" }}>
+                    No beds this year
+                  </div>
+                ) : (
+                  beds.map((bed) => (
+                    <div
+                      key={bed.id}
+                      title={`Bed ${bed.bed_number} — ${bed.is_available ? "Available" : "Occupied"}`}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "6px 2px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#fff",
+                        background: bed.is_available ? "#3b6ce0" : "#c97d2a",
+                      }}
+                    >
+                      <i className="bi bi-lamp" style={{ fontSize: 14 }} />
+                      {bed.bed_number}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Actions */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 4,
+                  padding: "4px 8px",
+                  borderTop: "1px solid #eee",
+                  background: "#fff",
+                }}
+              >
+                <button
+                  className="mu-btn mu-btn-sm mu-btn-outline-primary"
+                  style={{ padding: "2px 6px" }}
+                  onClick={(e) => { e.stopPropagation(); onEditRoom(room); }}
+                >
+                  <i className="bi bi-pencil" />
+                </button>
+                <button
+                  className="mu-btn mu-btn-sm mu-btn-danger"
+                  style={{ padding: "2px 6px" }}
+                  onClick={(e) => { e.stopPropagation(); onDeleteRoom(room); }}
+                >
+                  <i className="bi bi-trash" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 12, color: "#666", flexWrap: "wrap" }}>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#3b6ce0", borderRadius: 3, marginRight: 4 }} /> Available bed</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#c97d2a", borderRadius: 3, marginRight: 4 }} /> Occupied bed</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#1a8a5a", borderRadius: 3, marginRight: 4 }} /> Room has space</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#c23b3b", borderRadius: 3, marginRight: 4 }} /> Room full</span>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Rooms Modal (per hostel) — floor plan + table view, bulk-generate entry points
 // ----------------------------------------------------------------------
 function RoomsModal({ hostel, academicYears, onClose, showToast }) {
-  const [rooms, setRooms] = useState([]);
+  const [rooms, setRooms] = useState([]); // each room already carries its own beds
   const [loading, setLoading] = useState(true);
+  const [totalRooms, setTotalRooms] = useState(null);
   const [academicYearId, setAcademicYearId] = useState(academicYears.find((y) => y.is_current)?.id || academicYears[0]?.id || "");
+  const [viewMode, setViewMode] = useState("layout"); // "layout" | "table"
   const [roomForm, setRoomForm] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [bedsRoom, setBedsRoom] = useState(null);
   const [bulkModal, setBulkModal] = useState(null); // "rooms" | "beds" | null
+  const [loadError, setLoadError] = useState("");
 
-  const load = useCallback(() => {
+  const selectedYear = academicYears.find((y) => y.id === academicYearId);
+
+  const loadFloorPlan = useCallback(() => {
+    if (!academicYearId) return;
     setLoading(true);
-    hostelWardenApi.rooms({ hostel: hostel.id })
-      .then(({ data }) => setRooms(unwrapList(data)))
-      .catch(() => setRooms([]))
+    setLoadError("");
+    hostelWardenApi.floorPlan(hostel.id, academicYearId)
+      .then(({ data }) => {
+        setRooms(data.rooms || []);
+        setTotalRooms(data.total_rooms ?? (data.rooms || []).length);
+      })
+      .catch((err) => {
+        setRooms([]);
+        setTotalRooms(null);
+        setLoadError(err.response?.data?.detail || "Could not load rooms/beds for this hostel.");
+      })
       .finally(() => setLoading(false));
-  }, [hostel.id]);
+  }, [hostel.id, academicYearId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadFloorPlan(); }, [loadFloorPlan]);
 
   const handleDelete = async () => {
     try {
       await hostelWardenApi.deleteRoom(deleteTarget.id);
       showToast("Room deleted.");
       setDeleteTarget(null);
-      load();
+      loadFloorPlan();
     } catch (err) {
       showToast(err.response?.data?.detail || "Could not delete room — it may have beds/bookings.");
       setDeleteTarget(null);
     }
   };
 
-  const selectedYear = academicYears.find((y) => y.id === academicYearId);
-
   const handleBulkGenerated = () => {
     showToast("Rooms/beds generated.");
     setBulkModal(null);
-    load();
+    loadFloorPlan();
+  };
+
+  const handleCloseBedsModal = () => {
+    setBedsRoom(null);
+    loadFloorPlan(); // refresh counts after any bed edits
   };
 
   return (
-    <Modal title={`Rooms — ${hostel.name}`} onClose={onClose} width={680}>
+    <Modal title={`Rooms — ${hostel.name}`} onClose={onClose} width={780}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
-        <div style={{ width: 200 }}>
-          <Field label="Manage For Academic Year">
-            <select className="mu-input" value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)}>
-              {academicYears.map((y) => <option key={y.id} value={y.id}>{y.year}</option>)}
-            </select>
-          </Field>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <div style={{ width: 200 }}>
+            <Field label="Manage For Academic Year">
+              <select
+                className="mu-input"
+                value={academicYearId}
+                onChange={(e) => setAcademicYearId(Number(e.target.value))}
+              >
+                {academicYears.map((y) => <option key={y.id} value={y.id}>{y.year}</option>)}
+              </select>
+            </Field>
+          </div>
+          {totalRooms !== null && (
+            <span className="mu-badge mu-badge-gray" style={{ marginBottom: 6 }}>
+              {totalRooms} room{totalRooms === 1 ? "" : "s"} total
+            </span>
+          )}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #d8dee9" }}>
+            <button
+              type="button"
+              className={`mu-btn mu-btn-sm ${viewMode === "layout" ? "mu-btn-primary" : ""}`}
+              style={{ borderRadius: 0 }}
+              onClick={() => setViewMode("layout")}
+            >
+              <i className="bi bi-grid-3x3-gap" /> Floor Plan
+            </button>
+            <button
+              type="button"
+              className={`mu-btn mu-btn-sm ${viewMode === "table" ? "mu-btn-primary" : ""}`}
+              style={{ borderRadius: 0 }}
+              onClick={() => setViewMode("table")}
+            >
+              <i className="bi bi-list-ul" /> Table
+            </button>
+          </div>
           <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => setBulkModal("beds")} disabled={!selectedYear}>
             <i className="bi bi-magic" /> Generate Beds For Year
           </button>
@@ -411,17 +597,29 @@ function RoomsModal({ hostel, academicYears, onClose, showToast }) {
         </div>
       </div>
 
-      {loading ? <LoadingSpinner text="Loading rooms..." /> : rooms.length === 0 ? (
+      {loadError && <div className="mu-alert mu-alert-danger" style={{ marginBottom: 12 }}>{loadError}</div>}
+
+      {loading ? (
+        <LoadingSpinner text="Loading rooms..." />
+      ) : viewMode === "layout" ? (
+        <RoomFloorPlan
+          rooms={rooms}
+          onOpenBeds={(r) => setBedsRoom(r)}
+          onEditRoom={(r) => setRoomForm({ mode: "edit", room: r })}
+          onDeleteRoom={(r) => setDeleteTarget(r)}
+        />
+      ) : rooms.length === 0 ? (
         <EmptyState icon="bi-door-closed" label="No rooms yet" hint="Add one manually, or use Bulk Generate Rooms above." />
       ) : (
         <div className="mu-table-wrapper">
           <table className="mu-table">
-            <thead><tr><th>Room</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Room</th><th>Capacity</th><th>Beds ({selectedYear?.year || "—"})</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {rooms.map((r) => (
                 <tr key={r.id}>
                   <td>{r.room_number}</td>
                   <td>{r.capacity}</td>
+                  <td>{r.occupied_beds}/{r.total_beds}</td>
                   <td><span className={`mu-badge ${r.is_active ? "mu-badge-success" : "mu-badge-gray"}`}>{r.is_active ? "Active" : "Inactive"}</span></td>
                   <td>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -447,14 +645,14 @@ function RoomsModal({ hostel, academicYears, onClose, showToast }) {
         <RoomFormModal
           mode={roomForm.mode} room={roomForm.room} hostel={hostel}
           onClose={() => setRoomForm(null)}
-          onSaved={(_d, msg) => { setRoomForm(null); showToast(msg); load(); }}
+          onSaved={(_d, msg) => { setRoomForm(null); showToast(msg); loadFloorPlan(); }}
         />
       )}
       {deleteTarget && (
         <ConfirmModal title="Delete Room" message={`Delete room ${deleteTarget.room_number}?`} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
       )}
       {bedsRoom && selectedYear && (
-        <BedsModal room={bedsRoom} academicYear={selectedYear} onClose={() => setBedsRoom(null)} showToast={showToast} />
+        <BedsModal room={bedsRoom} academicYear={selectedYear} onClose={handleCloseBedsModal} showToast={showToast} />
       )}
       {bulkModal === "rooms" && selectedYear && (
         <BulkGenerateRoomsModal

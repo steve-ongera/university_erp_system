@@ -1850,12 +1850,30 @@ class HostelInventoryService:
     """
     Bulk room/bed provisioning for the hostel warden. This is additive to
     the existing per-room RoomViewSet/BedViewSet CRUD — manual add/edit/
-    delete of a single room or bed still works exactly as before. This
-    class exists purely to make provisioning hundreds of rooms/beds at
-    once fast, instead of one request per room/bed from the frontend.
+    delete of a single room or bed still works exactly as before.
 
-    Both methods are idempotent: re-running either never touches or
-    duplicates rooms/beds that already exist.
+    IMPORTANT — Room vs Bed scoping:
+    `Room` is a physical entity and is NOT tied to an academic year.
+    `Bed` IS tied to an academic year (unique_together on room+academic_year+
+    bed_number). That means:
+
+    - `bulk_generate_rooms` creates brand-new physical Room rows (plus
+      their first year's beds) and should be used ONCE per hostel, when
+      the rooms are first built.
+    - `generate_beds_for_year` should be used every subsequent academic
+      year — it never creates new rooms, it only tops up beds on rooms
+      that already exist.
+
+    Re-running `bulk_generate_rooms` for a hostel that already has rooms
+    will NOT create a second copy of "the same" rooms for a new year —
+    it will create genuinely new, additional physical rooms with
+    whatever numbers you request, and will reject the request outright
+    if any of those numbers already exist (see below), rather than
+    silently renumbering around them.
+
+    Both methods are idempotent in the sense that re-running
+    `generate_beds_for_year` never touches or duplicates beds that
+    already exist for that room/year.
     """
 
     BED_LETTERS = "ABCDEFGHIJKL"
@@ -1866,12 +1884,20 @@ class HostelInventoryService:
                              room_count: int, beds_per_room: int,
                              start_room_number: int = 1, prefix: str = "") -> dict:
         """
-        Creates up to `room_count` NEW rooms for `hostel` (skipping any
-        room_number that already exists on this hostel), each with
-        `beds_per_room` beds provisioned for `academic_year`. Room
-        capacity is set to beds_per_room. Room numbers are generated
-        sequentially as f"{prefix}{n}" starting at start_room_number,
-        walking forward past any numbers that collide with existing rooms.
+        Creates exactly `room_count` NEW rooms for `hostel`, numbered
+        sequentially as f"{prefix}{n}" for n in
+        [start_room_number, start_room_number + room_count - 1] — no
+        gaps, no skipping ahead. Each room gets `beds_per_room` beds
+        provisioned for `academic_year`. Room capacity is set to
+        beds_per_room.
+
+        If ANY of the requested room numbers already exist on this
+        hostel, nothing is created — the whole call is rejected with a
+        ValueError listing the conflicting numbers, so the caller can
+        either pick a different range/prefix, delete stale rooms first,
+        or realize they meant to call `generate_beds_for_year` instead
+        (the correct action when the rooms already exist and you're
+        just rolling into a new academic year).
         """
         if room_count <= 0:
             raise ValueError("Number of rooms must be greater than zero.")
@@ -1882,29 +1908,25 @@ class HostelInventoryService:
             m.Room.objects.filter(hostel=hostel).values_list("room_number", flat=True)
         )
 
-        created_rooms = []
-        number = start_room_number
-        # Bound the search so a pathological input (e.g. thousands of
-        # pre-existing rooms all colliding) can't loop forever.
-        safety_limit = start_room_number + room_count * 20
+        requested_numbers = [
+            f"{prefix}{n}" for n in range(start_room_number, start_room_number + room_count)
+        ]
+        colliding = [n for n in requested_numbers if n in existing_numbers]
 
-        while len(created_rooms) < room_count and number < safety_limit:
-            room_number = f"{prefix}{number}"
-            number += 1
-            if room_number in existing_numbers:
-                continue
-            room = m.Room.objects.create(
-                hostel=hostel, room_number=room_number, capacity=beds_per_room, is_active=True,
-            )
-            existing_numbers.add(room_number)
-            created_rooms.append(room)
-
-        if len(created_rooms) < room_count:
+        if colliding:
             raise ValueError(
-                f"Could only create {len(created_rooms)} of {room_count} requested rooms — "
-                "too many room-number collisions with existing rooms. Try a different prefix "
-                "or starting number."
+                f"{len(colliding)} of the requested room numbers already exist on this hostel "
+                f"(e.g. {', '.join(colliding[:8])}{'...' if len(colliding) > 8 else ''}). "
+                "If you're adding beds for a NEW academic year to rooms you already created, "
+                "use 'Generate Beds For Year' instead — it does not create new rooms. "
+                "If these are stale/test rooms, delete them first, or choose a different "
+                "starting number or prefix."
             )
+
+        created_rooms = [
+            m.Room.objects.create(hostel=hostel, room_number=n, capacity=beds_per_room, is_active=True)
+            for n in requested_numbers
+        ]
 
         beds_created = 0
         bed_letters = cls.BED_LETTERS[:beds_per_room]

@@ -409,6 +409,8 @@ export const hostelWardenApi = {
   dashboard: (academicYearId) => api.get("/hostel/dashboard/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
   bulkGenerateRooms: (hostelId, payload) => api.post(`/hostels/${hostelId}/bulk-generate-rooms/`, payload),
   generateBedsForYear: (hostelId, payload) => api.post(`/hostels/${hostelId}/generate-beds-for-year/`, payload),
+  floorPlan: (hostelId, academicYearId) =>
+    api.get(`/hostels/${hostelId}/floor-plan/`, { params: { academic_year: academicYearId } }),
 };
 
 

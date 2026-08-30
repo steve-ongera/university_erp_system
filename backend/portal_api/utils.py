@@ -3,6 +3,7 @@ Standalone helper functions — no Django ORM side effects beyond reads,
 so these are easy to unit test in isolation.
 """
 import random
+import re
 import string
 from datetime import timedelta
 
@@ -138,3 +139,19 @@ def next_year_semester(current_year: int, current_semester: int, semesters_per_y
 
 def is_final_semester(current_year: int, current_semester: int, duration_years: int, semesters_per_year: int) -> bool:
     return current_year == duration_years and current_semester == semesters_per_year
+
+
+# ----------------------------------------------------------------------
+# Natural sorting (room numbers, bed numbers, anything mixing digits
+# and letters that should sort the way a human reads it)
+# ----------------------------------------------------------------------
+
+def natural_sort_key(value: str):
+    """
+    Sort key that treats embedded digit runs numerically, so values
+    like room numbers sort as 1, 2, 3 ... 10, 11 ... 100, 101 instead
+    of the plain string order 1, 10, 100, 101 ... 11, 110 ...
+    Used by HostelViewSet.floor_plan to list rooms in a sane order.
+    """
+    return [int(chunk) if chunk.isdigit() else chunk.lower()
+            for chunk in re.split(r"(\d+)", value or "")]
