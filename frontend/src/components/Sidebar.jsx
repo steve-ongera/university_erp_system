@@ -70,6 +70,8 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/hostel-management", label: "Hostels & Rooms", icon: "bi-building" },
         { to: "/hostel-bookings", label: "Bookings", icon: "bi-door-open" },
+        { to: "/hostel-fee-structures", label: "Fee Structure", icon: "bi-cash-stack" },
+        { to: "/hostel-reports", label: "Reports", icon: "bi-bar-chart" },
       ],
     },
     {
@@ -280,6 +282,16 @@ const NAV_BY_ROLE = {
       links: [
         { to: "/library", label: "My Library", icon: "bi-book-half" },
         { to: "/library-management/dashboard", label: "Library Desk", icon: "bi-book" },
+      ],
+    },
+    {
+      section: "Hostel",
+      links: [
+        { to: "/hostel/dashboard", label: "Hostel Dashboard", icon: "bi-speedometer2" },
+        { to: "/hostel-management", label: "Hostels & Rooms", icon: "bi-building" },
+        { to: "/hostel-bookings", label: "Bookings", icon: "bi-door-open" },
+        { to: "/hostel-fee-structures", label: "Fee Structure", icon: "bi-cash-stack" },
+        { to: "/hostel-reports", label: "Reports", icon: "bi-bar-chart" },
       ],
     },
     {

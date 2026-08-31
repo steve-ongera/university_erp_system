@@ -106,6 +106,10 @@ import LibraryMembers from "./pages/library/LibraryMembers";
 import LibraryReservations from "./pages/library/LibraryReservations";
 import LibraryFines from "./pages/library/LibraryFines";
 
+// with the other hostel-warden imports
+import HostelFeeStructures from "./pages/hostel/HostelFeeStructures";
+import HostelReports from "./pages/hostel/HostelReports";
+
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./style/main.css";
 
@@ -171,10 +175,14 @@ export default function App() {
             <Route path="/attendance" element={<ProtectedRoute allow={[ROLES.LECTURER]}><QRAttendance /></ProtectedRoute>} />
             <Route path="/lecturer/cats-notes" element={<ProtectedRoute allow={[ROLES.LECTURER]}><LecturePage /></ProtectedRoute>} />
 
+           
             {/* ===== HOSTEL WARDEN PAGES ===== */}
             <Route path="/hostel/dashboard" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelWardenDashboard /></ProtectedRoute>} />
             <Route path="/hostel-management" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelsRooms /></ProtectedRoute>} />
             <Route path="/hostel-bookings" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelBookings /></ProtectedRoute>} />
+            <Route path="/hostel-fee-structures" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelFeeStructures /></ProtectedRoute>} />
+            <Route path="/hostel-reports" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelReports /></ProtectedRoute>} />
+
 
             {/* ===== FINANCE PAGES ===== */}
             <Route path="/finance/dashboard" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><FinanceDashboard /></ProtectedRoute>} />

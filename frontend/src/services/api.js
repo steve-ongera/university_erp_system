@@ -422,8 +422,19 @@ export const hostelWardenApi = {
   generateBedsForYear: (hostelId, payload) => api.post(`/hostels/${hostelId}/generate-beds-for-year/`, payload),
   floorPlan: (hostelId, academicYearId) =>
     api.get(`/hostels/${hostelId}/floor-plan/`, { params: { academic_year: academicYearId } }),
-};
 
+  // --- Fee structures ---
+  feeStructures: (params) => api.get("/hostel-fee-structures/", { params }),
+  createFeeStructure: (payload) => api.post("/hostel-fee-structures/", payload),
+  updateFeeStructure: (id, payload) => api.patch(`/hostel-fee-structures/${id}/`, payload),
+  deleteFeeStructure: (id) => api.delete(`/hostel-fee-structures/${id}/`),
+
+  // --- Reports ---
+  reports: (academicYearId) =>
+    api.get("/hostel/reports/", { params: academicYearId ? { academic_year: academicYearId } : {} }),
+
+  academicYears: (params) => api.get("/academic-years/", { params }),
+};
 
 // ---------------------------------------------------------------------
 // Library — add this block to src/services/api.js (or wherever the

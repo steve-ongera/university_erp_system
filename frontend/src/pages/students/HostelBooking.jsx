@@ -4,9 +4,132 @@ import { hostelApi } from "../../services/api";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Modal from "../../components/Modal";
 
-// RoomBedGrid stays exactly as before — unchanged.
 function RoomBedGrid({ rooms, selectedBedId, onSelectBed }) {
-  /* ...unchanged, see original file... */
+  if (!rooms.length) {
+    return (
+      <div style={{ padding: 24, textAlign: "center", color: "var(--mu-gray-400)" }}>
+        <i className="bi bi-door-closed" style={{ fontSize: 36, display: "block", marginBottom: 8 }} />
+        No rooms configured for this hostel yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mu-room-grid">
+      {rooms.map((room) => {
+        const beds = room.beds || [];
+        const totalBeds = room.capacity || 0;
+        const availableBeds = beds.filter(b => b.is_available).length;
+
+        return (
+          <div key={room.id} className="mu-card mu-room-card-compact">
+            {/* Room Header */}
+            <div className="mu-room-header-compact">
+              <div className="room-title">
+                <i className="bi bi-door-open" />
+                <span>Room {room.room_number}</span>
+              </div>
+              <div className="room-availability">
+                <i className="bi bi-people" />
+                {availableBeds}/{totalBeds}
+              </div>
+            </div>
+
+            {/* Room Body */}
+            <div className="mu-room-body-compact">
+              {/* Floor Plan */}
+              <div className="mu-floor-plan-compact">
+                {beds.length === 0 ? (
+                  <div style={{
+                    gridColumn: "1 / -1",
+                    textAlign: "center",
+                    color: "var(--mu-gray-400)",
+                    fontSize: 10,
+                    padding: "12px 0",
+                  }}>
+                    <i className="bi bi-bed" style={{ fontSize: 16, display: "block", marginBottom: 2 }} />
+                    No beds
+                  </div>
+                ) : (
+                  beds.map((bed) => {
+                    const isSelected = String(bed.id) === String(selectedBedId);
+                    const isFrozen = !bed.is_available;
+
+                    return (
+                      <button
+                        key={bed.id}
+                        type="button"
+                        disabled={isFrozen}
+                        onClick={() => onSelectBed(bed, room)}
+                        title={isFrozen ? "Already booked" : `Bed ${bed.bed_number} — available`}
+                        className={`mu-bed-btn-compact ${
+                          isSelected ? "mu-bed-btn-selected" :
+                          isFrozen ? "mu-bed-btn-booked" :
+                          "mu-bed-btn-available"
+                        }`}
+                      >
+                        <div style={{ position: "relative" }}>
+                          {isFrozen ? (
+                            <i className="bi bi-lock-fill bed-icon" />
+                          ) : (
+                            <i className="bi bi-bed bed-icon" />
+                          )}
+                          {isSelected && (
+                            <div className="mu-bed-checkmark-compact">✓</div>
+                          )}
+                        </div>
+                        <span className="bed-number">Bed {bed.bed_number}</span>
+                        {!isFrozen && (
+                          <span className="bed-status" style={{ color: "var(--mu-success)" }}>
+                            ● Avail
+                          </span>
+                        )}
+                        {isFrozen && (
+                          <span className="bed-status" style={{ color: "var(--mu-gray-500)" }}>
+                            ● Booked
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Room Footer */}
+              <div className="mu-room-footer-compact">
+                <span>
+                  <i className="bi bi-grid" />
+                  {totalBeds} beds
+                </span>
+                <span className="available-count">
+                  <i className="bi bi-check-circle" />
+                  {availableBeds} available
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Legend */}
+      <div className="mu-legend-compact">
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-available" />
+          Available
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-booked" />
+          <i className="bi bi-lock-fill" style={{ fontSize: 9 }} />
+          Booked
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot legend-dot-selected" />
+          <i className="bi bi-check-circle" style={{ color: "var(--mu-primary-500)", fontSize: 9 }} />
+          Selected
+        </span>
+      </div>
+    </div>
+  );
 }
 
 const fmtKes = (amount) =>
