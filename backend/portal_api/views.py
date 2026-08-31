@@ -1189,6 +1189,40 @@ class HostelBookingViewSet(viewsets.ModelViewSet):
             permission_classes=[IsRole.for_roles("admin", "hostel_warden")])
     def cancel(self, request, pk=None):
         return Response(s.HostelBookingSerializer(services.HostelService.cancel(self.get_object())).data)
+    
+    
+    @action(detail=True, methods=["post"], url_path="pay")
+    def pay(self, request, pk=None):
+        """
+        Student pays the hostel-fee invoice attached to their own
+        booking. BYPASS MODE, same as InvoiceViewSet.pay — simulates a
+        successful M-Pesa push against the invoice's full balance and
+        flips the booking to APPROVED once settled.
+        """
+        booking = self.get_object()
+        student = getattr(request.user, "student_profile", None)
+        if not student or booking.student_id != student.id:
+            return Response({"detail": "Not your booking."}, status=status.HTTP_403_FORBIDDEN)
+        if not booking.invoice:
+            return Response({"detail": "No fee invoice is attached to this booking."},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = s.PayInvoiceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            payment = services.FeeService.pay_invoice_via_mpesa(
+                student, booking.invoice, phone_number=serializer.validated_data.get("phone_number", "")
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking = services.HostelService.mark_paid_if_settled(booking)
+        receipt = services.FeeService.build_receipt(payment, booking.invoice)
+        return Response({
+            "booking": s.HostelBookingSerializer(booking).data,
+            "receipt": s.ReceiptSerializer(receipt).data,
+        }, status=status.HTTP_201_CREATED)
 
 # ======================================================================
 # REPORTING / CLEARANCE
