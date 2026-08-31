@@ -1279,12 +1279,19 @@ class HostelService:
         ).exists()
 
     @staticmethod
+    def get_fee_structure(hostel: m.Hostel, academic_year: m.AcademicYear):
+        return m.HostelFeeStructure.objects.filter(hostel=hostel, academic_year=academic_year).first()
+
+    @staticmethod
     @transaction.atomic
     def book_bed(student: m.Student, bed: m.Bed, semester: m.Semester) -> m.HostelBooking:
         """
-        Self-service booking path (student-facing). Validates eligibility,
-        gender match, academic-year match, and availability, then creates
-        the booking and freezes the bed — all inside one transaction.
+        Self-service booking path. Validates eligibility, gender match,
+        academic-year match, and availability, raises the hostel's fee
+        invoice for the current academic year, then creates the booking
+        (PENDING_PAYMENT) and freezes the bed — all in one transaction.
+        Booking is rejected outright if no HostelFeeStructure exists for
+        this hostel/academic-year combination.
         """
         if not HostelService.is_eligible_to_book(student, semester):
             raise ValueError("Only reported Year-1 Semester-1 students may book a hostel bed.")
@@ -1296,39 +1303,86 @@ class HostelService:
         if bed.academic_year_id != semester.academic_year_id:
             raise ValueError("This bed does not belong to the current academic year.")
 
+        fee_structure = HostelService.get_fee_structure(hostel, semester.academic_year)
+        if not fee_structure:
+            raise ValueError(
+                f"No hostel fee has been configured for {hostel.name} in "
+                f"{semester.academic_year.year}. Contact the hostel office."
+            )
+
         # Re-fetch and lock the row so a concurrent request for the same
         # bed can't pass this check before either transaction commits.
         locked_bed = m.Bed.objects.select_for_update().get(pk=bed.pk)
         if not locked_bed.is_available:
             raise ValueError("This bed has already been booked. Please select another.")
 
+        invoice = m.Invoice.objects.create(
+            student=student, invoice_type=m.Invoice.InvoiceType.HOSTEL,
+            semester=semester, amount_due=fee_structure.amount,
+            description=f"Hostel fee - {hostel.name} ({semester.academic_year.year})",
+        )
+        FeeService._auto_apply_credit(student, invoice)  # any existing wallet credit is applied automatically
+
         booking = m.HostelBooking.objects.create(
             student=student, bed=locked_bed, academic_year=semester.academic_year,
-            status=m.HostelBooking.Status.APPROVED,
+            status=m.HostelBooking.Status.PENDING_PAYMENT,
+            booking_fee=fee_structure.amount,
+            invoice=invoice,
         )
         locked_bed.is_available = False
         locked_bed.save(update_fields=["is_available"])
+
+        # Wallet credit may have already fully covered the fee.
+        HostelService.mark_paid_if_settled(booking)
+        return booking
+
+    @staticmethod
+    @transaction.atomic
+    def mark_paid_if_settled(booking: m.HostelBooking) -> m.HostelBooking:
+        """Flips PENDING_PAYMENT -> APPROVED once the linked invoice's balance hits zero."""
+        if booking.invoice and booking.status == m.HostelBooking.Status.PENDING_PAYMENT:
+            if FeeService.invoice_balance(booking.invoice) <= 0:
+                booking.status = m.HostelBooking.Status.APPROVED
+                booking.save(update_fields=["status"])
         return booking
 
     @staticmethod
     @transaction.atomic
     def manual_book(student, bed, academic_year, status=None):
         """
-        Staff/admin override path — no eligibility or gender gate, since
-        a warden may need to place a student manually (e.g. a transfer or
-        an exception case). Still respects bed availability and freezes
-        the bed the same way.
+        Staff/admin override path — no eligibility or gender gate. If a
+        HostelFeeStructure exists for this hostel/year it still raises
+        the invoice (so the fee is tracked), but does NOT block the
+        booking on payment — staff decide the status explicitly.
         """
         status = status or m.HostelBooking.Status.APPROVED
         locked_bed = m.Bed.objects.select_for_update().get(pk=bed.pk)
         if not locked_bed.is_available:
             raise ValueError("Selected bed is not available.")
+
+        hostel = locked_bed.room.hostel
+        fee_structure = HostelService.get_fee_structure(hostel, academic_year)
+        invoice = None
+        booking_fee = Decimal("0")
+        if fee_structure:
+            invoice = m.Invoice.objects.create(
+                student=student, invoice_type=m.Invoice.InvoiceType.HOSTEL,
+                semester=m.Semester.objects.filter(academic_year=academic_year, is_current=True).first()
+                          or m.Semester.objects.filter(academic_year=academic_year).first(),
+                amount_due=fee_structure.amount,
+                description=f"Hostel fee - {hostel.name} ({academic_year.year})",
+            )
+            FeeService._auto_apply_credit(student, invoice)
+            booking_fee = fee_structure.amount
+
         booking = m.HostelBooking.objects.create(
-            student=student, bed=locked_bed, academic_year=academic_year, status=status
+            student=student, bed=locked_bed, academic_year=academic_year, status=status,
+            invoice=invoice, booking_fee=booking_fee,
         )
         locked_bed.is_available = False
         locked_bed.save(update_fields=["is_available"])
         return booking
+
 
     @staticmethod
     @transaction.atomic
@@ -1355,6 +1409,11 @@ class HostelService:
         booking.save(update_fields=["status"])
         booking.bed.is_available = True
         booking.bed.save(update_fields=["is_available"])
+        # An unpaid invoice for a cancelled booking shouldn't keep
+        # showing up as an outstanding balance.
+        if booking.invoice and booking.invoice.is_active and not booking.is_paid:
+            booking.invoice.is_active = False
+            booking.invoice.save(update_fields=["is_active"])
         return booking
 
     @staticmethod

@@ -471,14 +471,21 @@ class BedSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+
 class HostelBookingSerializer(serializers.ModelSerializer):
     bed_detail = BedSerializer(source="bed", read_only=True)
     student_detail = StudentSerializer(source="student", read_only=True)
+    invoice_detail = InvoiceSerializer(source="invoice", read_only=True)
+    is_paid = serializers.SerializerMethodField()
+
     class Meta:
         model = m.HostelBooking
         fields = "__all__"
-        read_only_fields = ["status", "booked_at", "checked_in_at", "checked_out_at"]
+        read_only_fields = ["status", "booked_at", "checked_in_at", "checked_out_at",
+                             "invoice", "booking_fee"]
 
+    def get_is_paid(self, obj):
+        return obj.is_paid
 
 
 # ----------------------------------------------------------------------
@@ -938,3 +945,26 @@ class ReceiptSerializer(serializers.Serializer):
 
 class PayInvoiceSerializer(serializers.Serializer):
     phone_number = serializers.CharField(required=False, allow_blank=True, default="")
+    
+    
+    
+class HostelFeeStructureSerializer(serializers.ModelSerializer):
+    hostel_detail = HostelSerializer(source="hostel", read_only=True)
+    academic_year_detail = AcademicYearSerializer(source="academic_year", read_only=True)
+
+    class Meta:
+        model = m.HostelFeeStructure
+        fields = "__all__"
+
+    def validate(self, attrs):
+        hostel = attrs.get("hostel", getattr(self.instance, "hostel", None))
+        academic_year = attrs.get("academic_year", getattr(self.instance, "academic_year", None))
+        qs = m.HostelFeeStructure.objects.filter(hostel=hostel, academic_year=academic_year)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "A fee structure already exists for this hostel and academic year."
+            )
+        return attrs
+
