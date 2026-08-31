@@ -2331,14 +2331,6 @@ class HostelViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="layout")
     def layout(self, request, pk=None):
-        """
-        Rooms + beds for the student-facing booking page. Rooms are
-        sorted with the same natural_sort_key used in floor_plan() below
-        — room_number is a CharField, so a plain .order_by("room_number")
-        sorts lexicographically ("1", "10", "100", "101", ... "2", "20"),
-        which is why rooms previously appeared out of numeric order on
-        the booking grid.
-        """
         hostel = self.get_object()
         user = request.user
 
@@ -2352,6 +2344,8 @@ class HostelViewSet(viewsets.ModelViewSet):
         if not academic_year:
             return Response({"detail": "No active academic year found."}, status=status.HTTP_404_NOT_FOUND)
 
+        fee_structure = services.HostelService.get_fee_structure(hostel, academic_year)
+
         rooms = list(
             hostel.rooms.filter(is_active=True)
             .prefetch_related(
@@ -2363,6 +2357,7 @@ class HostelViewSet(viewsets.ModelViewSet):
         return Response({
             "hostel": s.HostelSerializer(hostel).data,
             "academic_year": academic_year.year,
+            "fee_amount": fee_structure.amount if fee_structure else None,
             "rooms": [
                 {
                     "id": room.id,
@@ -2714,3 +2709,13 @@ class ExamOfficeDashboardView(APIView):
         return Response(services.ExamOfficeReportService.summary())
     
     
+
+class HostelFeeStructureViewSet(viewsets.ModelViewSet):
+    queryset = m.HostelFeeStructure.objects.select_related("hostel", "academic_year")
+    serializer_class = s.HostelFeeStructureSerializer
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden", "finance")]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["hostel", "academic_year"]
+    search_fields = ["hostel__name"]
+    ordering_fields = ["academic_year"]
+    ordering = ["-academic_year"]
