@@ -8,11 +8,48 @@ import {
 } from "../../components/ui/AdminUI";
 
 const PAGE_SIZE = 20;
-const STATUS_BADGE = { pending: "warning", approved: "success", checked_in: "info", checked_out: "gray", cancelled: "danger" };
+const STATUS_BADGE = {
+  pending: "warning",
+  pending_payment: "warning",
+  approved: "success",
+  checked_in: "info",
+  checked_out: "gray",
+  cancelled: "danger",
+};
 
 function fullName(user) {
   if (!user) return "N/A";
   return `${user.first_name || ""} ${user.last_name || ""}`.trim() || "N/A";
+}
+
+const fmtKes = (amount) =>
+  amount == null ? "N/A" : `KES ${Number(amount).toLocaleString()}`;
+
+/**
+ * Derives amount-paid + a payment-status label/badge from a booking row.
+ * - booking.invoice_detail carries amount_due / balance (see InvoiceSerializer).
+ * - booking.is_paid is computed server-side (balance <= 0, or true for
+ *   legacy/manual bookings created without an invoice).
+ */
+function paymentInfo(booking) {
+  const invoice = booking.invoice_detail;
+
+  if (!invoice) {
+    // No fee invoice attached at all (legacy or staff manual booking with no fee configured).
+    return { amountPaid: null, label: "No Fee", badge: "gray" };
+  }
+
+  const amountDue = Number(invoice.amount_due || 0);
+  const balance = Number(invoice.balance ?? amountDue);
+  const amountPaid = Math.max(amountDue - balance, 0);
+
+  if (balance <= 0) {
+    return { amountPaid, label: "Paid", badge: "success" };
+  }
+  if (amountPaid > 0) {
+    return { amountPaid, label: "Partially Paid", badge: "warning" };
+  }
+  return { amountPaid, label: "Unpaid", badge: "danger" };
 }
 
 // ----------------------------------------------------------------------
@@ -235,6 +272,7 @@ export default function HostelBookings() {
               <select className="mu-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="">All</option>
                 <option value="pending">Pending</option>
+                <option value="pending_payment">Pending Payment</option>
                 <option value="approved">Approved</option>
                 <option value="checked_in">Checked In</option>
                 <option value="checked_out">Checked Out</option>
@@ -259,35 +297,55 @@ export default function HostelBookings() {
           ) : (
             <div className="mu-table-wrapper">
               <table className="mu-table mu-table-hover">
-                <thead><tr><th>Student</th><th>Room / Bed</th><th>Booked</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Phone</th>
+                    <th>Room / Bed</th>
+                    <th>Booked</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Status</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {bookings.map((b) => (
-                    <tr key={b.id}>
-                      <td><strong>{b.student_detail?.registration_number}</strong><div style={{ fontSize: 12, color: "#777" }}>{fullName(b.student_detail?.user_detail)}</div></td>
-                      <td>{b.bed_detail?.room_detail?.hostel_detail?.name} / {b.bed_detail?.room_detail?.room_number} / {b.bed_detail?.bed_number}</td>
-                      <td>{fmtDate(b.booked_at)}</td>
-                      <td><span className={`mu-badge mu-badge-${STATUS_BADGE[b.status] || "gray"}`}>{b.status}</span></td>
-                      <td>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          {(b.status === "approved") && (
-                            <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => handleAction(b, "check_in")}>
-                              <i className="bi bi-box-arrow-in-right" /> Check In
-                            </button>
-                          )}
-                          {b.status === "checked_in" && (
-                            <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => handleAction(b, "check_out")}>
-                              <i className="bi bi-box-arrow-right" /> Check Out
-                            </button>
-                          )}
-                          {["pending", "approved"].includes(b.status) && (
-                            <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setCancelTarget(b)}>
-                              <i className="bi bi-x-circle" /> Cancel
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {bookings.map((b) => {
+                    const { amountPaid, label: paymentLabel, badge: paymentBadge } = paymentInfo(b);
+                    return (
+                      <tr key={b.id}>
+                        <td>
+                          <strong>{b.student_detail?.registration_number}</strong>
+                          <div style={{ fontSize: 12, color: "#777" }}>{fullName(b.student_detail?.user_detail)}</div>
+                        </td>
+                        <td>{b.student_detail?.user_detail?.phone || "N/A"}</td>
+                        <td>{b.bed_detail?.room_detail?.hostel_detail?.name} / {b.bed_detail?.room_detail?.room_number} / {b.bed_detail?.bed_number}</td>
+                        <td>{fmtDate(b.booked_at)}</td>
+                        <td>{fmtKes(amountPaid)}</td>
+                        <td><span className={`mu-badge mu-badge-${paymentBadge}`}>{paymentLabel}</span></td>
+                        <td><span className={`mu-badge mu-badge-${STATUS_BADGE[b.status] || "gray"}`}>{b.status?.replace("_", " ")}</span></td>
+                        <td>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {(b.status === "approved") && (
+                              <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => handleAction(b, "check_in")}>
+                                <i className="bi bi-box-arrow-in-right" /> Check In
+                              </button>
+                            )}
+                            {b.status === "checked_in" && (
+                              <button className="mu-btn mu-btn-sm mu-btn-outline-primary" onClick={() => handleAction(b, "check_out")}>
+                                <i className="bi bi-box-arrow-right" /> Check Out
+                              </button>
+                            )}
+                            {["pending", "pending_payment", "approved"].includes(b.status) && (
+                              <button className="mu-btn mu-btn-sm mu-btn-danger" onClick={() => setCancelTarget(b)}>
+                                <i className="bi bi-x-circle" /> Cancel
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
