@@ -2,8 +2,8 @@ import axios from "axios";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  "http://192.168.45.92:8000/api/v1";
-
+  "http://localhost:8000/api/v1";
+  
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 15000, // fail after 15s instead of hanging forever
@@ -576,6 +576,88 @@ export const examOfficeApi = {
   profile: () => api.get("/auth/me/"),
   updateProfile: (payload) => api.patch("/auth/me/", payload),
   permissions: () => api.get("/auth/permissions/"),
+};
+
+// ---------------------------------------------------------------------
+// HR & Payroll APIs
+// Mirrors hr/urls.py mounted at /api/v1/hr/ — same `api` instance, same
+// conventions as every block above (params objects for GET filters,
+// payload objects for POST/PATCH bodies).
+// ---------------------------------------------------------------------
+export const hrApi = {
+  // --- Dashboard ---
+  dashboard: () => api.get("/hr/dashboard/"),
+  staffByCategory: () => api.get("/hr/dashboard/staff_by_category/"),
+  payrollTrend: (months = 6) => api.get("/hr/dashboard/payroll_trend/", { params: { months } }),
+  attendanceTrend: (days = 14) => api.get("/hr/dashboard/attendance_trend/", { params: { days } }),
+
+  // --- Employees ---
+  staff: (params) => api.get("/hr/staff/", { params }),
+  getStaff: (id) => api.get(`/hr/staff/${id}/`),
+  createStaff: (payload) => api.post("/hr/staff/", payload),
+  updateStaff: (id, payload) => api.patch(`/hr/staff/${id}/`, payload),
+  deleteStaff: (id) => api.delete(`/hr/staff/${id}/`),
+  staffPayslips: (id) => api.get(`/hr/staff/${id}/payslips/`),
+  staffLeaveBalances: (id, year) => api.get(`/hr/staff/${id}/leave_balances/`, { params: { year } }),
+
+  positions: (params) => api.get("/hr/positions/", { params }),
+  createPosition: (payload) => api.post("/hr/positions/", payload),
+  updatePosition: (id, payload) => api.patch(`/hr/positions/${id}/`, payload),
+  deletePosition: (id) => api.delete(`/hr/positions/${id}/`),
+
+  jobGroups: () => api.get("/hr/job-groups/"),
+  createJobGroup: (payload) => api.post("/hr/job-groups/", payload),
+  updateJobGroup: (id, payload) => api.patch(`/hr/job-groups/${id}/`, payload),
+  deleteJobGroup: (id) => api.delete(`/hr/job-groups/${id}/`),
+
+  contracts: (params) => api.get("/hr/contracts/", { params }),
+  createContract: (payload) => api.post("/hr/contracts/", payload),
+  updateContract: (id, payload) => api.patch(`/hr/contracts/${id}/`, payload),
+
+  // --- Leave ---
+  leaveTypes: () => api.get("/hr/leave-types/"),
+  createLeaveType: (payload) => api.post("/hr/leave-types/", payload),
+  leaveBalances: (params) => api.get("/hr/leave-balances/", { params }),
+  leaveApplications: (params) => api.get("/hr/leave-applications/", { params }),
+  applyLeave: (payload) => api.post("/hr/leave-applications/", payload),
+  approveLeave: (id, remarks = "") => api.post(`/hr/leave-applications/${id}/approve/`, { remarks }),
+  rejectLeave: (id, remarks = "") => api.post(`/hr/leave-applications/${id}/reject/`, { remarks }),
+  cancelLeave: (id) => api.post(`/hr/leave-applications/${id}/cancel/`),
+
+  // --- Attendance ---
+  attendance: (params) => api.get("/hr/attendance/", { params }),
+  markAbsentees: (date, department) => api.post("/hr/attendance/mark_absentees/", { date, department }),
+  attendanceDevices: () => api.get("/hr/attendance-devices/"),
+  qrSessions: (params) => api.get("/hr/qr-sessions/", { params }),
+  createQrSession: (payload) => api.post("/hr/qr-sessions/", payload),
+  qrCheckIn: (token) => api.post("/hr/qr-sessions/check_in/", { token }),
+  biometricLogs: (params) => api.get("/hr/biometric-logs/", { params }),
+  foldBiometricLogs: (date) => api.post("/hr/biometric-logs/fold/", { date }),
+
+  // --- Payroll ---
+  payrollPeriods: (params) => api.get("/hr/payroll-periods/", { params }),
+  createPayrollPeriod: (payload) => api.post("/hr/payroll-periods/", payload),
+  runPayroll: (id) => api.post(`/hr/payroll-periods/${id}/run/`, { confirm: true }),
+  markPayrollPaid: (id) => api.post(`/hr/payroll-periods/${id}/mark_paid/`),
+  periodPayslips: (id) => api.get(`/hr/payroll-periods/${id}/payslips/`),
+  payslips: (params) => api.get("/hr/payslips/", { params }),
+
+  allowances: (params) => api.get("/hr/allowances/", { params }),
+  createAllowance: (payload) => api.post("/hr/allowances/", payload),
+  deductions: (params) => api.get("/hr/deductions/", { params }),
+  createDeduction: (payload) => api.post("/hr/deductions/", payload),
+
+  salaryAdvances: (params) => api.get("/hr/salary-advances/", { params }),
+  createSalaryAdvance: (payload) => api.post("/hr/salary-advances/", payload),
+  approveSalaryAdvance: (id) => api.post(`/hr/salary-advances/${id}/approve/`),
+  rejectSalaryAdvance: (id) => api.post(`/hr/salary-advances/${id}/reject/`),
+
+  loans: (params) => api.get("/hr/loans/", { params }),
+  createLoan: (payload) => api.post("/hr/loans/", payload),
+  approveLoan: (id) => api.post(`/hr/loans/${id}/approve/`),
+
+  payeBands: (year) => api.get("/hr/paye-bands/", { params: { effective_year: year } }),
+  statutoryRates: (year) => api.get("/hr/statutory-rates/", { params: { effective_year: year } }),
 };
 
 export default api;

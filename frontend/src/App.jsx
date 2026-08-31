@@ -97,6 +97,13 @@ import ExamOfficeProfile from "./pages/examoffice/ExamOfficeProfile";
 
 import MyLibrary from "./pages/library/MyLibrary";
 
+import HRDashboardPage from "./pages/hr/HRDashboardPage";
+import EmployeesPage from "./pages/hr/EmployeesPage";
+import LeavePage from "./pages/hr/LeavePage";
+import AttendancePage from "./pages/hr/AttendancePage";
+import PayrollPage from "./pages/hr/PayrollPage";
+import HRProfilePage from "./pages/hr/HRProfilePage";
+
 // Library — staff desk
 import LibraryDashboard from "./pages/library/LibraryDashboard";
 import LibrarianDashboard from "./pages/library/LibrarianDashboard";
@@ -261,6 +268,61 @@ export default function App() {
             <Route path="/registrar/deferments" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarDeferments /></ProtectedRoute>} />
             <Route path="/registrar/clearances" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarClearances /></ProtectedRoute>} />
             <Route path="/registrar/profile" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarProfile /></ProtectedRoute>} />
+
+            <Route
+                path="/hr/dashboard"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <HRDashboardPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/hr/employees"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <EmployeesPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/hr/leave"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <LeavePage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/hr/attendance"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <AttendancePage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/hr/payroll"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <PayrollPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/hr/profile"
+                element={
+                    <ProtectedRoute allow={[ROLES.HR, ROLES.ADMIN]}>
+                        <HRProfilePage />
+                    </ProtectedRoute>
+                }
+            />
+          
 
             {/* ===== DEAN ===== */}
             <Route path="/dean/dashboard" element={<ProtectedRoute allow={[ROLES.DEAN, ROLES.ADMIN]}><DeanDashboard /></ProtectedRoute>} />

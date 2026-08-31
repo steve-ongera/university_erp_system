@@ -255,6 +255,39 @@ const NAV_BY_ROLE = {
       ],
     },
   ],
+  // ===== HR =====
+  // Dedicated nav tree for the HR & Payroll module. Requires ROLES.HR to
+  // exist in AuthContext (add it there + to the backend user_type choices
+  // if it doesn't yet) or this entry will never match and users will fall
+  // through to an empty sidebar.
+  [ROLES.HR]: [
+    { section: "Overview", links: [{ to: "/hr", label: "Dashboard", icon: "bi-speedometer2" }] },
+    {
+      section: "HR & Payroll",
+      links: [
+        { to: "/hr/employees", label: "Employees", icon: "bi-people" },
+        { to: "/hr/leave", label: "Leave", icon: "bi-calendar-check" },
+        { to: "/hr/attendance", label: "Attendance", icon: "bi-fingerprint" },
+        { to: "/hr/payroll", label: "Payroll", icon: "bi-wallet2" },
+      ],
+    },
+    {
+      section: "Campus Life",
+      links: [{ to: "/library", label: "My Library", icon: "bi-book-half" }],
+    },
+    {
+      section: "Communication",
+      links: [
+        { to: "/inbox", label: "Inbox", icon: "bi-inbox" },
+        { to: "/compose-message", label: "Compose Message", icon: "bi-pencil-square" },
+        { to: "/conversations", label: "Conversations", icon: "bi-chat-dots" },
+      ],
+    },
+    {
+      section: "Account",
+      links: [{ to: "/hr/profile", label: "My Profile", icon: "bi-person-circle" }],
+    },
+  ],
   DEFAULT_ADMIN: [
     { section: "Overview", links: [{ to: "/admin/dashboard", label: "Dashboard", icon: "bi-speedometer2" }] },
     {
@@ -294,6 +327,17 @@ const NAV_BY_ROLE = {
         { to: "/hostel-reports", label: "Reports", icon: "bi-bar-chart" },
       ],
     },
+    // Admin also gets the HR & Payroll module (mirrors ROLES.HR above).
+    {
+      section: "HR & Payroll",
+      links: [
+        { to: "/hr", label: "HR Dashboard", icon: "bi-speedometer2" },
+        { to: "/hr/employees", label: "Employees", icon: "bi-people" },
+        { to: "/hr/leave", label: "Leave", icon: "bi-calendar-check" },
+        { to: "/hr/attendance", label: "Attendance", icon: "bi-fingerprint" },
+        { to: "/hr/payroll", label: "Payroll", icon: "bi-wallet2" },
+      ],
+    },
     {
       section: "Communication",
       links: [
@@ -324,7 +368,7 @@ const NAV_BY_ROLE = {
 
 // Roles that reuse the generic admin-style menu (each still sees only what
 // their backend permissions allow when they hit the API). COD, Registrar,
-// Dean, Exam Office and Librarian all have their own dedicated nav trees
+// Dean, Exam Office, Librarian and HR all have their own dedicated nav trees
 // above and are intentionally NOT in this list.
 const ADMIN_LIKE = [ROLES.ADMIN, ROLES.STAFF];
 
