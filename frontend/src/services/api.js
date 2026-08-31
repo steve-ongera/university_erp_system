@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  "http://192.168.201.92:8000/api/v1";
+  "http://192.168.45.92:8000/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -186,11 +186,17 @@ export const feesApi = {
 export const hostelApi = {
   beds: (params) => api.get("/beds/", { params }),
   book: (payload) => api.post("/hostel-bookings/", payload),
+  payBooking: (bookingId, phoneNumber = "") =>
+    api.post(`/hostel-bookings/${bookingId}/pay/`, { phone_number: phoneNumber }),
   myBookings: () => api.get("/hostel-bookings/"),
   hostels: () => api.get("/hostels/"),
   layout: (hostelId) => api.get(`/hostels/${hostelId}/layout/`),
   rooms: () => api.get("/rooms/"),
   status: () => api.get("/me/hostel-status/"),
+  feeStructures: (params) => api.get("/hostel-fee-structures/", { params }),
+  createFeeStructure: (payload) => api.post("/hostel-fee-structures/", payload),
+  updateFeeStructure: (id, payload) => api.patch(`/hostel-fee-structures/${id}/`, payload),
+  deleteFeeStructure: (id) => api.delete(`/hostel-fee-structures/${id}/`),
 };
 
 export const clearanceApi = {

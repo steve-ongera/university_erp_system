@@ -27,7 +27,6 @@ import Conversations from "./pages/communication/Conversations";
 import ConversationDetail from "./pages/communication/ConversationDetail";
 import CommunicationCenter from "./pages/admin/CommunicationCenter";
 import ContactSupport from "./pages/students/ContactSupport";
- 
 
 // Lecturer Pages
 import LecturerDashboard from "./pages/lecturers/LecturerDashboard";
@@ -35,7 +34,6 @@ import MyAllocatedUnits from "./pages/lecturers/MyAllocatedUnits";
 import EnterMarks from "./pages/lecturers/EnterMarks";
 import QRAttendance from "./pages/lecturers/QRAttendance";
 import LecturePage from "./pages/lecturers/LecturePage";
-
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -56,7 +54,7 @@ import AdminReportings from "./pages/admin/AdminReportings";
 import TimetableBuilder from "./pages/admin/TimetableBuilder";
 import UserManagement from "./pages/admin/UserManagement";
 import GradingSchemas from "./pages/admin/grading_schemas";
-import StudentsFeePayment from "./pages/admin/students_feepayment";  
+import StudentsFeePayment from "./pages/admin/students_feepayment";
 import SecurityAudit from "./pages/admin/SecurityAudit";
 
 // Finance Pages
@@ -98,7 +96,7 @@ import ExamOfficeSupplementary from "./pages/examoffice/ExamOfficeSupplementary"
 import ExamOfficeProfile from "./pages/examoffice/ExamOfficeProfile";
 
 import MyLibrary from "./pages/library/MyLibrary";
- 
+
 // Library — staff desk
 import LibraryDashboard from "./pages/library/LibraryDashboard";
 import LibrarianDashboard from "./pages/library/LibrarianDashboard";
@@ -107,7 +105,6 @@ import LibraryCirculation from "./pages/library/LibraryCirculation";
 import LibraryMembers from "./pages/library/LibraryMembers";
 import LibraryReservations from "./pages/library/LibraryReservations";
 import LibraryFines from "./pages/library/LibraryFines";
- 
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./style/main.css";
@@ -130,8 +127,8 @@ function ProtectedRoute({ children, allow = ALL_ROLES }) {
 
 function FullScreenLoader() {
   return (
-    <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <i className="bi bi-arrow-repeat" style={{ fontSize: "2rem", animation: "spin 1s linear infinite" }} />
+    <div className="h-screen flex items-center justify-center">
+      <i className="bi bi-arrow-repeat text-3xl text-mu-primary-500 animate-mu-spin" />
     </div>
   );
 }
@@ -174,12 +171,12 @@ export default function App() {
             <Route path="/attendance" element={<ProtectedRoute allow={[ROLES.LECTURER]}><QRAttendance /></ProtectedRoute>} />
             <Route path="/lecturer/cats-notes" element={<ProtectedRoute allow={[ROLES.LECTURER]}><LecturePage /></ProtectedRoute>} />
 
-            {/* ===== HOSTEL WARDEN PAGES (unchanged — already correctly scoped) ===== */}
+            {/* ===== HOSTEL WARDEN PAGES ===== */}
             <Route path="/hostel/dashboard" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelWardenDashboard /></ProtectedRoute>} />
             <Route path="/hostel-management" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelsRooms /></ProtectedRoute>} />
             <Route path="/hostel-bookings" element={<ProtectedRoute allow={[ROLES.HOSTEL_WARDEN, ROLES.ADMIN]}><HostelBookings /></ProtectedRoute>} />
 
-            {/* ===== FINANCE PAGES (unchanged — already correctly scoped) ===== */}
+            {/* ===== FINANCE PAGES ===== */}
             <Route path="/finance/dashboard" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><FinanceDashboard /></ProtectedRoute>} />
             <Route path="/fee-structures" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><FeeStructures /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute allow={[ROLES.FINANCE, ROLES.ADMIN]}><PaymentsReconciliation /></ProtectedRoute>} />
@@ -188,28 +185,26 @@ export default function App() {
             {/* ===== COMMUNICATION — shared by every authenticated role ===== */}
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/communication/:id" element={<ConversationDetail />} />
-            
-            {/* Student: contact support / open + track enquiries and complaints */}
+
+            {/* Student: contact support */}
             <Route
               path="/contact-support"
               element={<ProtectedRoute allow={[ROLES.STUDENT]}><ContactSupport /></ProtectedRoute>}
             />
-            
-            {/* Dean / HOD / Lecturer / Finance / Exam Office / Hostel Warden / Librarian: scoped
-                compose (server pins each role's reach — Dean to their faculty, HOD to their
-                department, Lecturer to a class they teach, Librarian to library matters) */}
+
+            {/* Dean / HOD / Lecturer / Finance / Exam Office / Hostel Warden / Librarian */}
             <Route
               path="/compose-message"
               element={
                 <ProtectedRoute
-                  allow={[ROLES.DEAN, ROLES.ADMIN , ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN, ROLES.LIBRARIAN]}
+                  allow={[ROLES.DEAN, ROLES.ADMIN, ROLES.COD, ROLES.LECTURER, ROLES.FINANCE, ROLES.EXAM_OFFICE, ROLES.HOSTEL_WARDEN, ROLES.LIBRARIAN]}
                 >
                   <ComposeMessage />
                 </ProtectedRoute>
               }
             />
-            
-            {/* Staff-side conversation queue (whoever can be a Conversation target) */}
+
+            {/* Staff-side conversation queue */}
             <Route
               path="/conversations"
               element={
@@ -220,8 +215,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            
-            {/* Admin/Registrar: full Communication Center (any audience, any scope) */}
+
+            {/* Admin/Registrar: full Communication Center */}
             <Route
               path="/communication-center"
               element={
@@ -231,7 +226,7 @@ export default function App() {
               }
             />
 
-            {/* ===== STAFF — no dedicated modules yet ===== */}
+            {/* ===== STAFF ===== */}
             <Route
               path="/staff/dashboard"
               element={
@@ -243,12 +238,7 @@ export default function App() {
               }
             />
 
-            {/* ===== CHAIR OF DEPARTMENT (COD) PAGES =====
-                Fixed: these previously used `allowedRoles={["cod"]}`, a prop
-                ProtectedRoute never read — it only checks `allow`, so these
-                routes were silently falling back to ALL_ROLES. Now scoped
-                correctly using ROLES.COD (and ROLES.ADMIN, consistent with
-                how Finance/Hostel Warden modules are scoped above). */}
+            {/* ===== CHAIR OF DEPARTMENT (COD) PAGES ===== */}
             <Route path="/cod/dashboard" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodDashboard /></ProtectedRoute>} />
             <Route path="/cod/students" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodStudents /></ProtectedRoute>} />
             <Route path="/cod/reports" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodReports /></ProtectedRoute>} />
@@ -257,10 +247,7 @@ export default function App() {
             <Route path="/cod/verify-marks" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodVerifyMarks /></ProtectedRoute>} />
             <Route path="/cod/profile" element={<ProtectedRoute allow={[ROLES.COD, ROLES.ADMIN]}><CodProfile /></ProtectedRoute>} />
 
-            {/* ===== REGISTRAR =====
-                Dashboard and Profile are live now; Students/Deferments/
-                Clearances stay under-development (same placeholder
-                pattern as Staff) until we build them out one by one. */}
+            {/* ===== REGISTRAR ===== */}
             <Route path="/registrar/dashboard" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarDashboard /></ProtectedRoute>} />
             <Route path="/registrar/students" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarStudents /></ProtectedRoute>} />
             <Route path="/registrar/deferments" element={<ProtectedRoute allow={[ROLES.REGISTRAR, ROLES.ADMIN]}><RegistrarDeferments /></ProtectedRoute>} />
@@ -281,25 +268,16 @@ export default function App() {
             <Route path="/exam-office/supplementary" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeSupplementary /></ProtectedRoute>} />
             <Route path="/exam-office/profile" element={<ProtectedRoute allow={[ROLES.EXAM_OFFICE, ROLES.ADMIN]}><ExamOfficeProfile /></ProtectedRoute>} />
 
-            {/* ===== LIBRARY — self-service, every authenticated role ===== */}
+            {/* ===== LIBRARY — self-service ===== */}
             <Route path="/library" element={<MyLibrary />} />
 
-            {/* ===== LIBRARIAN =====
-                New dedicated role landing page, same pattern as Dean/Registrar/COD
-                dashboards below. Renders the same component as
-                /library-management/dashboard (see LibrarianDashboard.jsx /
-                LibraryDashboard.jsx) so there's a single implementation. */}
+            {/* ===== LIBRARIAN ===== */}
             <Route
               path="/librarian/dashboard"
               element={<ProtectedRoute allow={[ROLES.LIBRARIAN, ROLES.ADMIN]}><LibrarianDashboard /></ProtectedRoute>}
             />
 
-            {/* ===== LIBRARY MANAGEMENT — staff desk =====
-                Now scoped with LIBRARY_STAFF_ROLES (Admin, Librarian, Staff, Registrar)
-                instead of the old ad-hoc [ROLES.ADMIN, ROLES.STAFF, ROLES.REGISTRAR]
-                array, mirroring the backend's IsLibraryStaff.STAFF_ROLES (see
-                BACKEND_CHANGES.md — Staff/Registrar are kept for backwards
-                compatibility; swap them out here once Librarian fully replaces them). */}
+            {/* ===== LIBRARY MANAGEMENT — staff desk ===== */}
             <Route
               path="/library-management/dashboard"
               element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryDashboard /></ProtectedRoute>}
@@ -325,21 +303,7 @@ export default function App() {
               element={<ProtectedRoute allow={LIBRARY_STAFF_ROLES}><LibraryFines /></ProtectedRoute>}
             />
 
-            {/*
-              ===== ADMIN-STYLE PAGES =====
-              Every route below is now guarded by PAGES.X.roles from
-              src/config/rbac.js instead of one shared ADMIN_ROLES bucket.
-              Only 'admin' appears on every single one; every other role
-              (registrar/dean/cod/exam_office) gets its own narrow slice.
-              See rbac.js for the full matrix + rationale.
-
-              NOTE: /reportings uses a plain [ROLES.ADMIN, ROLES.REGISTRAR]
-              array instead of PAGES.REPORTINGS.roles because that entry
-              doesn't exist in rbac.js yet. Add a REPORTINGS entry to
-              rbac.js (matching the shape of e.g. PAGES.CLEARANCES), then
-              swap this back to allow={PAGES.REPORTINGS.roles} for
-              consistency with the rest of this block.
-            */}
+            {/* ===== ADMIN-STYLE PAGES ===== */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allow={PAGES.ADMIN_DASHBOARD.roles}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/faculties" element={<ProtectedRoute allow={PAGES.FACULTIES.roles}><FacultiesDepartments /></ProtectedRoute>} />
             <Route path="/programmes" element={<ProtectedRoute allow={PAGES.PROGRAMMES.roles}><Programmes /></ProtectedRoute>} />
@@ -359,7 +323,7 @@ export default function App() {
             <Route path="/timetable-builder" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.COD]}><TimetableBuilder /></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute allow={[ROLES.ADMIN]}><UserManagement /></ProtectedRoute>} />
             <Route path="/grading-schemes" element={<ProtectedRoute allow={[ROLES.ADMIN, ROLES.REGISTRAR, ROLES.EXAM_OFFICE]}><GradingSchemas /></ProtectedRoute>} />
-            <Route path="/security-audits" element={<ProtectedRoute allow={[ROLES.ADMIN]}><SecurityAudit/></ProtectedRoute>} />
+            <Route path="/security-audits" element={<ProtectedRoute allow={[ROLES.ADMIN]}><SecurityAudit /></ProtectedRoute>} />
           </Route>
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

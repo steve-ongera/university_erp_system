@@ -1,0 +1,2126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ==========================================================================
+     RESET & BASE STYLES
+     ========================================================================== */
+  
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #262d3d;
+    background: #f5f7fc;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-weight: 600;
+    color: #141a28;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  h1 { font-size: 1.875rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem; }
+
+  a {
+    color: #43A047;
+    text-decoration: none;
+    transition: color 150ms ease;
+  }
+  a:hover { color: #388E3C; }
+
+  img { max-width: 100%; height: auto; }
+
+  hr {
+    border: 0;
+    border-top: 1px solid #e4e7ef;
+    margin: 24px 0;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f3f7;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cdd2df;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8afc5;
+  }
+}
+
+@layer components {
+  /* ==========================================================================
+     LAYOUT SHELL
+     ========================================================================== */
+  .mu-app-shell {
+    @apply flex min-h-screen;
+  }
+
+  .mu-main {
+    @apply flex-1 flex flex-col min-h-screen transition-all duration-250;
+    margin-left: 260px;
+  }
+
+  .mu-content {
+    @apply p-6 md:p-8 max-w-[1440px] w-full mx-auto flex-1;
+    padding-bottom: 48px;
+  }
+
+  .mu-page-header {
+    @apply flex items-center justify-between flex-wrap gap-4 mb-6 pb-4 border-b border-[#e4e7ef];
+  }
+
+  .mu-page-header h1 {
+    @apply text-2xl flex items-center gap-3 m-0;
+  }
+
+  .mu-page-header h1 .bi {
+    @apply text-[#4CAF50] text-2xl;
+  }
+
+  .mu-page-header .mu-breadcrumb {
+    @apply text-sm text-[#7e869e];
+  }
+
+  .mu-page-header .mu-breadcrumb span {
+    @apply text-[#3d4558];
+  }
+
+  .mu-page-header .mu-breadcrumb .separator {
+    @apply mx-2 text-[#cdd2df];
+  }
+
+  .mu-page-header-actions {
+    @apply flex items-center gap-3 flex-wrap;
+  }
+
+  /* ==========================================================================
+     SIDEBAR
+     ========================================================================== */
+  .mu-sidebar {
+    @apply fixed top-0 left-0 bottom-0 flex flex-col z-[100] overflow-hidden;
+    width: 260px;
+    background: #1B5E20;
+    color: #ffffff;
+    transition: transform 250ms ease, width 250ms ease;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .mu-sidebar-header {
+    @apply flex items-center gap-3 px-5 border-b border-white/10 flex-shrink-0;
+    height: 68px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .mu-sidebar-logo {
+    @apply w-[38px] h-[38px] object-contain flex-shrink-0 brightness-0 invert;
+  }
+
+  .mu-sidebar-header .mu-brand-text {
+    @apply text-white font-heading font-bold text-lg whitespace-nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  .mu-sidebar-header .mu-brand-sub {
+    @apply text-white/50 text-xs font-medium;
+  }
+
+  .mu-sidebar-header .mu-logo-icon {
+    @apply hidden;
+  }
+
+  .mu-sidebar-nav {
+    @apply flex-1 overflow-y-auto py-4 px-3;
+  }
+
+  .mu-sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+  }
+  .mu-sidebar-nav::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .mu-sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgb(244, 240, 240);
+    border-radius: 9999px;
+  }
+
+  .mu-nav-section-label {
+    @apply text-xs uppercase tracking-wider font-semibold text-white/40 px-3 py-4 pb-2;
+    letter-spacing: 0.08em;
+  }
+
+  .mu-nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-[6px] text-white/70 text-sm font-medium transition-all duration-150 cursor-pointer relative no-underline;
+  }
+
+  .mu-nav-link .bi {
+    @apply text-[1.15rem] w-[22px] text-center flex-shrink-0 text-white/50 transition-colors duration-150;
+  }
+
+  .mu-nav-link span {
+    @apply text-white/70 transition-colors duration-150;
+  }
+
+  .mu-nav-link:hover {
+    @apply bg-white/10 text-white;
+  }
+
+  .mu-nav-link:hover .bi {
+    @apply text-white/90;
+  }
+
+  .mu-nav-link:hover span {
+    @apply text-white;
+  }
+
+  .mu-nav-link.active {
+    @apply bg-white/10 text-white font-semibold;
+  }
+
+  .mu-nav-link.active .bi {
+    @apply text-white;
+  }
+
+  .mu-nav-link.active span {
+    @apply text-white;
+  }
+
+  .mu-nav-link.active::before {
+    content: '';
+    @apply absolute left-0 top-1 bottom-1 w-[3px] bg-white rounded-r-[6px];
+  }
+
+  .mu-nav-link .mu-badge {
+    @apply ml-auto bg-white/20 text-white text-xs px-2 py-0.5 rounded-full min-w-[20px] text-center;
+  }
+
+  .mu-sidebar-footer {
+    @apply px-4 py-3 border-t border-white/10 flex-shrink-0 flex flex-col gap-2;
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .mu-footer-user {
+    @apply flex items-center gap-3 p-1;
+  }
+
+  .mu-footer-user .mu-avatar-sm {
+    @apply w-[34px] h-[34px] rounded-full bg-white/15 text-white flex items-center justify-center text-xs font-bold flex-shrink-0;
+  }
+
+  .mu-footer-user-info {
+    @apply flex-1 min-w-0;
+  }
+
+  .mu-footer-user-name {
+    @apply text-sm font-semibold text-white truncate;
+  }
+
+  .mu-footer-user-role {
+    @apply text-xs text-white/50 capitalize;
+  }
+
+  .mu-footer-divider {
+    @apply flex items-center gap-2 px-1;
+  }
+
+  .mu-divider-line {
+    @apply flex-1 h-px bg-white/10;
+  }
+
+  .mu-divider-dot {
+    @apply flex items-center justify-center text-white/15 text-[0.4rem];
+  }
+
+  .mu-divider-dot .bi {
+    @apply text-[0.6rem] text-white/20;
+  }
+
+  .mu-footer-copyright {
+    @apply flex items-center justify-center gap-1 text-xs text-white/30 py-1;
+  }
+
+  .mu-footer-copyright .bi {
+    @apply text-xs text-white/25;
+  }
+
+  .mu-footer-copyright span {
+    @apply text-white/30;
+  }
+
+  .mu-sidebar-overlay {
+    @apply fixed inset-0 bg-black/50 z-[90] hidden backdrop-blur-sm;
+  }
+
+  .mu-sidebar-overlay.active {
+    @apply block;
+  }
+
+  .mu-sidebar.collapsed {
+    width: 64px;
+  }
+
+  .mu-sidebar.collapsed .mu-brand-text,
+  .mu-sidebar.collapsed .mu-brand-sub,
+  .mu-sidebar.collapsed .mu-nav-link span,
+  .mu-sidebar.collapsed .mu-nav-section-label,
+  .mu-sidebar.collapsed .mu-footer-user-info,
+  .mu-sidebar.collapsed .mu-footer-copyright span,
+  .mu-sidebar.collapsed .mu-footer-divider,
+  .mu-sidebar.collapsed .mu-nav-link .mu-badge {
+    @apply hidden;
+  }
+
+  .mu-sidebar.collapsed .mu-nav-link {
+    @apply justify-center p-3;
+  }
+
+  .mu-sidebar.collapsed .mu-nav-link .bi {
+    @apply text-[1.3rem] w-auto;
+  }
+
+  .mu-sidebar.collapsed .mu-sidebar-header {
+    @apply justify-center px-2;
+  }
+
+  .mu-sidebar.collapsed .mu-sidebar-logo {
+    @apply w-8 h-8;
+  }
+
+  .mu-sidebar.collapsed .mu-footer-user {
+    @apply justify-center;
+  }
+
+  .mu-sidebar.collapsed .mu-footer-copyright {
+    @apply text-xs;
+  }
+
+  /* ==========================================================================
+     NAVBAR
+     ========================================================================== */
+  .mu-navbar {
+    @apply bg-white border-b border-[#e4e7ef] flex items-center justify-between px-6 sticky top-0 z-[50] flex-shrink-0;
+    height: 68px;
+  }
+
+  .mu-navbar-left {
+    @apply flex items-center gap-4 flex-shrink-0;
+  }
+
+  .mu-navbar-toggle {
+    @apply hidden bg-none border-none text-[#5a6378] text-2xl p-1 cursor-pointer rounded-[6px] hover:bg-[#f1f3f7] transition-colors duration-150;
+  }
+
+  .mu-navbar-brand {
+    @apply hidden items-center gap-2 font-heading font-bold text-[#141a28];
+  }
+
+  .mu-navbar-brand .bi {
+    @apply text-[#4CAF50] text-xl;
+  }
+
+  .mu-navbar-center {
+    @apply flex-1 flex items-center justify-center px-4 hidden md:flex;
+  }
+
+  .mu-search-bar {
+    @apply relative w-full max-w-[480px];
+  }
+
+  .mu-search-bar .bi-search {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-[#a8afc5] text-base z-[1];
+  }
+
+  .mu-search-bar input {
+    @apply w-full py-2 pl-8 pr-3 border border-[#e4e7ef] rounded-full bg-[#f8f9fc] text-sm text-[#262d3d] transition-all duration-150;
+  }
+
+  .mu-search-bar input::placeholder {
+    @apply text-[#a8afc5];
+  }
+
+  .mu-search-bar input:focus {
+    @apply outline-none border-[#4CAF50] bg-white shadow-[0_0_0_3px_rgba(59,108,224,0.1)];
+  }
+
+  .mu-navbar-actions {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+
+  .mu-navbar-action-btn {
+    @apply relative bg-none border-none text-[#7e869e] p-2 rounded-full cursor-pointer hover:bg-[#f1f3f7] hover:text-[#3d4558] transition-all w-10 h-10 flex items-center justify-center text-xl;
+  }
+
+  .mu-navbar-action-btn .mu-badge-dot {
+    @apply absolute top-2 right-2 w-2 h-2 bg-[#C62828] rounded-full border-2 border-white;
+  }
+
+  .mu-navbar-action-btn .mu-badge-count {
+    @apply absolute -top-0.5 -right-0.5 bg-[#C62828] text-white text-xs font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 border-2 border-white;
+  }
+
+  .mu-user-chip {
+    @apply flex items-center gap-2 py-1 pr-3 pl-1 rounded-full bg-[#f8f9fc] cursor-pointer hover:bg-[#f1f3f7] hover:border-[#e4e7ef] transition-all border border-transparent;
+  }
+
+  .mu-user-chip .mu-avatar {
+    @apply w-[34px] h-[34px] rounded-full bg-[#4CAF50] text-white flex items-center justify-center font-bold text-sm;
+  }
+
+  .mu-user-chip .mu-user-text {
+    @apply leading-tight hidden sm:block;
+  }
+
+  .mu-user-chip .mu-user-name {
+    @apply text-sm font-medium text-[#262d3d];
+  }
+
+  .mu-user-chip .mu-user-role {
+    @apply text-xs text-[#a8afc5] capitalize;
+  }
+
+  .mu-user-chip .bi-chevron-down {
+    @apply text-xs text-[#a8afc5] transition-transform duration-150;
+  }
+
+  .mu-user-chip.open .bi-chevron-down {
+    @apply rotate-180;
+  }
+
+  .mu-navbar-logo {
+    @apply h-8 w-auto object-contain;
+  }
+
+  /* ==========================================================================
+     CARDS & SURFACES
+     ========================================================================== */
+  .mu-card {
+    @apply bg-white border border-[#e4e7ef] rounded-[16px] shadow-[0_1px_3px_rgba(46,125,50,0.08)] transition-shadow duration-150 ease-in-out hover:shadow-[0_4px_16px_rgba(46,125,50,0.10)];
+  }
+
+  .mu-card-header {
+    @apply flex items-center justify-between px-5 py-4 border-b border-[#e4e7ef];
+  }
+
+  .mu-card-header h3,
+  .mu-card-header h4 {
+    @apply m-0 text-base;
+  }
+
+  .mu-card-body {
+    @apply p-5;
+  }
+
+  .mu-card-footer {
+    @apply px-5 py-4 border-t border-[#e4e7ef] bg-[#f8f9fc] rounded-b-[16px];
+  }
+
+  /* ==========================================================================
+     STAT CARDS
+     ========================================================================== */
+  .mu-stat-card {
+    @apply bg-white border border-[#e4e7ef] rounded-[10px] p-5 transition-all duration-150;
+  }
+
+  .mu-stat-card:hover {
+    @apply shadow-[0_4px_16px_rgba(46,125,50,0.10)] border-[#A5D6A7];
+  }
+
+  .mu-stat-card .mu-stat-icon {
+    @apply w-11 h-11 rounded-[6px] flex items-center justify-center text-xl mb-3;
+  }
+
+  .mu-stat-card .mu-stat-icon.blue {
+    @apply bg-[#E8F5E9] text-[#4CAF50];
+  }
+
+  .mu-stat-card .mu-stat-icon.green {
+    @apply bg-[#E8F5E9] text-[#2E7D32];
+  }
+
+  .mu-stat-card .mu-stat-icon.gold {
+    @apply bg-[#FFF8E1] text-[#F9A825];
+  }
+
+  .mu-stat-card .mu-stat-icon.red {
+    @apply bg-[#FFEBEE] text-[#C62828];
+  }
+
+  .mu-stat-card .mu-stat-icon.purple {
+    @apply bg-[#f0e6ff] text-[#7c3aed];
+  }
+
+  .mu-stat-card .mu-stat-label {
+    @apply text-sm text-[#7e869e] font-medium;
+  }
+
+  .mu-stat-card .mu-stat-value {
+    @apply font-heading text-2xl font-bold text-[#141a28];
+  }
+
+  .mu-stat-card .mu-stat-change {
+    @apply text-sm font-medium mt-1;
+  }
+
+  .mu-stat-card .mu-stat-change.up {
+    @apply text-[#2E7D32];
+  }
+
+  .mu-stat-card .mu-stat-change.down {
+    @apply text-[#C62828];
+  }
+
+  /* ==========================================================================
+     QUICK ACTIONS
+     ========================================================================== */
+  .mu-quick-actions {
+    @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4;
+  }
+
+  .mu-quick-action {
+    @apply flex flex-col items-center justify-center p-4 bg-[#f8f9fc] border border-[#e4e7ef] rounded-[10px] hover:bg-[#E8F5E9] hover:border-[#81C784] hover:text-[#388E3C] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(46,125,50,0.10)] transition-all text-center text-[#3d4558] text-sm font-medium no-underline relative min-h-[90px];
+  }
+
+  .mu-quick-action .bi {
+    @apply text-2xl text-[#4CAF50] mb-2;
+  }
+
+  .mu-quick-action .mu-badge {
+    @apply mt-1 text-xs;
+  }
+
+  /* ==========================================================================
+     BUTTONS
+     ========================================================================== */
+  .mu-btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2 border border-transparent rounded-[6px] font-sans text-sm font-semibold cursor-pointer transition-all duration-150 no-underline whitespace-nowrap;
+  }
+
+  .mu-btn .bi {
+    @apply text-base;
+  }
+
+  .mu-btn-primary {
+    @apply bg-[#4CAF50] text-white hover:bg-[#43A047] hover:text-white hover:shadow-[0_1px_3px_rgba(46,125,50,0.08)];
+  }
+
+  .mu-btn-secondary {
+    @apply bg-[#e4e7ef] text-[#3d4558] hover:bg-[#cdd2df];
+  }
+
+  .mu-btn-success {
+    @apply bg-[#2E7D32] text-white hover:bg-[#157a4a] hover:text-white;
+  }
+
+  .mu-btn-danger {
+    @apply bg-[#C62828] text-white hover:bg-[#a83232] hover:text-white;
+  }
+
+  .mu-btn-warning {
+    @apply bg-[#F9A825] text-white hover:bg-[#b06d23] hover:text-white;
+  }
+
+  .mu-btn-outline {
+    @apply bg-transparent border-[#e4e7ef] text-[#3d4558] hover:bg-[#f8f9fc] hover:border-[#cdd2df];
+  }
+
+  .mu-btn-outline-primary {
+    @apply bg-transparent border-[#4CAF50] text-[#4CAF50] hover:bg-[#E8F5E9] hover:border-[#43A047] hover:text-[#43A047];
+  }
+
+  .mu-btn-sm {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .mu-btn-lg {
+    @apply px-8 py-3 text-base;
+  }
+
+  .mu-btn-block {
+    @apply w-full flex;
+  }
+
+  .mu-btn:disabled {
+    @apply opacity-60 cursor-not-allowed pointer-events-none;
+  }
+
+  /* ==========================================================================
+     FORMS & INPUTS
+     ========================================================================== */
+  .mu-form-group {
+    @apply mb-4;
+  }
+
+  .mu-form-group label {
+    @apply block text-sm font-semibold text-[#3d4558] mb-1;
+  }
+
+  .mu-form-group .mu-label-optional {
+    @apply font-normal text-[#a8afc5] text-xs;
+  }
+
+  .mu-form-group .mu-help-text {
+    @apply text-xs text-[#a8afc5] mt-1;
+  }
+
+  .mu-form-group .mu-error-text {
+    @apply text-xs text-[#C62828] mt-1;
+  }
+
+  .mu-input,
+  .mu-select,
+  .mu-textarea {
+    @apply w-full px-3 py-2 border border-[#e4e7ef] rounded-[6px] font-sans text-sm text-[#262d3d] bg-white transition-all duration-150;
+  }
+
+  .mu-input:focus,
+  .mu-select:focus,
+  .mu-textarea:focus {
+    @apply outline-none border-[#4CAF50] shadow-[0_0_0_3px_rgba(59,108,224,0.15)];
+  }
+
+  .mu-input::placeholder,
+  .mu-textarea::placeholder {
+    @apply text-[#a8afc5];
+  }
+
+  .mu-input:disabled,
+  .mu-select:disabled,
+  .mu-textarea:disabled {
+    @apply bg-[#f8f9fc] cursor-not-allowed;
+  }
+
+  .mu-input.error,
+  .mu-select.error,
+  .mu-textarea.error {
+    @apply border-[#C62828];
+  }
+
+  .mu-textarea {
+    @apply min-h-[80px] resize-y;
+  }
+
+  .mu-select {
+    @apply appearance-none pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237e869e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .mu-checkbox,
+  .mu-radio {
+    @apply flex items-center gap-2 cursor-pointer text-sm text-[#3d4558];
+  }
+
+  .mu-checkbox input[type="checkbox"],
+  .mu-radio input[type="radio"] {
+    @apply w-[18px] h-[18px] accent-[#4CAF50] cursor-pointer flex-shrink-0;
+  }
+
+  .mu-checkbox-group,
+  .mu-radio-group {
+    @apply flex flex-col gap-2;
+  }
+
+  .mu-checkbox-inline,
+  .mu-radio-inline {
+    @apply flex flex-wrap gap-4;
+  }
+
+  .mu-input-icon {
+    @apply relative;
+  }
+
+  .mu-input-icon .bi {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 text-[#a8afc5] z-[1];
+  }
+
+  .mu-input-icon .mu-input {
+    @apply pl-8 pr-8;
+  }
+
+  .mu-input-group {
+    @apply flex gap-0;
+  }
+
+  .mu-input-group .mu-input {
+    @apply rounded-l-[6px] flex-1 rounded-r-none;
+  }
+
+  .mu-input-group .mu-btn {
+    @apply rounded-r-[6px] rounded-l-none flex-shrink-0;
+  }
+
+  /* ==========================================================================
+     BADGES & PILLS
+     ========================================================================== */
+  .mu-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .mu-badge-primary {
+    @apply bg-[#C8E6C9] text-[#388E3C];
+  }
+
+  .mu-badge-success {
+    @apply bg-[#E8F5E9] text-[#2E7D32];
+  }
+
+  .mu-badge-warning {
+    @apply bg-[#FFF8E1] text-[#F9A825];
+  }
+
+  .mu-badge-danger {
+    @apply bg-[#FFEBEE] text-[#C62828];
+  }
+
+  .mu-badge-info {
+    @apply bg-[#E3F2FD] text-[#1E88E5];
+  }
+
+  .mu-badge-gray {
+    @apply bg-[#e4e7ef] text-[#5a6378];
+  }
+
+  .mu-badge .bi {
+    @apply text-xs;
+  }
+
+  /* ==========================================================================
+     ALERTS
+     ========================================================================== */
+  .mu-alert {
+    @apply px-4 py-3 rounded-[6px] text-sm flex items-start gap-3 mb-4;
+  }
+
+  .mu-alert .bi {
+    @apply text-xl flex-shrink-0 mt-0.5;
+  }
+
+  .mu-alert-success {
+    @apply bg-[#E8F5E9] text-[#2E7D32] border border-green-200/20;
+  }
+
+  .mu-alert-success .bi {
+    @apply text-[#2E7D32];
+  }
+
+  .mu-alert-warning {
+    @apply bg-[#FFF8E1] text-[#F9A825] border border-yellow-200/20;
+  }
+
+  .mu-alert-warning .bi {
+    @apply text-[#F9A825];
+  }
+
+  .mu-alert-danger {
+    @apply bg-[#FFEBEE] text-[#C62828] border border-red-200/20;
+  }
+
+  .mu-alert-danger .bi {
+    @apply text-[#C62828];
+  }
+
+  .mu-alert-info {
+    @apply bg-[#E3F2FD] text-[#388E3C] border border-blue-200/20;
+  }
+
+  .mu-alert-info .bi {
+    @apply text-[#4CAF50];
+  }
+
+  /* ==========================================================================
+     TABLES
+     ========================================================================== */
+  .mu-table-wrapper {
+    @apply overflow-x-auto rounded-[10px] border border-[#e4e7ef] touch-pan-x;
+  }
+
+  .mu-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .mu-table thead {
+    @apply bg-[#f8f9fc];
+  }
+
+  .mu-table th {
+    @apply text-left font-semibold text-[#5a6378] uppercase text-xs tracking-wide px-4 py-3 border-b-2 border-[#e4e7ef] whitespace-nowrap;
+    letter-spacing: 0.04em;
+  }
+
+  .mu-table td {
+    @apply px-4 py-3 border-b border-[#e4e7ef] text-[#3d4558] align-middle;
+  }
+
+  .mu-table tbody tr:hover {
+    @apply bg-[#f8f9fc];
+  }
+
+  .mu-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .mu-table-striped tbody tr:nth-child(even) {
+    @apply bg-[#f8f9fc];
+  }
+
+  .mu-table-hover tbody tr:hover {
+    @apply bg-[#E8F5E9];
+  }
+
+  /* ==========================================================================
+     GRIDS
+     ========================================================================== */
+  .mu-dashboard-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6;
+  }
+
+  .mu-dashboard-grid-2 {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
+  }
+
+  .mu-dashboard-grid-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* ==========================================================================
+     AUTH PAGES
+     ========================================================================== */
+  .mu-auth-shell {
+    @apply min-h-screen flex items-center justify-center bg-[#f8f9fc] p-4;
+  }
+
+  .mu-auth-card {
+    @apply relative z-[1] bg-white rounded-lg p-8 w-full max-w-[420px] shadow-[0_8px_40px_rgba(46,125,50,0.14)] border border-[#e4e7ef];
+  }
+
+  .mu-auth-logo {
+    @apply text-center mb-6;
+  }
+
+  .mu-auth-logo-img {
+    @apply w-[100px] h-[100px] object-contain mb-2;
+  }
+
+  .mu-auth-logo h2 {
+    @apply m-0 text-xl text-[#141a28] font-bold;
+  }
+
+  .mu-auth-logo p {
+    @apply text-[#7e869e] text-sm mt-1 m-0;
+  }
+
+  .mu-auth-welcome {
+    @apply text-center mb-5;
+  }
+
+  .mu-auth-welcome h3 {
+    @apply mt-1 m-0 text-[#7e869e] text-sm;
+  }
+
+  .mu-auth-welcome p {
+    @apply mt-1 m-0 text-[#7e869e] text-sm;
+  }
+
+  .mu-password-toggle {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 bg-none border-none text-[#a8afc5] cursor-pointer p-4 text-base transition-colors duration-150 z-[2];
+  }
+
+  .mu-password-toggle:hover {
+    @apply text-[#5a6378];
+  }
+
+  .mu-otp-input {
+    @apply text-center tracking-[0.3em] font-bold text-xl px-3 py-3;
+  }
+
+  .mu-otp-info {
+    @apply text-center p-4 bg-[#E8F5E9] rounded-[10px] mb-5;
+  }
+
+  .mu-otp-info .bi {
+    @apply text-3xl text-[#4CAF50] block mb-2;
+  }
+
+  .mu-otp-info p {
+    @apply m-0 text-sm text-[#5a6378] leading-relaxed;
+  }
+
+  .mu-otp-info strong {
+    @apply text-[#262d3d];
+  }
+
+  .mu-auth-footer {
+    @apply text-center mt-5 pt-4 border-t border-[#e4e7ef] text-xs text-[#a8afc5];
+  }
+
+  .mu-auth-footer a {
+    @apply text-[#4CAF50] font-medium hover:text-[#43A047];
+  }
+
+  /* ==========================================================================
+     MODAL
+     ========================================================================== */
+  .mu-modal-overlay {
+    @apply fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-4;
+    animation: mu-fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity;
+  }
+
+  .mu-modal {
+    @apply bg-white rounded-[16px] w-full max-h-[90vh] flex flex-col shadow-[0_16px_64px_rgba(46,125,50,0.18)] overflow-hidden;
+    animation: mu-modal-slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+    transform-origin: center center;
+    backface-visibility: hidden;
+  }
+
+  .mu-modal-header {
+    @apply flex items-center justify-between px-5 py-4 border-b border-[#e4e7ef] flex-shrink-0;
+  }
+
+  .mu-modal-header h3 {
+    @apply m-0 text-lg font-semibold text-[#141a28] leading-tight tracking-tight;
+  }
+
+  .mu-modal-close {
+    @apply bg-transparent border-none text-[#a8afc5] text-xl p-1 cursor-pointer rounded-[6px] transition-all duration-150 flex items-center justify-center w-8 h-8 outline-none hover:bg-[#f1f3f7] hover:text-[#3d4558];
+  }
+
+  .mu-modal-body {
+    @apply px-5 py-4 overflow-y-auto flex-1 touch-pan-y;
+    overscroll-behavior: contain;
+  }
+
+  .mu-modal-footer {
+    @apply flex items-center justify-end gap-3 px-5 py-4 border-t border-[#e4e7ef] flex-shrink-0 bg-white;
+  }
+
+  /* ==========================================================================
+     LOADER
+     ========================================================================== */
+  .mu-loader-container {
+    @apply flex flex-col items-center justify-center p-8 min-h-[200px];
+  }
+
+  .mu-loader-spinner-round {
+    @apply border-3 border-[#e4e7ef] border-t-[#4CAF50] rounded-full flex-shrink-0;
+    animation: mu-spin 0.8s linear infinite;
+  }
+
+  .mu-loader-text {
+    @apply mt-3 text-[#7e869e] text-sm;
+  }
+
+  .mu-loader {
+    @apply flex items-center justify-center p-8 text-[#a8afc5];
+  }
+
+  .mu-loader .bi {
+    @apply text-2xl;
+  }
+
+  /* ==========================================================================
+     SKELETON
+     ========================================================================== */
+  .mu-skeleton {
+    @apply bg-[#e4e7ef] rounded-[6px];
+    animation: mu-pulse 1.5s ease-in-out infinite;
+  }
+
+  .mu-skeleton-text {
+    @apply h-3 mb-2;
+  }
+
+  .mu-skeleton-text:last-child {
+    @apply mb-0;
+  }
+
+  .mu-skeleton-circle {
+    @apply w-12 h-12 rounded-full;
+  }
+
+  .mu-skeleton-rect {
+    @apply h-20 rounded-[10px];
+  }
+
+  /* ==========================================================================
+     UNDER DEVELOPMENT
+     ========================================================================== */
+  .mu-under-development {
+    @apply flex flex-col items-center justify-center px-6 py-12 text-center min-h-[60vh];
+  }
+
+  .mu-under-dev-icon {
+    @apply w-[100px] h-[100px] bg-[#E8F5E9] rounded-full flex items-center justify-center mb-6 border-2 border-dashed border-[#A5D6A7];
+  }
+
+  .mu-under-dev-icon .bi {
+    @apply text-5xl text-[#4CAF50];
+  }
+
+  .mu-under-development h2 {
+    @apply text-2xl text-[#141a28] mb-3;
+  }
+
+  .mu-under-development p {
+    @apply max-w-[500px] text-[#7e869e] text-base mb-6 leading-relaxed;
+  }
+
+  .mu-under-dev-badge {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-[#FFF8E1] text-[#F9A825] rounded-full text-sm font-medium mb-6;
+  }
+
+  .mu-under-dev-badge .bi {
+    @apply text-base;
+  }
+
+  /* ==========================================================================
+     PROFILE
+     ========================================================================== */
+  .mu-profile-header {
+    @apply flex items-center gap-6 p-6 bg-white border border-[#e4e7ef] rounded-[16px];
+  }
+
+  .mu-profile-avatar {
+    @apply w-24 h-24 rounded-full bg-[#4CAF50] text-white flex items-center justify-center text-4xl font-bold flex-shrink-0;
+  }
+
+  .mu-profile-avatar-lg {
+    @apply w-[150px] h-[150px] rounded-full object-cover border-4 border-[#C8E6C9];
+  }
+
+  .mu-profile-info h2 {
+    @apply m-0 text-xl;
+  }
+
+  .mu-profile-info .mu-profile-role {
+    @apply text-[#7e869e] text-sm capitalize;
+  }
+
+  .mu-profile-info .mu-profile-details {
+    @apply flex flex-wrap gap-4 mt-2;
+  }
+
+  .mu-profile-info .mu-profile-details span {
+    @apply text-sm text-[#7e869e];
+  }
+
+  .mu-profile-info .mu-profile-details strong {
+    @apply text-[#3d4558] font-medium;
+  }
+
+  .mu-profile-grid {
+    @apply grid grid-cols-1 lg:grid-cols-[4fr_8fr] gap-6;
+  }
+
+  .mu-profile-card {
+    @apply h-fit lg:sticky top-6;
+  }
+
+  .mu-profile-card .mu-profile-avatar-lg {
+    @apply mb-4;
+  }
+
+  .mu-profile-card .mu-profile-name {
+    @apply m-0 text-xl;
+  }
+
+  .mu-profile-card .mu-profile-role {
+    @apply text-[#7e869e] text-sm capitalize;
+  }
+
+  .mu-profile-card .mu-profile-divider {
+    @apply my-4 border-0 border-t border-[#e4e7ef];
+  }
+
+  .mu-profile-card .mu-profile-detail-item {
+    @apply flex justify-between py-1 text-sm;
+  }
+
+  .mu-profile-card .mu-profile-detail-item .label {
+    @apply text-[#7e869e];
+  }
+
+  .mu-profile-card .mu-profile-detail-item .value {
+    @apply font-medium;
+  }
+
+  .mu-profile-tabs-container {
+    @apply min-h-[400px];
+  }
+
+  .mu-profile-tabs {
+    @apply flex gap-1 border-b border-[#e4e7ef] mb-5 flex-wrap;
+  }
+
+  .mu-profile-tab {
+    @apply border-none border-b-2 border-transparent rounded-none bg-transparent px-4 py-2 cursor-pointer text-[#7e869e] font-medium text-sm transition-all duration-150 hover:text-[#43A047] hover:bg-[#E8F5E9];
+  }
+
+  .mu-profile-tab.active {
+    @apply text-[#43A047] border-b-[#4CAF50] font-semibold;
+  }
+
+  .mu-profile-tab .bi {
+    @apply mr-1;
+  }
+
+  .mu-profile-tab-content {
+    @apply min-h-[300px];
+  }
+
+  .mu-profile-stats {
+    @apply grid grid-cols-2 gap-2 mt-3;
+  }
+
+  /* ==========================================================================
+     TIMETABLE
+     ========================================================================== */
+  .mu-timetable-grid-horizontal {
+    @apply w-full border-collapse text-sm table-fixed;
+  }
+
+  .mu-timetable-grid-horizontal th,
+  .mu-timetable-grid-horizontal td {
+    @apply border border-[#e4e7ef] p-0 align-top min-w-[60px];
+  }
+
+  .mu-timetable-corner {
+    @apply bg-[#f8f9fc] text-[#7e869e] font-semibold text-xs uppercase px-2.5 py-2 text-center min-w-[80px] w-[80px] sticky left-0 z-[2];
+  }
+
+  .mu-timetable-time-header-h {
+    @apply bg-[#E8F5E9] text-[#388E3C] font-semibold text-xs px-2 py-1.5 text-center min-w-[80px] w-[80px];
+  }
+
+  .mu-timetable-day-header-v {
+    @apply bg-[#f8f9fc] text-[#3d4558] font-semibold px-2.5 py-2 text-center min-w-[80px] w-[80px] sticky left-0 z-[1];
+  }
+
+  .mu-day-short {
+    @apply text-base font-bold text-[#2E7D32];
+  }
+
+  .mu-day-full {
+    @apply text-xs font-normal text-[#7e869e];
+  }
+
+  .mu-timetable-cell-h {
+    @apply h-[85px] p-1 bg-white transition-colors duration-150 min-w-[80px] w-[80px];
+  }
+
+  .mu-timetable-cell-h:hover {
+    @apply bg-[#f8f9fc];
+  }
+
+  .mu-timetable-slot-h {
+    @apply bg-[#E8F5E9] p-1 h-full flex flex-col gap-0.5 text-xs transition-all duration-150 cursor-default overflow-hidden;
+  }
+
+  .mu-timetable-slot-h:hover {
+    @apply shadow-[0_1px_3px_rgba(46,125,50,0.08)] scale-[1.02];
+  }
+
+  .mu-timetable-slot-elective-h {
+    @apply bg-[#FFF8E1] border-l-[#F9A825];
+  }
+
+  .mu-slot-code {
+    @apply font-bold text-[#388E3C] text-xs;
+  }
+
+  .mu-timetable-slot-elective-h .mu-slot-code {
+    @apply text-[#F9A825];
+  }
+
+  .mu-slot-name {
+    @apply text-[0.55rem] text-[#5a6378] truncate;
+  }
+
+  .mu-slot-venue {
+    @apply text-[0.5rem] text-[#a8afc5] flex items-center gap-0.5;
+  }
+
+  .mu-slot-venue .bi {
+    @apply text-[0.45rem];
+  }
+
+  .mu-slot-time {
+    @apply text-[0.5rem] text-[#7e869e] flex items-center gap-0.5;
+  }
+
+  .mu-slot-time .bi {
+    @apply text-[0.45rem];
+  }
+
+  /* ==========================================================================
+     HOSTEL BOOKING
+     ========================================================================== */
+  .mu-room-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3;
+  }
+
+  .mu-room-card-compact {
+    @apply overflow-hidden m-0 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(46,125,50,0.10)] rounded-[6px];
+  }
+
+  .mu-room-header-compact {
+    @apply px-3 py-2 flex justify-between items-center text-white;
+    background: linear-gradient(135deg, #43A047, #388E3C);
+  }
+
+  .mu-room-header-compact .room-title {
+    @apply flex items-center gap-1.5 text-[13px] font-semibold;
+  }
+
+  .mu-room-header-compact .room-title .bi {
+    @apply text-[14px];
+  }
+
+  .mu-room-header-compact .room-availability {
+    @apply text-[10px] opacity-90;
+  }
+
+  .mu-room-header-compact .room-availability .bi {
+    @apply text-[11px] mr-1;
+  }
+
+  .mu-room-body-compact {
+    @apply px-3 py-2.5 pb-3;
+  }
+
+  .mu-floor-plan-compact {
+    @apply grid gap-1.5 bg-[#f8f9fc] rounded-[6px] p-2 min-h-[80px] border border-dashed border-[#cdd2df] relative;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  }
+
+  .mu-bed-btn-compact {
+    @apply relative w-full aspect-square rounded-[6px] flex flex-col items-center justify-center gap-0.5 text-[9px] p-0.5 transition-all duration-200 cursor-pointer border border-[#e4e7ef] bg-white text-[#3d4558] min-h-[44px] min-w-[44px];
+  }
+
+  .mu-bed-btn-compact:disabled {
+    @apply cursor-not-allowed opacity-70;
+  }
+
+  .mu-bed-btn-compact .bed-icon {
+    @apply text-[14px] leading-none;
+  }
+
+  .mu-bed-btn-compact .bed-number {
+    @apply font-medium text-[8px] leading-tight;
+  }
+
+  .mu-bed-btn-compact .bed-status {
+    @apply text-[6px] font-medium leading-none mt-0.5;
+  }
+
+  .mu-bed-btn-available {
+    @apply border-[#e4e7ef] bg-white hover:border-[#81C784] hover:bg-[#E8F5E9] hover:scale-105 hover:shadow-[0_1px_3px_rgba(46,125,50,0.08)];
+  }
+
+  .mu-bed-btn-selected {
+    @apply border-2 border-[#4CAF50] bg-[#E8F5E9] shadow-[0_0_0_2px_rgba(76,175,80,0.2)];
+  }
+
+  .mu-bed-btn-booked {
+    @apply border-[#cdd2df] bg-[#e4e7ef] text-[#a8afc5];
+  }
+
+  .mu-bed-btn-booked .bed-icon {
+    @apply text-[#7e869e];
+  }
+
+  .mu-bed-checkmark-compact {
+    @apply absolute -top-0.5 -right-0.5 w-[14px] h-[14px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center text-[8px] font-bold shadow-[0_1px_3px_rgba(0,0,0,0.15)];
+  }
+
+  .mu-room-footer-compact {
+    @apply mt-2 flex justify-between items-center text-[10px] text-[#7e869e] border-t border-[#e4e7ef] pt-1.5;
+  }
+
+  .mu-room-footer-compact .bi {
+    @apply text-[10px] mr-1;
+  }
+
+  .mu-room-footer-compact .available-count {
+    @apply text-[#2E7D32];
+  }
+
+  .mu-legend-compact {
+    @apply flex gap-3 text-[10px] text-[#7e869e] py-2 border-t border-[#e4e7ef] mt-1 flex-wrap justify-center;
+  }
+
+  .mu-legend-compact .legend-item {
+    @apply flex items-center gap-1;
+  }
+
+  .mu-legend-compact .legend-dot {
+    @apply w-3 h-3 rounded-[6px] flex-shrink-0;
+  }
+
+  .mu-legend-compact .legend-dot-available {
+    @apply bg-white border border-[#e4e7ef];
+  }
+
+  .mu-legend-compact .legend-dot-booked {
+    @apply bg-[#e4e7ef] border border-[#cdd2df];
+  }
+
+  .mu-legend-compact .legend-dot-selected {
+    @apply bg-[#E8F5E9] border-2 border-[#4CAF50];
+  }
+
+  .mu-legend-compact .bi {
+    @apply text-[9px];
+  }
+
+  /* ==========================================================================
+     UTILITY HELPERS
+     ========================================================================== */
+  .mu-text-center { @apply text-center; }
+  .mu-text-right { @apply text-right; }
+  .mu-text-left { @apply text-left; }
+  .mu-text-muted { @apply text-[#7e869e]; }
+  .mu-text-primary { @apply text-[#4CAF50]; }
+  .mu-text-success { @apply text-[#2E7D32]; }
+  .mu-text-danger { @apply text-[#C62828]; }
+  .mu-text-warning { @apply text-[#F9A825]; }
+  .mu-text-truncate { @apply truncate; }
+  .mu-text-uppercase { @apply uppercase; }
+  .mu-text-capitalize { @apply capitalize; }
+
+  .mu-font-normal { @apply font-normal; }
+  .mu-font-medium { @apply font-medium; }
+  .mu-font-semibold { @apply font-semibold; }
+  .mu-font-bold { @apply font-bold; }
+
+  .mu-mt-1 { @apply mt-1; }
+  .mu-mt-2 { @apply mt-2; }
+  .mu-mt-3 { @apply mt-3; }
+  .mu-mt-4 { @apply mt-4; }
+  .mu-mt-5 { @apply mt-5; }
+  .mu-mt-6 { @apply mt-6; }
+  .mu-mb-1 { @apply mb-1; }
+  .mu-mb-2 { @apply mb-2; }
+  .mu-mb-3 { @apply mb-3; }
+  .mu-mb-4 { @apply mb-4; }
+  .mu-mb-5 { @apply mb-5; }
+  .mu-mb-6 { @apply mb-6; }
+  .mu-ml-auto { @apply ml-auto; }
+  .mu-mr-auto { @apply mr-auto; }
+  .mu-mx-auto { @apply mx-auto; }
+
+  .mu-p-1 { @apply p-1; }
+  .mu-p-2 { @apply p-2; }
+  .mu-p-3 { @apply p-3; }
+  .mu-p-4 { @apply p-4; }
+  .mu-p-5 { @apply p-5; }
+  .mu-p-6 { @apply p-6; }
+
+  .mu-flex { @apply flex; }
+  .mu-flex-center { @apply flex items-center justify-center; }
+  .mu-flex-between { @apply flex items-center justify-between; }
+  .mu-flex-col { @apply flex flex-col; }
+  .mu-flex-grow { @apply flex-1; }
+  .mu-flex-shrink { @apply flex-shrink-0; }
+  .mu-gap-1 { @apply gap-1; }
+  .mu-gap-2 { @apply gap-2; }
+  .mu-gap-3 { @apply gap-3; }
+  .mu-gap-4 { @apply gap-4; }
+  .mu-gap-5 { @apply gap-5; }
+  .mu-gap-6 { @apply gap-6; }
+  .mu-flex-wrap { @apply flex-wrap; }
+
+  .mu-d-block { @apply block; }
+  .mu-d-inline-block { @apply inline-block; }
+  .mu-d-none { @apply hidden; }
+  .mu-d-lg-none { @apply hidden lg:block; }
+
+  .mu-w-full { @apply w-full; }
+  .mu-w-50 { @apply w-1/2; }
+  .mu-w-33 { @apply w-1/3; }
+  .mu-w-25 { @apply w-1/4; }
+
+  .mu-rounded-sm { @apply rounded-[6px]; }
+  .mu-rounded-md { @apply rounded-[10px]; }
+  .mu-rounded-lg { @apply rounded-[16px]; }
+  .mu-rounded-full { @apply rounded-full; }
+}
+
+@layer utilities {
+  /* ==========================================================================
+     ANIMATIONS
+     ========================================================================== */
+  @keyframes mu-dropdown-slide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes mu-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes mu-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  @keyframes mu-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes mu-modal-slide-up {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .mu-animate-spin {
+    animation: mu-spin 1s linear infinite;
+  }
+
+  .mu-animate-pulse {
+    animation: mu-pulse 2s ease-in-out infinite;
+  }
+
+  .mu-dropdown-menu {
+    @apply absolute top-[calc(100%+8px)] right-0 bg-white border border-[#e4e7ef] rounded-[10px] shadow-[0_8px_40px_rgba(46,125,50,0.14)] min-w-[220px] p-2 z-[60];
+    animation: mu-dropdown-slide 150ms ease;
+  }
+
+  .mu-dropdown-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-[6px] text-[#3d4558] text-sm cursor-pointer transition-all duration-150 border-none bg-none w-full text-left;
+  }
+
+  .mu-dropdown-item:hover {
+    @apply bg-[#f8f9fc] text-[#141a28];
+  }
+
+  .mu-dropdown-item .bi {
+    @apply text-base text-[#a8afc5];
+  }
+
+  .mu-dropdown-item.danger {
+    @apply text-[#C62828];
+  }
+
+  .mu-dropdown-item.danger:hover {
+    @apply bg-[#FFEBEE];
+  }
+
+  .mu-dropdown-item.danger .bi {
+    @apply text-[#C62828];
+  }
+
+  .mu-dropdown-divider {
+    @apply border-t border-[#e4e7ef] my-2;
+  }
+
+  .mu-notifications-dropdown {
+    @apply absolute top-[calc(100%+8px)] right-0 bg-white border border-[#e4e7ef] rounded-[10px] shadow-[0_8px_40px_rgba(46,125,50,0.14)] w-[360px] max-h-[420px] overflow-y-auto z-[60];
+    animation: mu-dropdown-slide 150ms ease;
+  }
+
+  .mu-notifications-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-[#e4e7ef];
+  }
+
+  .mu-notifications-header h4 {
+    @apply text-sm m-0;
+  }
+
+  .mu-notifications-header .mu-mark-all {
+    @apply text-xs text-[#4CAF50] cursor-pointer bg-none border-none font-medium hover:text-[#388E3C];
+  }
+
+  .mu-notification-item {
+    @apply flex items-start gap-3 px-4 py-3 border-b border-[#e4e7ef] cursor-pointer transition-colors duration-150 hover:bg-[#f8f9fc];
+  }
+
+  .mu-notification-item.unread {
+    @apply bg-[#E8F5E9];
+  }
+
+  .mu-notification-item .mu-notif-icon {
+    @apply w-8 h-8 rounded-full bg-[#f1f3f7] flex items-center justify-center text-[#7e869e] flex-shrink-0;
+  }
+
+  .mu-notification-item .mu-notif-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .mu-notification-item .mu-notif-title {
+    @apply text-sm font-medium text-[#262d3d];
+  }
+
+  .mu-notification-item .mu-notif-text {
+    @apply text-sm text-[#7e869e] line-clamp-2;
+  }
+
+  .mu-notification-item .mu-notif-time {
+    @apply text-xs text-[#a8afc5] mt-1;
+  }
+
+  .mu-notification-item .mu-notif-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-[#4CAF50] flex-shrink-0 mt-1;
+  }
+
+  .mu-notifications-empty {
+    @apply p-6 text-center text-[#a8afc5] text-sm;
+  }
+
+  .mu-notifications-empty .bi {
+    @apply text-2xl block mb-2;
+  }
+
+  /* ==========================================================================
+     PRINT STYLES
+     ========================================================================== */
+  @media print {
+    .mu-sidebar,
+    .mu-navbar,
+    .mu-no-print {
+      @apply hidden !important;
+    }
+
+    .mu-main {
+      @apply ml-0 !important;
+    }
+
+    .mu-content {
+      @apply p-0 !important;
+    }
+
+    .mu-card {
+      @apply border border-[#ddd] shadow-none !important;
+    }
+  }
+
+  /* ==========================================================================
+     RESPONSIVE BREAKPOINTS
+     ========================================================================== */
+  
+  @media (max-width: 992px) {
+    .mu-sidebar {
+      transform: translateX(-100%);
+      width: 280px;
+    }
+
+    .mu-sidebar.mu-sidebar-open {
+      transform: translateX(0);
+    }
+
+    .mu-sidebar-overlay.active {
+      @apply block;
+    }
+
+    .mu-main {
+      margin-left: 0;
+    }
+
+    .mu-navbar-toggle {
+      @apply flex;
+    }
+
+    .mu-navbar-brand {
+      @apply flex;
+    }
+
+    .mu-navbar-center {
+      @apply hidden !important;
+    }
+
+    .mu-content {
+      @apply p-4;
+    }
+
+    .mu-page-header {
+      @apply flex-col items-start;
+    }
+
+    .mu-page-header-actions {
+      @apply w-full;
+    }
+
+    .mu-notifications-dropdown {
+      width: 300px;
+      right: -80px;
+    }
+
+    .mu-dashboard-grid-2 {
+      @apply grid-cols-1;
+    }
+
+    .mu-dashboard-grid-3 {
+      @apply grid-cols-1 sm:grid-cols-2;
+    }
+
+    .mu-quick-actions {
+      @apply grid-cols-2 sm:grid-cols-3;
+    }
+
+    .mu-profile-grid {
+      @apply grid-cols-1;
+    }
+
+    .mu-profile-card {
+      @apply static grid grid-cols-[auto_1fr] gap-4 items-center p-4;
+    }
+
+    .mu-profile-card .mu-profile-avatar-lg {
+      @apply w-[100px] h-[100px] mb-0;
+    }
+
+    .mu-profile-card .mu-profile-card-text {
+      @apply text-left;
+    }
+
+    .mu-profile-card .mu-profile-details {
+      @apply grid grid-cols-2 gap-2;
+    }
+
+    .mu-profile-card .mu-profile-divider {
+      @apply hidden;
+    }
+
+    .mu-profile-tabs-container {
+      @apply min-h-[350px];
+    }
+
+    .mu-room-grid {
+      @apply grid-cols-1 sm:grid-cols-2;
+    }
+
+    .mu-floor-plan-compact {
+      grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+      @apply gap-1.5 p-1.5 min-h-[70px];
+    }
+
+    .mu-bed-btn-compact {
+      @apply min-h-[38px] min-w-[38px];
+    }
+
+    .mu-bed-btn-compact .bed-icon {
+      @apply text-[12px];
+    }
+
+    .mu-bed-btn-compact .bed-number {
+      @apply text-[7px];
+    }
+
+    .mu-room-header-compact .room-title {
+      @apply text-[12px];
+    }
+
+    .mu-room-header-compact .room-availability {
+      @apply text-[9px];
+    }
+
+    .mu-timetable-grid-horizontal th,
+    .mu-timetable-grid-horizontal td {
+      @apply min-w-[50px];
+    }
+
+    .mu-timetable-time-header-h {
+      @apply min-w-[50px] w-[50px] text-[0.6rem] p-1;
+    }
+
+    .mu-timetable-day-header-v {
+      @apply min-w-[60px] w-[60px] p-1;
+    }
+
+    .mu-timetable-corner {
+      @apply min-w-[60px] w-[60px] text-[0.55rem] p-1;
+    }
+
+    .mu-timetable-cell-h {
+      @apply min-w-[50px] w-[50px] h-[70px] p-0.5;
+    }
+
+    .mu-day-short {
+      @apply text-sm;
+    }
+
+    .mu-day-full {
+      @apply hidden;
+    }
+
+    .mu-slot-name {
+      @apply hidden;
+    }
+
+    .mu-slot-venue {
+      @apply hidden;
+    }
+
+    .mu-slot-time {
+      @apply text-[0.45rem];
+    }
+
+    .mu-slot-code {
+      @apply text-[0.55rem];
+    }
+  }
+
+  @media (max-width: 576px) {
+    .mu-navbar {
+      @apply px-3;
+    }
+
+    .mu-navbar-brand span {
+      @apply hidden;
+    }
+
+    .mu-user-chip .mu-user-text {
+      @apply hidden;
+    }
+
+    .mu-user-chip {
+      @apply p-1;
+    }
+
+    .mu-notifications-dropdown {
+      width: 280px;
+      right: -100px;
+    }
+
+    .mu-content {
+      @apply p-3;
+    }
+
+    .mu-page-header h1 {
+      @apply text-xl;
+    }
+
+    .mu-dashboard-grid {
+      @apply grid-cols-1;
+    }
+
+    .mu-dashboard-grid-3 {
+      @apply grid-cols-1;
+    }
+
+    .mu-quick-actions {
+      @apply grid-cols-2;
+    }
+
+    .mu-quick-action {
+      @apply min-h-[80px] p-3;
+    }
+
+    .mu-quick-action .bi {
+      @apply text-xl;
+    }
+
+    .mu-profile-card {
+      @apply flex flex-col items-center text-center p-4;
+    }
+
+    .mu-profile-card .mu-profile-avatar-lg {
+      @apply w-[90px] h-[90px] mb-3 border-3;
+    }
+
+    .mu-profile-card .mu-profile-name {
+      @apply text-lg;
+    }
+
+    .mu-profile-card .mu-profile-role {
+      @apply text-sm;
+    }
+
+    .mu-profile-card .mu-profile-details {
+      @apply grid grid-cols-2 gap-1 w-full mt-3 pt-3 border-t border-[#e4e7ef];
+    }
+
+    .mu-profile-card .mu-profile-detail-item {
+      @apply text-xs py-1 flex-col items-center gap-0.5;
+    }
+
+    .mu-profile-card .mu-profile-detail-item .label {
+      @apply text-xs text-[#a8afc5];
+    }
+
+    .mu-profile-card .mu-profile-detail-item .value {
+      @apply text-sm;
+    }
+
+    .mu-profile-tabs-container {
+      @apply min-h-[280px];
+    }
+
+    .mu-profile-tabs {
+      @apply flex-nowrap overflow-x-auto touch-pan-x gap-0 pb-1;
+      scrollbar-width: none;
+    }
+
+    .mu-profile-tabs::-webkit-scrollbar {
+      @apply hidden;
+    }
+
+    .mu-profile-tab {
+      @apply whitespace-nowrap px-3 py-2 text-xs flex-shrink-0;
+    }
+
+    .mu-profile-tab .bi {
+      @apply text-sm mr-1;
+    }
+
+    .mu-profile-tab.active {
+      @apply border-b-2;
+    }
+
+    .mu-profile-tab-content {
+      @apply min-h-[250px];
+    }
+
+    .mu-profile-tab-content .mu-dashboard-grid-2 {
+      @apply grid-cols-1 gap-2;
+    }
+
+    .mu-profile-tab-content .mu-form-group {
+      @apply mb-2;
+    }
+
+    .mu-profile-tab-content .mu-form-group label {
+      @apply text-xs;
+    }
+
+    .mu-profile-tab-content .mu-input {
+      @apply text-sm px-3 py-2 min-h-[38px];
+    }
+
+    .mu-profile-stats {
+      @apply grid-cols-2 gap-1;
+    }
+
+    .mu-profile-stats .mu-stat-card {
+      @apply p-2 min-h-[70px];
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-icon {
+      @apply w-[30px] h-[30px] text-[0.85rem];
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-value {
+      @apply text-base;
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-label {
+      @apply text-xs;
+    }
+
+    .mu-page-header .mu-btn {
+      @apply text-xs px-3 py-1;
+    }
+
+    .mu-alert {
+      @apply text-sm px-3 py-2;
+    }
+
+    .mu-modal {
+      @apply max-h-[95vh] rounded-[10px];
+    }
+
+    .mu-modal-header {
+      @apply px-4 py-3;
+    }
+
+    .mu-modal-body {
+      @apply px-4 py-3;
+    }
+
+    .mu-modal-footer {
+      @apply px-4 py-3 flex-wrap;
+    }
+
+    .mu-modal-footer .mu-btn {
+      @apply flex-1 min-w-[100px];
+    }
+
+    .mu-room-grid {
+      @apply grid-cols-2 gap-1.5;
+    }
+
+    .mu-room-header-compact {
+      @apply px-2 py-1.5;
+    }
+
+    .mu-room-header-compact .room-title {
+      @apply text-[10px] gap-1;
+    }
+
+    .mu-room-header-compact .room-title .bi {
+      @apply text-[10px];
+    }
+
+    .mu-room-header-compact .room-availability {
+      @apply text-[7px];
+    }
+
+    .mu-room-body-compact {
+      @apply px-2 py-1.5 pb-2;
+    }
+
+    .mu-floor-plan-compact {
+      grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+      @apply gap-1 p-1 min-h-[50px] rounded-[3px];
+    }
+
+    .mu-bed-btn-compact {
+      @apply min-h-[28px] min-w-[28px] rounded-[3px] p-0.5 gap-0;
+    }
+
+    .mu-bed-btn-compact .bed-icon {
+      @apply text-[8px];
+    }
+
+    .mu-bed-btn-compact .bed-number {
+      @apply text-[5px];
+    }
+
+    .mu-bed-btn-compact .bed-status {
+      @apply hidden;
+    }
+
+    .mu-bed-checkmark-compact {
+      @apply w-[10px] h-[10px] text-[5px] -top-0.5 -right-0.5;
+    }
+
+    .mu-room-footer-compact {
+      @apply text-[8px] pt-1 mt-1 flex-wrap gap-0.5;
+    }
+
+    .mu-room-footer-compact .bi {
+      @apply text-[8px] mr-0.5;
+    }
+
+    .mu-legend-compact {
+      @apply text-[8px] gap-1.5 py-1;
+    }
+
+    .mu-legend-compact .legend-dot {
+      @apply w-2 h-2;
+    }
+
+    .mu-legend-compact .bi {
+      @apply text-[8px];
+    }
+
+    .mu-timetable-grid-horizontal {
+      @apply text-xs;
+    }
+
+    .mu-timetable-grid-horizontal th,
+    .mu-timetable-grid-horizontal td {
+      @apply min-w-[40px];
+    }
+
+    .mu-timetable-time-header-h {
+      @apply min-w-[40px] w-[40px] text-[0.5rem] p-0.5;
+    }
+
+    .mu-timetable-day-header-v {
+      @apply min-w-[45px] w-[45px] p-0.5;
+    }
+
+    .mu-timetable-corner {
+      @apply min-w-[45px] w-[45px] text-[0.45rem] p-0.5;
+    }
+
+    .mu-timetable-cell-h {
+      @apply min-w-[40px] w-[40px] h-[55px] p-0.5;
+    }
+
+    .mu-day-short {
+      @apply text-[0.6rem];
+    }
+
+    .mu-slot-code {
+      @apply text-[0.45rem];
+    }
+
+    .mu-slot-time {
+      @apply text-[0.4rem];
+    }
+
+    .mu-slot-time .bi {
+      @apply hidden;
+    }
+
+    .mu-timetable-slot-h {
+      @apply p-0.5 gap-0;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .mu-room-grid {
+      @apply grid-cols-1;
+    }
+
+    .mu-floor-plan-compact {
+      grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+      @apply gap-1;
+    }
+
+    .mu-bed-btn-compact {
+      @apply min-h-[32px] min-w-[32px];
+    }
+
+    .mu-bed-btn-compact .bed-icon {
+      @apply text-[10px];
+    }
+
+    .mu-bed-btn-compact .bed-number {
+      @apply text-[6px];
+    }
+  }
+
+  @media (min-width: 993px) {
+    .mu-navbar-center {
+      @apply flex !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .mu-table {
+      @apply text-[0.8rem];
+    }
+
+    .mu-table th {
+      @apply px-3 py-2 text-[0.65rem];
+    }
+
+    .mu-table td {
+      @apply px-3 py-2;
+    }
+
+    .mu-table .mu-badge {
+      @apply text-[0.6rem] px-2 py-0.5;
+    }
+
+    .mu-table .mu-btn,
+    .mu-table .mu-btn-sm {
+      @apply px-2 py-1 text-[0.65rem];
+    }
+
+    .mu-table .bi {
+      @apply text-[0.85em];
+    }
+
+    .mu-profile-grid {
+      @apply grid-cols-1 gap-4;
+    }
+
+    .mu-profile-card {
+      @apply static grid grid-cols-[auto_1fr] gap-4 items-center p-4;
+    }
+
+    .mu-profile-card .mu-profile-avatar-lg {
+      @apply w-[100px] h-[100px] mb-0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .mu-table {
+      @apply text-[0.72rem];
+    }
+
+    .mu-table th {
+      @apply px-2 py-1 text-[0.58rem] tracking-wide;
+    }
+
+    .mu-table td {
+      @apply px-2 py-1;
+    }
+
+    .mu-table .mu-badge {
+      @apply text-[0.55rem] px-1.5;
+    }
+
+    .mu-table .mu-btn,
+    .mu-table .mu-btn-sm {
+      @apply px-1 py-0.5 text-[0.6rem] gap-1;
+    }
+
+    .mu-table-wrapper.mu-sticky-col .mu-table th:first-child,
+    .mu-table-wrapper.mu-sticky-col .mu-table td:first-child {
+      @apply sticky left-0 z-[1] shadow-[2px_0_4px_rgba(0,0,0,0.04)];
+      background: inherit;
+    }
+
+    .mu-profile-card .mu-profile-avatar-lg {
+      @apply w-[75px] h-[75px];
+    }
+
+    .mu-profile-card .mu-profile-name {
+      @apply text-base;
+    }
+
+    .mu-profile-card .mu-profile-details {
+      @apply grid-cols-2 gap-1;
+    }
+
+    .mu-profile-card .mu-profile-detail-item {
+      @apply text-[0.6rem];
+    }
+
+    .mu-profile-card .mu-profile-detail-item .value {
+      @apply text-xs;
+    }
+
+    .mu-profile-tab {
+      @apply text-[0.65rem] px-2 py-1;
+    }
+
+    .mu-profile-tab .bi {
+      @apply text-[0.75rem];
+    }
+
+    .mu-profile-stats {
+      @apply grid-cols-2 gap-1;
+    }
+
+    .mu-profile-stats .mu-stat-card {
+      @apply p-1 min-h-[60px];
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-icon {
+      @apply w-6 h-6 text-[0.7rem] mb-1;
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-value {
+      @apply text-sm;
+    }
+
+    .mu-profile-stats .mu-stat-card .mu-stat-label {
+      @apply text-[0.55rem];
+    }
+  }
+}
