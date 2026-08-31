@@ -2753,3 +2753,22 @@ class HostelFeeStructureViewSet(viewsets.ModelViewSet):
     search_fields = ["hostel__name"]
     ordering_fields = ["academic_year"]
     ordering = ["-academic_year"]
+    
+    
+    
+class HostelReportsView(APIView):
+    """Stats + chart data for the hostel Reports page (admin + hostel_warden)."""
+    permission_classes = [IsRole.for_roles("admin", "hostel_warden")]
+
+    def get(self, request):
+        ay_id = request.query_params.get("academic_year")
+        academic_year = (
+            m.AcademicYear.objects.filter(pk=ay_id).first() if ay_id
+            else m.AcademicYear.objects.filter(is_current=True).first()
+        )
+        data = services.HostelReportService.summary(academic_year)
+        data["academic_year"] = {"id": academic_year.id, "year": academic_year.year} if academic_year else None
+        data["academic_years"] = list(
+            m.AcademicYear.objects.order_by("-start_date").values("id", "year")
+        )
+        return Response(data)

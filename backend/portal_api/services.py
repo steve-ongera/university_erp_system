@@ -2098,3 +2098,85 @@ class HostelInventoryService:
             rooms_touched += 1
 
         return {"rooms_touched": rooms_touched, "beds_created": beds_created}
+    
+    
+class HostelReportService:
+    """Aggregated stats + chart data for the hostel Reports page."""
+
+    STATUS_LABELS = None  # set lazily below to avoid import-order issues
+
+    @classmethod
+    def summary(cls, academic_year: m.AcademicYear = None) -> dict:
+        ay = academic_year or m.AcademicYear.objects.filter(is_current=True).first()
+
+        beds = m.Bed.objects.filter(academic_year=ay) if ay else m.Bed.objects.none()
+        total_beds = beds.count()
+        occupied_beds = beds.filter(is_available=False).count()
+        available_beds = total_beds - occupied_beds
+
+        bookings = m.HostelBooking.objects.filter(academic_year=ay) if ay else m.HostelBooking.objects.none()
+        total_bookings = bookings.count()
+
+        hostel_invoices = (
+            m.Invoice.objects.filter(invoice_type=m.Invoice.InvoiceType.HOSTEL, semester__academic_year=ay)
+            if ay else m.Invoice.objects.none()
+        )
+        total_invoiced = hostel_invoices.aggregate(t=Sum("amount_due"))["t"] or Decimal("0")
+        collected = (
+            m.InvoiceAllocation.objects.filter(invoice__in=hostel_invoices)
+            .aggregate(t=Sum("amount_applied"))["t"] or Decimal("0")
+        )
+        outstanding = float(total_invoiced) - float(collected)
+
+        stats = {
+            "total_beds": total_beds,
+            "occupied_beds": occupied_beds,
+            "available_beds": available_beds,
+            "total_bookings": total_bookings,
+            "fees_collected": float(collected),
+            "fees_outstanding": outstanding,
+        }
+
+        # --- Bar chart: occupancy per hostel ---
+        occupancy_rows = (
+            beds.values("room__hostel__name")
+            .annotate(total=Count("id"), occupied=Count("id", filter=Q(is_available=False)))
+            .order_by("room__hostel__name")
+        )
+        occupancy_by_hostel = [
+            {"hostel": row["room__hostel__name"], "total": row["total"], "occupied": row["occupied"],
+             "available": row["total"] - row["occupied"]}
+            for row in occupancy_rows
+        ]
+
+        # --- Donut chart: bookings by status ---
+        status_labels = dict(m.HostelBooking.Status.choices)
+        bookings_by_status = [
+            {"status": row["status"], "label": status_labels.get(row["status"], row["status"]), "count": row["c"]}
+            for row in bookings.values("status").annotate(c=Count("id"))
+        ]
+
+        # --- Line chart: monthly fee collections ---
+        collections_qs = (
+            m.InvoiceAllocation.objects.filter(invoice__in=hostel_invoices)
+            .annotate(month=TruncMonth("allocated_at"))
+            .values("month").annotate(total=Sum("amount_applied")).order_by("month")
+        )
+        collections_trend = [
+            {"month": row["month"].strftime("%b %Y"), "total": float(row["total"])} for row in collections_qs
+        ]
+
+        # --- Line chart companion: monthly booking volume ---
+        booking_qs = (
+            bookings.annotate(month=TruncMonth("booked_at"))
+            .values("month").annotate(count=Count("id")).order_by("month")
+        )
+        booking_trend = [{"month": row["month"].strftime("%b %Y"), "count": row["count"]} for row in booking_qs]
+
+        return {
+            "stats": stats,
+            "occupancy_by_hostel": occupancy_by_hostel,
+            "bookings_by_status": bookings_by_status,
+            "collections_trend": collections_trend,
+            "booking_trend": booking_trend,
+        }

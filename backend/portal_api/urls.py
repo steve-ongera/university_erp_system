@@ -42,7 +42,7 @@ router.register(r"lecture-notes", v.LectureNoteViewSet, basename="lecture-notes"
 router.register(r"promotion-runs", v.PromotionRunViewSet, basename="promotion-run")
 
 # Fees
-router.register(r"hostel-fee-structures", v.HostelFeeStructureViewSet, basename="hostel-fee-structure")
+
 router.register(r"fee-structures", v.FeeStructureViewSet)
 router.register(r"invoices", v.InvoiceViewSet, basename="invoices")
 router.register(r"fee-payments", v.FeePaymentViewSet, basename="fee-payments")
@@ -68,7 +68,7 @@ router.register(r"attendance-sessions", v.AttendanceSessionViewSet)
 router.register(r"attendance", v.AttendanceViewSet, basename="attendance")
 router.register(r"curriculum-units", v.CurriculumUnitViewSet, basename="curriculum-unit"),
 
-
+router.register(r"hostel-fee-structures", v.HostelFeeStructureViewSet, basename="hostel-fee-structure")
 router.register(r"security/login-sessions", v.LoginSessionViewSet, basename="login-sessions")
 router.register(r"security/lock-events", v.AccountLockEventViewSet, basename="lock-events")
 router.register(r"security/alerts", v.SecurityAlertViewSet, basename="security-alerts")
@@ -82,6 +82,7 @@ urlpatterns = [
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("auth/me/", v.MeView.as_view(), name="me"),
     path("security/dashboard/", v.SecurityAuditDashboardView.as_view()),
+    path("hostel/reports/", v.HostelReportsView.as_view(), name="hostel-reports"),
 
     # Student self-service shortcuts
     path("me/profile/", v.MyProfileStudentView.as_view(), name="my-profile"),
