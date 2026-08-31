@@ -889,6 +889,26 @@ class Hostel(models.Model):
         return self.name
 
 
+class HostelFeeStructure(models.Model):
+    """
+    Per-hostel, per-academic-year bed fee. Different hostels (or the
+    same hostel across years) can charge different amounts, similar in
+    spirit to FeeStructure for tuition.
+    """
+    hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name="fee_structures")
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE,
+                                       related_name="hostel_fee_structures")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["hostel", "academic_year"]
+
+    def __str__(self):
+        return f"{self.hostel.name} - {self.academic_year.year} - {self.amount}"
+
+
 class Room(models.Model):
     hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name="rooms")
     room_number = models.CharField(max_length=10)
@@ -919,12 +939,17 @@ class HostelBooking(models.Model):
     """
     Only students who are REPORTING (StudentReporting.status=approved)
     for Year-1 Semester-1 of a fresh intake may book — see
-    services.hostel_service.HostelService.book(). Continuing students in
-    later years follow whatever the university's normal continuing-student
-    allocation window allows, enforced the same way.
+    services.hostel_service.HostelService.book(). A booking now carries
+    its own Invoice (invoice_type=HOSTEL) for that hostel's
+    HostelFeeStructure fee; the booking sits in PENDING_PAYMENT until
+    the invoice is settled (see HostelService.mark_paid_if_settled),
+    then flips to APPROVED. Continuing students in later years follow
+    whatever the university's normal continuing-student allocation
+    window allows, enforced the same way.
     """
     class Status(models.TextChoices):
-        PENDING = "pending", "Pending Approval"
+        PENDING = "pending", "Pending Approval"          # legacy / staff manual override
+        PENDING_PAYMENT = "pending_payment", "Pending Payment"
         APPROVED = "approved", "Approved"
         CHECKED_IN = "checked_in", "Checked In"
         CHECKED_OUT = "checked_out", "Checked Out"
@@ -935,6 +960,8 @@ class HostelBooking(models.Model):
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="hostel_bookings")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     booking_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="hostel_bookings")
     booked_at = models.DateTimeField(auto_now_add=True)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     checked_out_at = models.DateTimeField(null=True, blank=True)
@@ -944,6 +971,13 @@ class HostelBooking(models.Model):
 
     def __str__(self):
         return f"{self.student.registration_number} - {self.bed}"
+
+    @property
+    def is_paid(self):
+        if not self.invoice_id:
+            return True  # legacy/manual bookings created without an invoice
+        from .services import FeeService
+        return FeeService.invoice_balance(self.invoice) <= 0
 
 
 # ======================================================================
